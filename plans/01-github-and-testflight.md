@@ -33,3 +33,4 @@ GitHub configuration complete. First push and CI verification are in progress. T
 - 2026-07-12: Added a manual internal-only TestFlight workflow and set repository variable `APPLE_TEAM_ID`.
 - 2026-07-12: `DISTRIBUTION_CERTIFICATE_BASE64` and a Morrow-specific `PROVISIONING_PROFILE_BASE64` remain missing.
 - 2026-07-12: The first GitHub-hosted Release build passed. Split the combined Xcode test command after simulator-clone parallelism stalled without diagnostics.
+- 2026-07-12: The bounded unit run exposed an iOS 26 crash in shared `ISO8601DateFormatter` instances. Replaced them with value-type ISO 8601 parse strategies.
