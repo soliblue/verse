@@ -14,6 +14,8 @@ final class FeedbackRepository {
         self.api = api
     }
 
+    nonisolated deinit {}
+
     func state(for story: StoryItem) -> CachedStoryState {
         if let state = state(storyID: story.id) {
             mergeRemote(story, into: state)

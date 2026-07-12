@@ -34,3 +34,5 @@ GitHub configuration complete. First push and CI verification are in progress. T
 - 2026-07-12: `DISTRIBUTION_CERTIFICATE_BASE64` and a Morrow-specific `PROVISIONING_PROFILE_BASE64` remain missing.
 - 2026-07-12: The first GitHub-hosted Release build passed. Split the combined Xcode test command after simulator-clone parallelism stalled without diagnostics.
 - 2026-07-12: The bounded unit run exposed an iOS 26 crash in shared `ISO8601DateFormatter` instances. Replaced them with value-type ISO 8601 parse strategies.
+- 2026-07-12: Crash attachments refined the diagnosis to Swift's Xcode 26.2 isolated-deinitializer runtime bug during synchronous XCTest teardown; timestamp parsing was not on either crash stack.
+- 2026-07-12: Added explicit nonisolated deinitializers to the affected main-actor dependency chain while retaining the value-type timestamp parser.

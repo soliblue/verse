@@ -12,6 +12,8 @@ final class APIClient {
         self.session = session
     }
 
+    nonisolated deinit {}
+
     func get<Response: Decodable>(_ path: String, as type: Response.Type) async -> Response? {
         guard let data = await send(path: path, method: "GET") else { return nil }
         return try? decoder.decode(type, from: data)

@@ -24,6 +24,8 @@ final class ServerConfiguration {
         deviceSecret = KeychainStore.value(for: "device-secret")
     }
 
+    nonisolated deinit {}
+
     func save(serverURLString: String, deviceSecret: String, defaults: UserDefaults = .standard) -> Bool {
         let normalized = serverURLString.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
