@@ -6,7 +6,7 @@ Publish the source as a public GitHub repository, configure reusable secrets wit
 
 ## Status
 
-GitHub configuration complete. First push and CI verification are in progress. TestFlight remains intentionally blocked on Morrow-specific Apple records and signing assets.
+GitHub publication, secrets, and CI verification are complete. TestFlight remains intentionally blocked on Morrow-specific Apple records and signing assets.
 
 ## Contracts
 
@@ -36,3 +36,4 @@ GitHub configuration complete. First push and CI verification are in progress. T
 - 2026-07-12: The bounded unit run exposed an iOS 26 crash in shared `ISO8601DateFormatter` instances. Replaced them with value-type ISO 8601 parse strategies.
 - 2026-07-12: Crash attachments refined the diagnosis to Swift's Xcode 26.2 isolated-deinitializer runtime bug during synchronous XCTest teardown; timestamp parsing was not on either crash stack.
 - 2026-07-12: Added explicit nonisolated deinitializers to the affected main-actor dependency chain while retaining the value-type timestamp parser.
+- 2026-07-12: GitHub Actions run `29198014723` passed backend checks, signing-free Release build, unit tests, UI smoke tests, and light and dark screenshot capture.
