@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${MORROW_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+
+if [[ -f "$ROOT/server/.env" ]]; then
+  set -a
+  source "$ROOT/server/.env"
+  set +a
+fi
+
+cd "$ROOT"
+python3 -m db.migrate
+python3 -m db.seed
+
+DATABASE_PATH="${MORROW_DB_PATH:-db/morrow.sqlite}"
+if [[ "$DATABASE_PATH" != /* ]]; then
+  DATABASE_PATH="$ROOT/$DATABASE_PATH"
+fi
+chmod 600 "$DATABASE_PATH"

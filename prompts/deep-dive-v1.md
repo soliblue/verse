@@ -1,0 +1,1 @@
+For every deep-dive request, return `story_id`, `title`, `body`, and `citations`. Use only citation objects supplied with that request and copy them exactly. Synthesize the stored evidence into a deeper explanation without claiming new research. If there are no requests, return an empty `deep_dives` array.

@@ -1,0 +1,11 @@
+[Unit]
+Description=Daily Morrow Nightjar morning edition
+
+[Timer]
+OnCalendar=*-*-* 04:30:00 UTC
+AccuracySec=5m
+RandomizedDelaySec=10m
+Persistent=true
+
+[Install]
+WantedBy=timers.target

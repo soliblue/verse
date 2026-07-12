@@ -1,0 +1,15 @@
+[Unit]
+Description=Morrow Nightjar morning edition
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=__ROOT__
+Environment=MORROW_ROOT=__ROOT__
+EnvironmentFile=__ROOT__/server/.env
+ExecStart=__ROOT__/scripts/scheduled-nightjar
+TimeoutStartSec=5h
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077

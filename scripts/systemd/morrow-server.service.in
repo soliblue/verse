@@ -1,0 +1,19 @@
+[Unit]
+Description=Morrow private reader API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__ROOT__
+Environment=MORROW_ROOT=__ROOT__
+EnvironmentFile=__ROOT__/server/.env
+ExecStart=/usr/bin/env python3 -m server
+Restart=on-failure
+RestartSec=5
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

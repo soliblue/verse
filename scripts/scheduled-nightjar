@@ -1,0 +1,101 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${MORROW_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+
+if [[ -f "$ROOT/server/.env" ]]; then
+  set -a
+  source "$ROOT/server/.env"
+  set +a
+fi
+
+RUNS_ROOT="${MORROW_RUNS_DIR:-runs}"
+if [[ "$RUNS_ROOT" != /* ]]; then
+  RUNS_ROOT="$ROOT/$RUNS_ROOT"
+fi
+RESULT_ROOT="$RUNS_ROOT/_nightjar"
+TIMEOUT_SECONDS="${MORROW_NIGHTJAR_TIMEOUT_SECONDS:-14400}"
+mkdir -p "$RESULT_ROOT"
+
+exec 9>"$RESULT_ROOT/nightjar.lock"
+if ! flock -n 9; then
+  printf 'nightjar already running\n'
+  exit 0
+fi
+
+cd "$ROOT"
+
+STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
+RUN_DATE="${MORROW_RUN_DATE:-$(date -u +%F)}"
+RUN_ID="nightjar-$RUN_DATE"
+RUN_DIR="$RESULT_ROOT/$STAMP"
+PREFLIGHT_LOG="$RUN_DIR/preflight.log"
+PIPELINE_LOG="$RUN_DIR/pipeline.log"
+RESULT_FILE="$RUN_DIR/result.json"
+STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+mkdir -p "$RUN_DIR"
+: > "$PIPELINE_LOG"
+
+set +e
+"$ROOT/scripts/nightjar-preflight" >"$PREFLIGHT_LOG" 2>&1
+PREFLIGHT_STATUS=$?
+set -e
+
+if [[ "$PREFLIGHT_STATUS" -ne 0 ]]; then
+  python3 "$ROOT/scripts/nightjar_result.py" \
+    --path "$RESULT_FILE" \
+    --status preflight_failed \
+    --date "$RUN_DATE" \
+    --run-id "$RUN_ID" \
+    --started-at "$STARTED_AT" \
+    --completed-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+    --exit-code "$PREFLIGHT_STATUS" \
+    --preflight-log "$PREFLIGHT_LOG" \
+    --pipeline-log "$PIPELINE_LOG"
+  cat "$PREFLIGHT_LOG"
+  exit "$PREFLIGHT_STATUS"
+fi
+
+ARGS=(
+  python3 -m etl nightly
+  --date "$RUN_DATE"
+  --run-id "$RUN_ID"
+  --sources "${MORROW_SOURCES_FILE:-etl/sources.json}"
+  --agent-timeout-seconds "${MORROW_AGENT_TIMEOUT_SECONDS:-10800}"
+)
+
+if [[ "${MORROW_NIGHTJAR_AGENT:-1}" == "1" ]]; then
+  ARGS+=(--agent)
+fi
+
+if [[ "${MORROW_NIGHTJAR_FORCE:-0}" == "1" ]]; then
+  ARGS+=(--force)
+fi
+
+set +e
+timeout --signal=TERM --kill-after=60 "${TIMEOUT_SECONDS}s" "${ARGS[@]}" >"$PIPELINE_LOG" 2>&1
+PIPELINE_STATUS=$?
+set -e
+
+STATUS=failed
+if [[ "$PIPELINE_STATUS" -eq 0 ]]; then
+  STATUS=completed
+elif [[ "$PIPELINE_STATUS" -eq 124 ]]; then
+  STATUS=timed_out
+fi
+
+python3 "$ROOT/scripts/nightjar_result.py" \
+  --path "$RESULT_FILE" \
+  --status "$STATUS" \
+  --date "$RUN_DATE" \
+  --run-id "$RUN_ID" \
+  --started-at "$STARTED_AT" \
+  --completed-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --exit-code "$PIPELINE_STATUS" \
+  --preflight-log "$PREFLIGHT_LOG" \
+  --pipeline-log "$PIPELINE_LOG"
+
+cat "$PIPELINE_LOG"
+exit "$PIPELINE_STATUS"

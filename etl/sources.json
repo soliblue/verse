@@ -1,0 +1,144 @@
+{
+  "sources": [
+    {
+      "id": "arxiv-audiovisual",
+      "name": "arXiv",
+      "url": "https://export.arxiv.org/api/query?search_query=cat%3Acs.MM%20OR%20cat%3Aeess.AS&sortBy=submittedDate&sortOrder=descending&max_results=30",
+      "format": "atom",
+      "topic_ids": [
+        "audiovisual-techniques",
+        "sound-design",
+        "generative-media"
+      ],
+      "include_terms": [
+        "audio-visual",
+        "audiovisual",
+        "foley",
+        "generative systems",
+        "image editing",
+        "music",
+        "sound design",
+        "sound field",
+        "sound simulation",
+        "spatial audio",
+        "video diffusion",
+        "video generation",
+        "video-to-audio",
+        "video-to-music",
+        "visual effects"
+      ],
+      "exclude_terms": [
+        "asr",
+        "speaker verification",
+        "speech recognition",
+        "speech-to-speech",
+        "spoken dialogue",
+        "text-to-speech",
+        "tts",
+        "voice anonymisation"
+      ],
+      "quality": 0.85,
+      "max_items": 30
+    },
+    {
+      "id": "arxiv-creative-systems",
+      "name": "arXiv",
+      "url": "https://export.arxiv.org/api/query?search_query=cat%3Acs.HC%20OR%20cat%3Acs.GR&sortBy=submittedDate&sortOrder=descending&max_results=30",
+      "format": "atom",
+      "topic_ids": [
+        "creative-tooling",
+        "real-time-graphics"
+      ],
+      "include_terms": [
+        "co-creation",
+        "creative",
+        "end-user programming",
+        "form-finding",
+        "generated code",
+        "human motion generation",
+        "image editing",
+        "mesh reconstruction",
+        "relighting",
+        "structural design",
+        "traditional chinese paintings"
+      ],
+      "quality": 0.8,
+      "max_items": 30
+    },
+    {
+      "id": "ars-electronica",
+      "name": "Ars Electronica",
+      "url": "https://ars.electronica.art/aeblog/en/feed/",
+      "format": "rss",
+      "topic_ids": [
+        "media-art",
+        "experimental-music",
+        "audiovisual-techniques"
+      ],
+      "include_terms": [
+        "art",
+        "audio",
+        "creative",
+        "digital",
+        "film",
+        "installation",
+        "media",
+        "music",
+        "performance",
+        "sound",
+        "technology",
+        "visual"
+      ],
+      "quality": 0.8,
+      "max_items": 20
+    },
+    {
+      "id": "google-deepmind",
+      "name": "Google DeepMind",
+      "url": "https://deepmind.google/blog/rss.xml",
+      "format": "rss",
+      "topic_ids": [
+        "generative-media",
+        "google-deepmind"
+      ],
+      "include_terms": [
+        "audio",
+        "creative",
+        "generative",
+        "image",
+        "music",
+        "robot",
+        "video",
+        "visual",
+        "world model"
+      ],
+      "quality": 0.9,
+      "max_items": 20
+    },
+    {
+      "id": "berlin-monthly-events",
+      "name": "Berlin.de",
+      "url": "https://www.berlin.de/en/events/{month}/",
+      "format": "html_jsonld",
+      "topic_ids": [
+        "berlin-events"
+      ],
+      "include_terms": [
+        "art",
+        "design",
+        "digital",
+        "exhibition",
+        "film",
+        "installation",
+        "media",
+        "museum",
+        "photograph",
+        "sound",
+        "technology",
+        "visual"
+      ],
+      "quality": 0.9,
+      "max_items": 30
+    }
+  ]
+}

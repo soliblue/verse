@@ -1,0 +1,126 @@
+name: CI
+
+on:
+  workflow_dispatch:
+  pull_request:
+  push:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: morrow-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    name: Backend and Nightjar
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+
+      - name: Configure temporary database
+        run: echo "MORROW_DB_PATH=$RUNNER_TEMP/morrow.sqlite" >> "$GITHUB_ENV"
+
+      - name: Run checks
+        run: make check
+
+      - name: Verify repeatable bootstrap
+        run: |
+          scripts/bootstrap
+          scripts/bootstrap
+          python3 - <<'PY'
+          import os
+          import sqlite3
+
+          connection = sqlite3.connect(os.environ["MORROW_DB_PATH"])
+          assert connection.execute("pragma quick_check").fetchone()[0] == "ok"
+          assert connection.execute("select count(*) from edition_items").fetchone()[0] == 10
+          print("repeatable bootstrap valid")
+          PY
+
+  ios:
+    name: iOS build and smoke test
+    runs-on: macos-15
+    timeout-minutes: 35
+
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+
+      - name: Select Xcode
+        run: |
+          sudo xcode-select -s /Applications/Xcode_26.2.app
+          xcodebuild -version
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: '3.12'
+
+      - name: Verify bundled contracts
+        run: python3 -m scripts.check_contracts
+
+      - name: Build without signing
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project apps/ios/Morrow.xcodeproj \
+            -scheme Morrow \
+            -configuration Release \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/morrow-build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Select simulator
+        run: |
+          IOS_RUNTIME="$(xcrun simctl list runtimes --json | python3 -c 'import json,sys; rows=[x for x in json.load(sys.stdin)["runtimes"] if x["isAvailable"] and x["name"].startswith("iOS")]; print(max(rows, key=lambda x: tuple(map(int, x["version"].split("."))))["identifier"])')"
+          SMOKE_UDID="$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(x["udid"] for x in json.load(sys.stdin)["devices"][sys.argv[1]] if x["name"].startswith("iPhone") and x["state"] == "Shutdown"))' "$IOS_RUNTIME")"
+          echo "SMOKE_UDID=$SMOKE_UDID" >> "$GITHUB_ENV"
+          xcrun simctl boot "$SMOKE_UDID"
+          xcrun simctl bootstatus "$SMOKE_UDID" -b
+
+      - name: Run unit and UI tests
+        run: |
+          xcodebuild test \
+            -project apps/ios/Morrow.xcodeproj \
+            -scheme Morrow \
+            -destination "platform=iOS Simulator,id=$SMOKE_UDID" \
+            -derivedDataPath "$RUNNER_TEMP/morrow-build" \
+            -resultBundlePath "$RUNNER_TEMP/morrow-tests.xcresult" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Capture smoke screenshots
+        run: |
+          APP="$RUNNER_TEMP/morrow-build/Build/Products/Debug-iphonesimulator/Morrow.app"
+          mkdir -p "$RUNNER_TEMP/morrow-smoke"
+          xcrun simctl install "$SMOKE_UDID" "$APP"
+          for APPEARANCE in light dark; do
+            xcrun simctl ui "$SMOKE_UDID" appearance "$APPEARANCE"
+            xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.Morrow
+            sleep 5
+            xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/morrow-smoke/today-$APPEARANCE.png"
+          done
+
+      - name: Upload simulator evidence
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: morrow-ios-evidence
+          path: |
+            ${{ runner.temp }}/morrow-smoke/*.png
+            ${{ runner.temp }}/morrow-tests.xcresult
+          if-no-files-found: ignore
+
+      - name: Shut down simulator
+        if: always() && env.SMOKE_UDID != ''
+        run: xcrun simctl shutdown "$SMOKE_UDID"

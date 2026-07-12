@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT="${MORROW_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+
+if [[ -f "$ROOT/server/.env" ]]; then
+  set -a
+  source "$ROOT/server/.env"
+  set +a
+fi
+
+if [[ "${MORROW_DEVICE_SECRET:-}" == replace-with-* ]]; then
+  printf 'device_secret_placeholder=true\n'
+  exit 1
+fi
+
+cd "$ROOT"
+
+printf 'utc=%s\n' "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+printf 'root=%s\n' "$ROOT"
+printf 'python=%s\n' "$(python3 --version 2>&1)"
+DISK_AVAILABLE_KB="$(df -Pk "$ROOT" | awk 'NR == 2 {print $4}')"
+MINIMUM_FREE_KB="${MORROW_MIN_FREE_KB:-1048576}"
+printf 'disk_available_kb=%s\n' "$DISK_AVAILABLE_KB"
+printf 'disk_minimum_kb=%s\n' "$MINIMUM_FREE_KB"
+if (( DISK_AVAILABLE_KB < MINIMUM_FREE_KB )); then
+  printf 'disk_space_insufficient=true\n'
+  exit 1
+fi
+printf 'sources=%s\n' "${MORROW_SOURCES_FILE:-etl/sources.json}"
+
+if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  printf 'branch=%s\n' "$(git branch --show-current)"
+  printf 'git_status_begin\n'
+  git status --short
+  printf 'git_status_end\n'
+fi
+
+command -v flock
+command -v timeout
+
+if [[ "${MORROW_NIGHTJAR_AGENT:-1}" == "1" ]]; then
+  command -v codex
+fi
+
+python3 - <<'PY'
+import json
+import os
+from pathlib import Path
+
+from db.connection import database, default_database_path
+
+database_path = default_database_path()
+if not database_path.exists():
+    raise SystemExit(f"database_missing={database_path}")
+with database(database_path, readonly=True) as connection:
+    integrity = connection.execute("PRAGMA quick_check").fetchone()[0]
+    migrations = connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0]
+    topics = connection.execute("SELECT count(*) FROM topics WHERE is_enabled = 1").fetchone()[0]
+    current = connection.execute("SELECT value FROM settings WHERE key = 'current_edition_id'").fetchone()
+    queued = connection.execute("SELECT count(*) FROM deep_dives WHERE status = 'queued'").fetchone()[0]
+if integrity != "ok":
+    raise SystemExit(f"database_integrity_failed={integrity}")
+print(f"database={database_path}")
+print(f"database_integrity={integrity}")
+print(f"migrations={migrations}")
+print(f"enabled_topics={topics}")
+print(f"current_edition_id={current[0] if current else ''}")
+print(f"queued_deep_dives={queued}")
+sources = Path(os.environ.get("MORROW_SOURCES_FILE", "etl/sources.json"))
+payload = json.loads(sources.read_text(encoding="utf-8"))
+print(f"configured_sources={len(payload['sources'])}")
+PY
