@@ -32,3 +32,4 @@ GitHub configuration complete. First push and CI verification are in progress. T
 - 2026-07-12: Reused Cloude's App Store Connect key and distribution certificate password as GitHub Actions secrets.
 - 2026-07-12: Added a manual internal-only TestFlight workflow and set repository variable `APPLE_TEAM_ID`.
 - 2026-07-12: `DISTRIBUTION_CERTIFICATE_BASE64` and a Morrow-specific `PROVISIONING_PROFILE_BASE64` remain missing.
+- 2026-07-12: The first GitHub-hosted Release build passed. Split the combined Xcode test command after simulator-clone parallelism stalled without diagnostics.
