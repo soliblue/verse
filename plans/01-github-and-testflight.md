@@ -38,3 +38,5 @@ GitHub publication, secrets, and CI verification are complete. TestFlight remain
 - 2026-07-12: Added explicit nonisolated deinitializers to the affected main-actor dependency chain while retaining the value-type timestamp parser.
 - 2026-07-12: GitHub Actions run `29198014723` passed backend checks, signing-free Release build, unit tests, UI smoke tests, and light and dark screenshot capture.
 - 2026-07-14: Began renaming the product, bundle identifier, repository, and device-secret key to Verse.
+- 2026-07-14: Renamed the public repository to `soliblue/verse`, added `VERSE_DEVICE_SECRET`, and removed the obsolete secret key.
+- 2026-07-14: GitHub Actions run `29325717736` passed for `soli.verse`. TestFlight still needs the distribution certificate and Verse provisioning profile secrets.
