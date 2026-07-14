@@ -38,3 +38,4 @@ In progress.
 - 2026-07-14: Completed a read-only SwiftUI API and regression review with no remaining local blocker.
 - 2026-07-14: CI build and unit tests passed; made the source-link UI assertion independent of its platform accessibility role after the first simulator run.
 - 2026-07-14: The green simulator screenshots revealed the next page's toolbar at the bottom edge; consolidated reader controls into one feed-level toolbar before release.
+- 2026-07-14: The consolidated toolbar passed every interaction assertion; raised the two long UI tests from 60 to 90 seconds after a slow runner completed navigation successfully at 65 seconds.

@@ -53,6 +53,7 @@ final class VerseSmokeUITests: XCTestCase {
     }
 
     func testNavigationLivesInThePixelMenu() {
+        executionTimeAllowance = 90
         let app = XCUIApplication()
         app.launch()
 
@@ -71,6 +72,7 @@ final class VerseSmokeUITests: XCTestCase {
     }
 
     func testAppearanceDefaultsToLightAndSwitchesImmediately() {
+        executionTimeAllowance = 90
         let app = XCUIApplication()
         app.launch()
 
