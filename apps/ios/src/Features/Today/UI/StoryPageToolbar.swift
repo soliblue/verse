@@ -1,29 +1,19 @@
 import SwiftUI
 
-struct StoryToolbar: View {
+struct StoryPageToolbar: View {
+    let number: Int
     let sourceURL: URL
     let isSaved: Bool
     let preference: FeedbackPreference?
     let deepDiveStatus: DeepDiveStatus
     let isDisabled: Bool
-    let onBack: () -> Void
     let onSave: () -> Void
     let onPreference: (FeedbackPreference) -> Void
     let onDeepDive: () -> Void
-    let onShowDetails: () -> Void
 
     var body: some View {
-        HStack {
-            Button(action: onBack) {
-                Image(systemName: "chevron.left")
-                    .frame(width: 44, height: 44)
-                    .contentShape(Rectangle())
-            }
-            .accessibilityLabel("Back")
-            .accessibilityIdentifier("story-back")
-
+        HStack(spacing: 0) {
             Spacer()
-
             Button(action: onSave) {
                 Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
                     .frame(width: 44, height: 44)
@@ -31,7 +21,7 @@ struct StoryToolbar: View {
             }
             .disabled(isDisabled)
             .accessibilityLabel(isSaved ? "Remove bookmark" : "Save story")
-            .accessibilityIdentifier("story-save")
+            .accessibilityIdentifier("reader-save-\(number)")
 
             StoryActionsMenu(
                 sourceURL: sourceURL,
@@ -40,7 +30,7 @@ struct StoryToolbar: View {
                 isDisabled: isDisabled,
                 onPreference: onPreference,
                 onDeepDive: onDeepDive,
-                onShowDetails: onShowDetails
+                accessibilityIdentifier: "reader-actions-\(number)"
             )
         }
         .font(.system(size: VerseTokens.Icon.m, weight: .medium))

@@ -1,11 +1,13 @@
 import SwiftUI
 
 struct SettingsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let configuration: ServerConfiguration
     let api: APIClient
     let editions: EditionRepository
     let feedback: FeedbackRepository
     let topics: TopicsRepository
+    @Binding var appTheme: AppTheme
     @State private var store: SettingsStore
     @State private var revealSecret = false
 
@@ -14,18 +16,39 @@ struct SettingsView: View {
         api: APIClient,
         editions: EditionRepository,
         feedback: FeedbackRepository,
-        topics: TopicsRepository
+        topics: TopicsRepository,
+        appTheme: Binding<AppTheme>
     ) {
         self.configuration = configuration
         self.api = api
         self.editions = editions
         self.feedback = feedback
         self.topics = topics
+        _appTheme = appTheme
         _store = State(initialValue: SettingsStore(configuration: configuration))
     }
 
     var body: some View {
         Form {
+            Section {
+                Picker(
+                    "Appearance",
+                    selection: Binding(
+                        get: { appTheme },
+                        set: {
+                            AppTheme.persisted = $0
+                            appTheme = $0
+                        }
+                    )
+                ) {
+                    ForEach(AppTheme.allCases) { theme in
+                        Text(theme.title).tag(theme)
+                    }
+                }
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("appearance-picker")
+            }
+
             Section {
                 TextField("https://verse.example.com", text: $store.serverURL)
                     .keyboardType(.URL)
@@ -107,7 +130,7 @@ struct SettingsView: View {
                 LabeledContent("Downloaded editions", value: "\(store.cachedEditionCount)")
                 LabeledContent(
                     "Last edition refresh",
-                    value: store.lastRefresh?.formatted(date: .abbreviated, time: .shortened) ?? "Never"
+                    value: store.lastRefresh.map(DateFormatting.dateTime) ?? "Never"
                 )
                 if store.pendingMutationCount > 0 {
                     LabeledContent("Queued feedback", value: "\(store.pendingMutationCount)")
@@ -137,8 +160,14 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(VerseTheme.paper)
         .navigationTitle("Settings")
-        .safeAreaInset(edge: .bottom) {
-            Color.clear.frame(height: 64)
+        .overlay(alignment: .topLeading) {
+            #if DEBUG
+            Text(colorScheme == .dark ? "dark" : "light")
+                .font(.system(size: 1))
+                .foregroundStyle(VerseTheme.paper)
+                .frame(width: 1, height: 1)
+                .accessibilityIdentifier("resolved-theme")
+            #endif
         }
         .task { store.refreshMetrics(editions: editions, feedback: feedback) }
     }

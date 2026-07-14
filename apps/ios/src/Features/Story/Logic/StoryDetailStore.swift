@@ -10,9 +10,13 @@ final class StoryDetailStore {
     var preference: FeedbackPreference? { state?.preference }
     var deepDiveStatus: DeepDiveStatus { state?.deepDiveStatus ?? .notRequested }
 
-    func load(story: StoryItem, repository: FeedbackRepository) async {
+    func load(
+        story: StoryItem,
+        repository: FeedbackRepository,
+        markSeen: Bool = true
+    ) async {
         state = repository.state(for: story)
-        if state?.isSeen == false {
+        if markSeen, state?.isSeen == false {
             state = await repository.update(story: story, kind: .seen, value: true)
         }
     }

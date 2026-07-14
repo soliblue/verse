@@ -129,7 +129,8 @@ jobs:
           xcrun simctl install "$SMOKE_UDID" "$APP"
           for APPEARANCE in light dark; do
             xcrun simctl ui "$SMOKE_UDID" appearance "$APPEARANCE"
-            xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse
+            xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse \
+              -appTheme "$APPEARANCE"
             sleep 5
             xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/today-$APPEARANCE.png"
           done

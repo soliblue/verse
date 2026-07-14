@@ -6,6 +6,7 @@ struct TodayView: View {
     let feedback: FeedbackRepository
     let topics: TopicsRepository
     let configuration: ServerConfiguration
+    @Binding var selectedTab: AppTab
     @State private var store = TodayStore()
     @State private var focusedStoryID: StoryItem.ID?
 
@@ -17,17 +18,14 @@ struct TodayView: View {
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
                         ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
-                            NavigationLink(value: story) {
-                                StoryPageView(
-                                    story: story,
-                                    number: index + 1,
-                                    total: stories.count
-                                )
-                            }
-                            .buttonStyle(.plain)
+                            TodayStoryPage(
+                                story: story,
+                                number: index + 1,
+                                total: stories.count,
+                                feedback: feedback
+                            )
                             .id(story.id)
                             .containerRelativeFrame(.vertical)
-                            .accessibilityIdentifier("reader-story-\(index + 1)")
                         }
                     }
                     .scrollTargetLayout()
@@ -35,21 +33,23 @@ struct TodayView: View {
                 .scrollTargetBehavior(.paging)
                 .scrollIndicators(.hidden)
                 .scrollPosition(id: $focusedStoryID)
+                .refreshable { await refresh() }
                 .accessibilityIdentifier("verse-reader")
+                .overlay(alignment: .bottom) {
+                    if let message = store.statusMessage {
+                        Text(message)
+                            .font(.footnote)
+                            .foregroundStyle(VerseTheme.secondaryInk)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24)
+                            .padding(.bottom, 20)
+                            .accessibilityIdentifier("reader-status")
+                    }
+                }
                 .onChange(of: stories.map(\.id), initial: true) { _, storyIDs in
                     if focusedStoryID.map(storyIDs.contains) != true {
                         focusedStoryID = storyIDs.first
                     }
-                }
-                .overlay(alignment: .top) {
-                    ReaderToolbar(
-                        statusMessage: store.statusMessage,
-                        isRefreshing: store.isRefreshing
-                    ) {
-                        Task { await refresh() }
-                    }
-                    .padding(.horizontal, 16)
-                    .padding(.top, 8)
                 }
             } else if store.isLoading {
                 ProgressView("Preparing your edition")
@@ -63,6 +63,11 @@ struct TodayView: View {
             }
         }
         .background(VerseTheme.paper.ignoresSafeArea())
+        .overlay(alignment: .topLeading) {
+            AppNavigationMenu(selection: $selectedTab)
+                .padding(.leading, 12)
+                .padding(.top, 4)
+        }
         .toolbar(.hidden, for: .navigationBar)
         .task {
             await store.load(

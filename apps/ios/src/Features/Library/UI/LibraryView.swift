@@ -49,9 +49,6 @@ struct LibraryView: View {
         }
         .background(VerseTheme.paper)
         .navigationTitle("Library")
-        .safeAreaInset(edge: .bottom) {
-            Color.clear.frame(height: 64)
-        }
         .onAppear { store.reloadLocal(editions: editions, feedback: feedback) }
         .task { await store.load(editions: editions, feedback: feedback) }
     }

@@ -2,24 +2,20 @@ import XCTest
 
 @MainActor
 final class VerseSmokeUITests: XCTestCase {
-    func testLaunchesAndPagesThroughBundledEdition() {
+    func testLaunchesAsAQuietPagedReader() {
         let app = XCUIApplication()
+        app.launchArguments = ["-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
         app.launch()
 
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 8))
-        XCTAssertTrue(
-            app.descendants(matching: .any)["verse-mark"].waitForExistence(timeout: 5)
-        )
-        XCTAssertTrue(
-            app.descendants(matching: .any)["verse-floating-tabs"].waitForExistence(timeout: 5)
-        )
-        for tab in ["today", "library", "topics", "settings"] {
-            XCTAssertTrue(app.buttons["floating-tab-\(tab)"].exists)
-            XCTAssertEqual(
-                app.buttons.matching(NSPredicate(format: "label == %@", tab.capitalized)).count,
-                1
-            )
-        }
+        XCTAssertTrue(app.buttons["app-menu"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reader-save-1"].exists)
+        XCTAssertTrue(app.buttons["reader-actions-1"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["verse-floating-tabs"].exists)
+        XCTAssertFalse(app.descendants(matching: .any)["verse-mark"].exists)
+        app.buttons["app-menu"].tap()
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
+        app.buttons["Today"].tap()
 
         let first = app.descendants(matching: .any)["reader-story-1"]
         XCTAssertTrue(first.waitForExistence(timeout: 5))
@@ -32,7 +28,7 @@ final class VerseSmokeUITests: XCTestCase {
         assertHittable(second)
     }
 
-    func testStoryOpensWithoutPersistentDock() {
+    func testStoryKeepsSupportingDetailsOnDemand() {
         let app = XCUIApplication()
         app.launch()
 
@@ -42,45 +38,76 @@ final class VerseSmokeUITests: XCTestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["story-detail"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["story-back"].exists)
-        let dock = app.descendants(matching: .any)["verse-floating-tabs"]
-        let dockGone = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == false"),
-            object: dock
-        )
-        XCTAssertEqual(XCTWaiter.wait(for: [dockGone], timeout: 2), .completed)
+        XCTAssertTrue(app.buttons["story-save"].exists)
+        app.buttons["story-actions"].tap()
+        XCTAssertTrue(app.buttons["Story details"].waitForExistence(timeout: 5))
+        app.buttons["Story details"].tap()
+        XCTAssertTrue(app.navigationBars["Story details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.links["Open original"].exists)
+        app.buttons["Done"].tap()
 
         app.buttons["story-back"].tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["verse-floating-tabs"].waitForExistence(timeout: 5)
-        )
+        XCTAssertTrue(app.buttons["app-menu"].waitForExistence(timeout: 5))
     }
 
-    func testSettingsOpensFromFloatingTabs() {
+    func testNavigationLivesInThePixelMenu() {
         let app = XCUIApplication()
         app.launch()
 
-        let settings = app.buttons["floating-tab-settings"]
-        XCTAssertTrue(settings.waitForExistence(timeout: 8))
-        settings.tap()
-
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["Server URL"].exists)
-    }
-
-    func testLibraryAndTopicsOpenFromFloatingTabs() {
-        let app = XCUIApplication()
-        app.launch()
-
-        let library = app.buttons["floating-tab-library"]
-        XCTAssertTrue(library.waitForExistence(timeout: 8))
-        library.tap()
+        openTab("Library", app: app)
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
 
-        app.buttons["floating-tab-topics"].tap()
+        openTab("Topics", app: app)
         XCTAssertTrue(app.navigationBars["Topics"].waitForExistence(timeout: 5))
 
-        app.buttons["floating-tab-today"].tap()
+        openTab("Settings", app: app)
+        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["Server URL"].exists)
+
+        openTab("Today", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
+    }
+
+    func testAppearanceDefaultsToLightAndSwitchesImmediately() {
+        let app = XCUIApplication()
+        app.launch()
+
+        openTab("Settings", app: app)
+        assertResolvedTheme("light", app: app)
+
+        selectAppearance("Dark", app: app)
+        assertResolvedTheme("dark", app: app)
+
+        selectAppearance("Light", app: app)
+        assertResolvedTheme("light", app: app)
+    }
+
+    private func openTab(_ title: String, app: XCUIApplication) {
+        let menu = app.buttons["app-menu"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 5))
+        menu.tap()
+        let tab = app.buttons[title]
+        XCTAssertTrue(tab.waitForExistence(timeout: 5))
+        tab.tap()
+    }
+
+    private func selectAppearance(_ title: String, app: XCUIApplication) {
+        let picker = app.descendants(matching: .any)["appearance-picker"]
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        picker.tap()
+        let option = app.buttons[title]
+        XCTAssertTrue(option.waitForExistence(timeout: 5))
+        option.tap()
+    }
+
+    private func assertResolvedTheme(_ theme: String, app: XCUIApplication) {
+        let marker = app.staticTexts["resolved-theme"]
+        XCTAssertTrue(marker.waitForExistence(timeout: 5))
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "label == %@", theme),
+            object: marker
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
     }
 
     private func assertHittable(_ element: XCUIElement) {

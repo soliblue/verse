@@ -6,6 +6,7 @@ import SwiftUI
 struct VerseApp: App {
     private let container: ModelContainer
     @State private var configuration: ServerConfiguration
+    @State private var appTheme: AppTheme
     private let api: APIClient
     private let editions: EditionRepository
     private let feedback: FeedbackRepository
@@ -24,6 +25,7 @@ struct VerseApp: App {
         let api = APIClient(configuration: configuration)
         self.container = container
         _configuration = State(initialValue: configuration)
+        _appTheme = State(initialValue: AppTheme.persisted)
         self.api = api
         editions = EditionRepository(context: container.mainContext, api: api)
         feedback = FeedbackRepository(context: container.mainContext, api: api)
@@ -37,9 +39,11 @@ struct VerseApp: App {
                 api: api,
                 editions: editions,
                 feedback: feedback,
-                topics: topics
+                topics: topics,
+                appTheme: $appTheme
             )
-            .preferredColorScheme(nil)
+            .preferredColorScheme(appTheme.colorScheme)
+            .environment(\.locale, Locale(identifier: "en"))
         }
         .modelContainer(container)
     }

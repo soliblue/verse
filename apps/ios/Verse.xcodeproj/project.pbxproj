@@ -208,10 +208,9 @@
 				};
 			};
 			buildConfigurationList = MB00000000000000000000B0 /* Build configuration list for PBXProject "iOS" */;
-			developmentRegion = de;
+			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
-				de,
 				en,
 				Base,
 			);
@@ -428,6 +427,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = src/Info.plist;
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
 				INFOPLIST_KEY_CFBundleDisplayName = Verse;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.news";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -468,6 +468,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = src/Info.plist;
+				INFOPLIST_KEY_CFBundleDevelopmentRegion = en;
 				INFOPLIST_KEY_CFBundleDisplayName = Verse;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.news";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
