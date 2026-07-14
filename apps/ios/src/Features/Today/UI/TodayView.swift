@@ -8,6 +8,7 @@ struct TodayView: View {
     let configuration: ServerConfiguration
     @Binding var selectedTab: AppTab
     @State private var store = TodayStore()
+    @State private var toolbarStore = StoryDetailStore()
     @State private var focusedStoryID: StoryItem.ID?
 
     var body: some View {
@@ -21,8 +22,7 @@ struct TodayView: View {
                             TodayStoryPage(
                                 story: story,
                                 number: index + 1,
-                                total: stories.count,
-                                feedback: feedback
+                                total: stories.count
                             )
                             .id(story.id)
                             .containerRelativeFrame(.vertical)
@@ -63,12 +63,49 @@ struct TodayView: View {
             }
         }
         .background(VerseTheme.paper.ignoresSafeArea())
-        .overlay(alignment: .topLeading) {
-            AppNavigationMenu(selection: $selectedTab)
-                .padding(.leading, 12)
+        .overlay(alignment: .top) {
+            if let story = focusedStory {
+                StoryPageToolbar(
+                    selectedTab: $selectedTab,
+                    sourceURL: story.sourceURL,
+                    isSaved: toolbarStore.isSaved,
+                    preference: toolbarStore.preference,
+                    deepDiveStatus: toolbarStore.deepDiveStatus,
+                    isDisabled: toolbarStore.isSending,
+                    onSave: {
+                        Task {
+                            await toolbarStore.toggleSaved(story: story, repository: feedback)
+                        }
+                    },
+                    onPreference: { preference in
+                        Task {
+                            await toolbarStore.setPreference(
+                                preference,
+                                story: story,
+                                repository: feedback
+                            )
+                        }
+                    },
+                    onDeepDive: {
+                        Task {
+                            await toolbarStore.requestDeepDive(story: story, repository: feedback)
+                        }
+                    }
+                )
+            } else {
+                HStack {
+                    AppNavigationMenu(selection: $selectedTab)
+                    Spacer()
+                }
+                .padding(.horizontal, 12)
                 .padding(.top, 4)
+            }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .task(id: focusedStory?.id) {
+            guard let focusedStory else { return }
+            await toolbarStore.load(story: focusedStory, repository: feedback, markSeen: false)
+        }
         .task {
             await store.load(
                 editions: editions,
@@ -91,5 +128,11 @@ struct TodayView: View {
             topics: topics,
             configuration: configuration
         )
+    }
+
+    private var focusedStory: StoryItem? {
+        guard let edition = store.edition else { return nil }
+        let stories = edition.items.sorted { $0.position < $1.position }
+        return stories.first { $0.id == focusedStoryID } ?? stories.first
     }
 }

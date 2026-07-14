@@ -9,8 +9,8 @@ final class VerseSmokeUITests: XCTestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["app-menu"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["reader-save-1"].exists)
-        XCTAssertTrue(app.buttons["reader-actions-1"].exists)
+        XCTAssertTrue(app.buttons["reader-save"].exists)
+        XCTAssertTrue(app.buttons["reader-actions"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["verse-floating-tabs"].exists)
         XCTAssertFalse(app.descendants(matching: .any)["verse-mark"].exists)
         app.buttons["app-menu"].tap()

@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct StoryPageToolbar: View {
-    let number: Int
+    @Binding var selectedTab: AppTab
     let sourceURL: URL
     let isSaved: Bool
     let preference: FeedbackPreference?
@@ -13,6 +13,7 @@ struct StoryPageToolbar: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            AppNavigationMenu(selection: $selectedTab)
             Spacer()
             Button(action: onSave) {
                 Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
@@ -21,7 +22,7 @@ struct StoryPageToolbar: View {
             }
             .disabled(isDisabled)
             .accessibilityLabel(isSaved ? "Remove bookmark" : "Save story")
-            .accessibilityIdentifier("reader-save-\(number)")
+            .accessibilityIdentifier("reader-save")
 
             StoryActionsMenu(
                 sourceURL: sourceURL,
@@ -30,7 +31,7 @@ struct StoryPageToolbar: View {
                 isDisabled: isDisabled,
                 onPreference: onPreference,
                 onDeepDive: onDeepDive,
-                accessibilityIdentifier: "reader-actions-\(number)"
+                accessibilityIdentifier: "reader-actions"
             )
         }
         .font(.system(size: VerseTokens.Icon.m, weight: .medium))
