@@ -42,3 +42,4 @@ In progress.
 - 2026-07-14: Made UI coverage content-independent and added Library and Topics dock checks.
 - 2026-07-14: Isolated accessibility identifiers from SwiftUI's hidden native tab items and parent identifier propagation after the first UI run exposed ambiguous controls.
 - 2026-07-14: Increased the unit runner allowance after all 9 tests passed but Xcode 26's simulator harness crossed the previous 10-minute step ceiling.
+- 2026-07-14: Simulator screenshots exposed a doubled native and custom dock; moved tab-bar hiding into each navigation stack and added a one-button-per-tab regression check.

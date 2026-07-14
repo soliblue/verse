@@ -36,6 +36,7 @@ struct RootTabView: View {
                         StoryDetailView(story: story, feedback: feedback)
                     }
                 }
+                .toolbar(.hidden, for: .tabBar)
                 .tabItem { Label("Today", systemImage: "square.stack.3d.up") }
                 .tag(AppTab.today)
 
@@ -52,12 +53,14 @@ struct RootTabView: View {
                             )
                         }
                 }
+                .toolbar(.hidden, for: .tabBar)
                 .tabItem { Label("Library", systemImage: "bookmark") }
                 .tag(AppTab.library)
 
                 NavigationStack(path: $topicsPath) {
                     TopicsView(repository: topics)
                 }
+                .toolbar(.hidden, for: .tabBar)
                 .tabItem { Label("Topics", systemImage: "scope") }
                 .tag(AppTab.topics)
 
@@ -70,10 +73,10 @@ struct RootTabView: View {
                         topics: topics
                     )
                 }
+                .toolbar(.hidden, for: .tabBar)
                 .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
                 .tag(AppTab.settings)
             }
-            .toolbar(.hidden, for: .tabBar)
 
             if showsFloatingTabs {
                 FloatingTabBar(selection: $selectedTab)

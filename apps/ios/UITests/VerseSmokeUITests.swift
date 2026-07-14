@@ -15,6 +15,10 @@ final class VerseSmokeUITests: XCTestCase {
         )
         for tab in ["today", "library", "topics", "settings"] {
             XCTAssertTrue(app.buttons["floating-tab-\(tab)"].exists)
+            XCTAssertEqual(
+                app.buttons.matching(NSPredicate(format: "label == %@", tab.capitalized)).count,
+                1
+            )
         }
 
         let first = app.descendants(matching: .any)["reader-story-1"]
