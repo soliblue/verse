@@ -6,7 +6,7 @@ Reduce Verse to the story itself: English-only copy, light by default with a per
 
 ## Status
 
-In progress.
+Complete.
 
 ## Contracts
 
@@ -39,3 +39,6 @@ In progress.
 - 2026-07-14: CI build and unit tests passed; made the source-link UI assertion independent of its platform accessibility role after the first simulator run.
 - 2026-07-14: The green simulator screenshots revealed the next page's toolbar at the bottom edge; consolidated reader controls into one feed-level toolbar before release.
 - 2026-07-14: The consolidated toolbar passed every interaction assertion; raised the two long UI tests from 60 to 90 seconds after a slow runner completed navigation successfully at 65 seconds.
+- 2026-07-14: The final iOS build, unit tests, UI smoke tests, screenshot artifacts, and backend checks passed in GitHub Actions run `29339449541`.
+- 2026-07-14: Reviewed the final light and dark screenshots with one toolbar, no persistent navigation, and clean page edges.
+- 2026-07-14: Uploaded private TestFlight build `0.1.0 (4)` in run `29340082098`; App Store Connect marked it valid and made it available to the internal tester.
