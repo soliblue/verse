@@ -12,6 +12,7 @@ struct VerseApp: App {
     private let topics: TopicsRepository
 
     init() {
+        FontRegistrar.registerBundledFonts()
         let container = try! ModelContainer(
             for: CachedEdition.self,
             CachedEditionIndex.self,

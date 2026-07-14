@@ -3,7 +3,6 @@ import SwiftUI
 struct LibraryView: View {
     let editions: EditionRepository
     let feedback: FeedbackRepository
-    let configuration: ServerConfiguration
     @State private var store = LibraryStore()
 
     var body: some View {
@@ -20,9 +19,7 @@ struct LibraryView: View {
                                 .foregroundStyle(VerseTheme.secondaryInk)
                         } else {
                             ForEach(store.savedStories) { story in
-                                NavigationLink {
-                                    StoryDetailView(story: story, feedback: feedback)
-                                } label: {
+                                NavigationLink(value: story) {
                                     StoryRowView(story: story, isSaved: true)
                                 }
                             }
@@ -38,14 +35,7 @@ struct LibraryView: View {
                             .foregroundStyle(VerseTheme.secondaryInk)
                         } else {
                             ForEach(store.previousEditions) { edition in
-                                NavigationLink {
-                                    EditionView(
-                                        summary: edition,
-                                        editions: editions,
-                                        feedback: feedback,
-                                        configuration: configuration
-                                    )
-                                } label: {
+                                NavigationLink(value: edition) {
                                     EditionSummaryRow(edition: edition)
                                 }
                             }
@@ -59,6 +49,9 @@ struct LibraryView: View {
         }
         .background(VerseTheme.paper)
         .navigationTitle("Library")
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 64)
+        }
         .onAppear { store.reloadLocal(editions: editions, feedback: feedback) }
         .task { await store.load(editions: editions, feedback: feedback) }
     }

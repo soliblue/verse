@@ -137,6 +137,9 @@ struct SettingsView: View {
         .scrollContentBackground(.hidden)
         .background(VerseTheme.paper)
         .navigationTitle("Settings")
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 64)
+        }
         .task { store.refreshMetrics(editions: editions, feedback: feedback) }
     }
 }

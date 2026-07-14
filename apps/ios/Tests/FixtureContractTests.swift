@@ -10,6 +10,10 @@ final class FixtureContractTests: XCTestCase {
 
         XCTAssertEqual(edition.items.count, 10)
         XCTAssertEqual(edition.items.map(\.position), Array(1...10))
+        XCTAssertEqual(Set(edition.items.map(\.id)).count, edition.items.count)
+        XCTAssertTrue(edition.items.allSatisfy { !$0.title.isEmpty })
+        XCTAssertTrue(edition.items.allSatisfy { !$0.summary.isEmpty })
+        XCTAssertTrue(edition.items.allSatisfy { !$0.sourceName.isEmpty })
         XCTAssertTrue(edition.items.allSatisfy { !$0.citations.isEmpty })
         XCTAssertTrue(edition.items.allSatisfy { $0.sourceURL.scheme == "https" })
         XCTAssertTrue(edition.items.allSatisfy { $0.feedback == nil })

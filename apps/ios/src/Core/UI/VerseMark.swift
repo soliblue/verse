@@ -2,15 +2,15 @@ import SwiftUI
 
 struct VerseMark: View {
     var body: some View {
-        HStack(spacing: 8) {
-            Image(systemName: "sun.horizon.fill")
-                .foregroundStyle(VerseTheme.amber)
+        HStack(spacing: VerseTokens.Spacing.s) {
+            VerseGlyph()
             Text("VERSE")
-                .font(.system(.headline, design: .serif, weight: .bold))
-                .tracking(2.4)
-                .foregroundStyle(VerseTheme.ink)
+                .font(.display(VerseTokens.Text.xl))
+                .tracking(1.2)
+                .foregroundStyle(VerseTheme.foreground)
         }
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("Verse")
         .accessibilityIdentifier("verse-mark")
     }
 }

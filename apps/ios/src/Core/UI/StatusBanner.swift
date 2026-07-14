@@ -10,7 +10,11 @@ struct StatusBanner: View {
             .foregroundStyle(VerseTheme.secondaryInk)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(12)
-            .background(VerseTheme.surface, in: RoundedRectangle(cornerRadius: 12))
+            .background(VerseTheme.surface)
+            .overlay {
+                Rectangle()
+                    .stroke(VerseTheme.border, lineWidth: 1)
+            }
             .accessibilityElement(children: .combine)
     }
 }

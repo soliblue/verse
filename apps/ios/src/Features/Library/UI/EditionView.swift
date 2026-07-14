@@ -3,7 +3,6 @@ import SwiftUI
 struct EditionView: View {
     let summary: EditionSummary
     let editions: EditionRepository
-    let feedback: FeedbackRepository
     let configuration: ServerConfiguration
     @State private var store = EditionStore()
 
@@ -18,9 +17,7 @@ struct EditionView: View {
                             .listRowBackground(VerseTheme.paper)
                     }
                     ForEach(edition.items.sorted { $0.position < $1.position }) { story in
-                        NavigationLink {
-                            StoryDetailView(story: story, feedback: feedback)
-                        } label: {
+                        NavigationLink(value: story) {
                             StoryRowView(story: story)
                         }
                         .listRowBackground(VerseTheme.paper)

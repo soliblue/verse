@@ -8,12 +8,14 @@ struct DeepDiveSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Nightjar deep dive", systemImage: "moon.stars")
-                .font(.headline)
+                .font(.utility(12))
+                .tracking(0.9)
+                .textCase(.uppercase)
                 .foregroundStyle(VerseTheme.ink)
             switch state?.deepDiveStatus ?? .notRequested {
             case .notRequested:
                 Text("Queue a deeper, source-backed briefing for the next overnight run.")
-                    .font(.subheadline)
+                    .font(.reading(15))
                     .foregroundStyle(VerseTheme.secondaryInk)
                 requestButton("Request deep dive")
             case .queued:
@@ -30,12 +32,12 @@ struct DeepDiveSection: View {
             case .ready:
                 if let title = state?.deepDiveTitle {
                     Text(title)
-                        .font(.system(.title3, design: .serif, weight: .semibold))
+                        .font(.display(20))
                         .foregroundStyle(VerseTheme.ink)
                 }
                 if let body = state?.deepDiveBody {
                     Text(body)
-                        .font(.body)
+                        .font(.reading(16))
                         .foregroundStyle(VerseTheme.ink)
                         .textSelection(.enabled)
                 }
@@ -45,7 +47,11 @@ struct DeepDiveSection: View {
             }
         }
         .padding(16)
-        .background(VerseTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .background(VerseTheme.surface)
+        .overlay {
+            Rectangle()
+                .stroke(VerseTheme.border, lineWidth: 1)
+        }
     }
 
     private func requestButton(_ title: String) -> some View {
@@ -53,7 +59,7 @@ struct DeepDiveSection: View {
             onRequest()
         }
         .buttonStyle(.borderedProminent)
-        .tint(VerseTheme.blue)
+        .tint(VerseTheme.ink)
         .disabled(isDisabled)
     }
 }

@@ -8,7 +8,9 @@ struct FeedbackBar: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Shape tomorrow")
-                .font(.headline)
+                .font(.utility(12))
+                .tracking(0.9)
+                .textCase(.uppercase)
                 .foregroundStyle(VerseTheme.ink)
             HStack(spacing: 8) {
                 feedbackButton("More like this", icon: "hand.thumbsup", value: .moreLikeThis)
@@ -27,14 +29,19 @@ struct FeedbackBar: View {
             onSelect(value)
         } label: {
             Label(title, systemImage: preference == value ? "checkmark" : icon)
-                .font(.caption.weight(.medium))
+                .font(.utility(11))
                 .lineLimit(1)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(
-                    preference == value ? VerseTheme.blue.opacity(0.16) : VerseTheme.surface,
-                    in: RoundedRectangle(cornerRadius: 10)
+                    preference == value ? VerseTheme.ink : VerseTheme.surface,
+                    in: Capsule()
                 )
+                .foregroundStyle(preference == value ? VerseTheme.paper : VerseTheme.ink)
+                .overlay {
+                    Capsule()
+                        .stroke(VerseTheme.border, lineWidth: 1)
+                }
         }
         .buttonStyle(.plain)
         .disabled(isDisabled)

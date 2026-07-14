@@ -12,43 +12,76 @@ struct RootTabView: View {
     @State private var topicsPath = NavigationPath()
     @State private var settingsPath = NavigationPath()
 
-    var body: some View {
-        TabView(selection: $selectedTab) {
-            NavigationStack(path: $todayPath) {
-                TodayView(
-                    editions: editions,
-                    feedback: feedback,
-                    topics: topics,
-                    configuration: configuration
-                )
-            }
-            .tabItem { Label("Today", systemImage: "sun.horizon") }
-            .tag(AppTab.today)
-
-            NavigationStack(path: $libraryPath) {
-                LibraryView(editions: editions, feedback: feedback, configuration: configuration)
-            }
-            .tabItem { Label("Library", systemImage: "books.vertical") }
-            .tag(AppTab.library)
-
-            NavigationStack(path: $topicsPath) {
-                TopicsView(repository: topics)
-            }
-            .tabItem { Label("Topics", systemImage: "scope") }
-            .tag(AppTab.topics)
-
-            NavigationStack(path: $settingsPath) {
-                SettingsView(
-                    configuration: configuration,
-                    api: api,
-                    editions: editions,
-                    feedback: feedback,
-                    topics: topics
-                )
-            }
-            .tabItem { Label("Settings", systemImage: "gearshape") }
-            .tag(AppTab.settings)
+    private var showsFloatingTabs: Bool {
+        switch selectedTab {
+        case .today: todayPath.isEmpty
+        case .library: libraryPath.isEmpty
+        case .topics: topicsPath.isEmpty
+        case .settings: settingsPath.isEmpty
         }
-        .tint(VerseTheme.blue)
+    }
+
+    var body: some View {
+        ZStack(alignment: .bottom) {
+            TabView(selection: $selectedTab) {
+                NavigationStack(path: $todayPath) {
+                    TodayView(
+                        editions: editions,
+                        feedback: feedback,
+                        topics: topics,
+                        configuration: configuration
+                    )
+                    .navigationDestination(for: StoryItem.self) { story in
+                        StoryDetailView(story: story, feedback: feedback)
+                    }
+                }
+                .tabItem { Label("Today", systemImage: "square.stack.3d.up") }
+                .tag(AppTab.today)
+
+                NavigationStack(path: $libraryPath) {
+                    LibraryView(editions: editions, feedback: feedback)
+                        .navigationDestination(for: StoryItem.self) { story in
+                            StoryDetailView(story: story, feedback: feedback)
+                        }
+                        .navigationDestination(for: EditionSummary.self) { edition in
+                            EditionView(
+                                summary: edition,
+                                editions: editions,
+                                configuration: configuration
+                            )
+                        }
+                }
+                .tabItem { Label("Library", systemImage: "bookmark") }
+                .tag(AppTab.library)
+
+                NavigationStack(path: $topicsPath) {
+                    TopicsView(repository: topics)
+                }
+                .tabItem { Label("Topics", systemImage: "scope") }
+                .tag(AppTab.topics)
+
+                NavigationStack(path: $settingsPath) {
+                    SettingsView(
+                        configuration: configuration,
+                        api: api,
+                        editions: editions,
+                        feedback: feedback,
+                        topics: topics
+                    )
+                }
+                .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
+                .tag(AppTab.settings)
+            }
+            .toolbar(.hidden, for: .tabBar)
+
+            if showsFloatingTabs {
+                FloatingTabBar(selection: $selectedTab)
+                    .padding(.bottom, 8)
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            }
+        }
+        .tint(VerseTheme.accent)
+        .animation(.snappy(duration: 0.24), value: showsFloatingTabs)
+        .sensoryFeedback(.selection, trigger: selectedTab)
     }
 }

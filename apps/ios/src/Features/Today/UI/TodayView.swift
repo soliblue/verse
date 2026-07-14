@@ -7,44 +7,49 @@ struct TodayView: View {
     let topics: TopicsRepository
     let configuration: ServerConfiguration
     @State private var store = TodayStore()
+    @State private var focusedStoryID: StoryItem.ID?
 
     var body: some View {
         Group {
             if let edition = store.edition {
-                List {
-                    EditionHeaderView(edition: edition)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(VerseTheme.paper)
-                    if let message = store.statusMessage {
-                        StatusBanner(message: message, systemImage: "wifi.slash")
-                            .listRowSeparator(.hidden)
-                            .listRowBackground(VerseTheme.paper)
-                    }
-                    ForEach(edition.items.sorted { $0.position < $1.position }) { story in
-                        NavigationLink {
-                            StoryDetailView(story: story, feedback: feedback)
-                        } label: {
-                            StoryRowView(story: story)
+                let stories = edition.items.sorted { $0.position < $1.position }
+
+                ScrollView(.vertical) {
+                    LazyVStack(spacing: 0) {
+                        ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
+                            NavigationLink(value: story) {
+                                StoryPageView(
+                                    story: story,
+                                    number: index + 1,
+                                    total: stories.count
+                                )
+                            }
+                            .buttonStyle(.plain)
+                            .id(story.id)
+                            .containerRelativeFrame(.vertical)
+                            .accessibilityIdentifier("reader-story-\(story.id)")
                         }
-                        .listRowBackground(VerseTheme.paper)
                     }
-                    Text("You reached the end of today’s edition.")
-                        .font(.footnote)
-                        .foregroundStyle(VerseTheme.secondaryInk)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 24)
-                        .listRowSeparator(.hidden)
-                        .listRowBackground(VerseTheme.paper)
+                    .scrollTargetLayout()
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
-                .refreshable {
-                    await store.refresh(
-                        editions: editions,
-                        feedback: feedback,
-                        topics: topics,
-                        configuration: configuration
-                    )
+                .scrollTargetBehavior(.paging)
+                .scrollIndicators(.hidden)
+                .scrollPosition(id: $focusedStoryID)
+                .accessibilityIdentifier("verse-reader")
+                .onChange(of: stories.map(\.id), initial: true) { _, storyIDs in
+                    if focusedStoryID.map(storyIDs.contains) != true {
+                        focusedStoryID = storyIDs.first
+                    }
+                }
+                .overlay(alignment: .top) {
+                    ReaderToolbar(
+                        statusMessage: store.statusMessage,
+                        isRefreshing: store.isRefreshing
+                    ) {
+                        Task { await refresh() }
+                    }
+                    .padding(.horizontal, 16)
+                    .padding(.top, 8)
                 }
             } else if store.isLoading {
                 ProgressView("Preparing your edition")
@@ -57,31 +62,8 @@ struct TodayView: View {
                 )
             }
         }
-        .background(VerseTheme.paper)
-        .navigationTitle("Today")
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            ToolbarItem(placement: .topBarTrailing) {
-                Button {
-                    Task {
-                        await store.refresh(
-                            editions: editions,
-                            feedback: feedback,
-                            topics: topics,
-                            configuration: configuration
-                        )
-                    }
-                } label: {
-                    if store.isRefreshing {
-                        ProgressView()
-                    } else {
-                        Image(systemName: "arrow.clockwise")
-                    }
-                }
-                .disabled(store.isRefreshing)
-                .accessibilityLabel("Refresh edition")
-            }
-        }
+        .background(VerseTheme.paper.ignoresSafeArea())
+        .toolbar(.hidden, for: .navigationBar)
         .task {
             await store.load(
                 editions: editions,
@@ -92,15 +74,17 @@ struct TodayView: View {
         }
         .onChange(of: scenePhase) { _, phase in
             if phase == .active, store.hasLoaded, configuration.isConfigured {
-                Task {
-                    await store.refresh(
-                        editions: editions,
-                        feedback: feedback,
-                        topics: topics,
-                        configuration: configuration
-                    )
-                }
+                Task { await refresh() }
             }
         }
+    }
+
+    private func refresh() async {
+        await store.refresh(
+            editions: editions,
+            feedback: feedback,
+            topics: topics,
+            configuration: configuration
+        )
     }
 }

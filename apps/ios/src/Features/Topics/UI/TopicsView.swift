@@ -58,6 +58,9 @@ struct TopicsView: View {
         }
         .background(VerseTheme.paper)
         .navigationTitle("Topics")
+        .safeAreaInset(edge: .bottom) {
+            Color.clear.frame(height: 64)
+        }
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 EditButton()

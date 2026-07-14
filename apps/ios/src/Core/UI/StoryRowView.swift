@@ -8,9 +8,9 @@ struct StoryRowView: View {
         VStack(alignment: .leading, spacing: 10) {
             HStack(spacing: 8) {
                 Text(story.kind.replacingOccurrences(of: "_", with: " ").uppercased())
-                    .font(.caption2.weight(.semibold))
+                    .font(.utility(12))
                     .tracking(0.8)
-                    .foregroundStyle(VerseTheme.amber)
+                    .foregroundStyle(VerseTheme.secondaryInk)
                 Spacer()
                 if isSaved {
                     Image(systemName: "bookmark.fill")
@@ -19,11 +19,12 @@ struct StoryRowView: View {
                 }
             }
             Text(story.title)
-                .font(.system(.title3, design: .serif, weight: .semibold))
+                .font(.display(22))
                 .foregroundStyle(VerseTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text(story.summary)
-                .font(.subheadline)
+                .font(.reading(15))
+                .lineSpacing(2)
                 .foregroundStyle(VerseTheme.secondaryInk)
                 .lineLimit(3)
             HStack(spacing: 6) {
@@ -31,7 +32,7 @@ struct StoryRowView: View {
                 Text("·")
                 Text("\(story.readingMinutes) min")
             }
-            .font(.caption)
+            .font(.utility(12))
             .foregroundStyle(VerseTheme.secondaryInk)
         }
         .padding(.vertical, 10)
