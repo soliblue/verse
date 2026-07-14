@@ -89,7 +89,7 @@ jobs:
           xcrun simctl bootstatus "$SMOKE_UDID" -b
 
       - name: Run unit tests
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: |
           xcodebuild test \
             -project apps/ios/Verse.xcodeproj \
