@@ -6,7 +6,7 @@ Turn Verse into a quiet, full-screen morning reader with one story per vertical 
 
 ## Status
 
-In progress.
+Complete.
 
 ## Contracts
 
@@ -43,3 +43,5 @@ In progress.
 - 2026-07-14: Isolated accessibility identifiers from SwiftUI's hidden native tab items and parent identifier propagation after the first UI run exposed ambiguous controls.
 - 2026-07-14: Increased the unit runner allowance after all 9 tests passed but Xcode 26's simulator harness crossed the previous 10-minute step ceiling.
 - 2026-07-14: Simulator screenshots exposed a doubled native and custom dock; moved tab-bar hiding into each navigation stack and added a one-button-per-tab regression check.
+- 2026-07-14: CI run `29332531373` passed backend, contracts, signing-free build, 9 Swift unit tests, UI paging and navigation smoke tests, and light and dark screenshot capture.
+- 2026-07-14: Reviewed both full-resolution screenshots and confirmed a single floating dock, clear safe areas, readable page hierarchy, and consistent pixel-universe treatment in both appearances.
