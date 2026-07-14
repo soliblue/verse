@@ -43,7 +43,9 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(app.buttons["Story details"].waitForExistence(timeout: 5))
         app.buttons["Story details"].tap()
         XCTAssertTrue(app.navigationBars["Story details"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.links["Open original"].exists)
+        XCTAssertTrue(
+            app.descendants(matching: .any)["story-original"].waitForExistence(timeout: 5)
+        )
         app.buttons["Done"].tap()
 
         app.buttons["story-back"].tap()

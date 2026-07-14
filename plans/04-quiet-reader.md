@@ -36,3 +36,4 @@ In progress.
 - 2026-07-14: Passed contract validation and all 55 backend and Nightjar tests locally.
 - 2026-07-14: Kept preloaded feed pages from being marked seen, made navigation available in every Today state, and gave every page action a stable identifier.
 - 2026-07-14: Completed a read-only SwiftUI API and regression review with no remaining local blocker.
+- 2026-07-14: CI build and unit tests passed; made the source-link UI assertion independent of its platform accessibility role after the first simulator run.

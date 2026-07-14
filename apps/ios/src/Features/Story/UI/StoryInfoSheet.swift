@@ -45,6 +45,7 @@ struct StoryInfoSheet: View {
                         Link(destination: story.sourceURL) {
                             Label("Open original", systemImage: "arrow.up.right")
                         }
+                        .accessibilityIdentifier("story-original")
                         ForEach(story.citations) { citation in
                             CitationRow(citation: citation)
                         }
