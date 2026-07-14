@@ -6,7 +6,7 @@ Publish the source as a public GitHub repository, configure reusable secrets wit
 
 ## Status
 
-GitHub publication, secrets, and CI verification are complete. TestFlight remains intentionally blocked on Verse-specific Apple records and signing assets.
+GitHub publication, secrets, CI verification, and private TestFlight distribution are complete.
 
 ## Contracts
 
@@ -22,6 +22,7 @@ GitHub publication, secrets, and CI verification are complete. TestFlight remain
 - Preserve the distinct device secret while renaming its environment key to `VERSE_DEVICE_SECRET`.
 - Do not copy Cloudflare credentials into Verse until a deployment workflow consumes them.
 - Require a Verse-specific App Store provisioning profile and a matching Apple Distribution certificate before enabling TestFlight.
+- Keep one internal TestFlight group with automatic access to all builds and no public link.
 
 ## Log
 
@@ -40,3 +41,6 @@ GitHub publication, secrets, and CI verification are complete. TestFlight remain
 - 2026-07-14: Began renaming the product, bundle identifier, repository, and device-secret key to Verse.
 - 2026-07-14: Renamed the public repository to `soliblue/verse`, added `VERSE_DEVICE_SECRET`, and removed the obsolete secret key.
 - 2026-07-14: GitHub Actions run `29325717736` passed for `soli.verse`. TestFlight still needs the distribution certificate and Verse provisioning profile secrets.
+- 2026-07-14: Added the Apple Distribution certificate and `soli.verse` provisioning profile to GitHub Actions secrets.
+- 2026-07-14: Private TestFlight run `29327260198` uploaded `0.1.0 (2)` and App Store Connect marked the build valid.
+- 2026-07-14: Verified one private internal group with A. Soli as its only tester and automatic access to future builds.
