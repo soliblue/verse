@@ -19,6 +19,7 @@ struct FloatingTabBar: View {
                 .buttonStyle(.plain)
                 .accessibilityLabel(tab.title)
                 .accessibilityValue(selection == tab ? "Selected" : "")
+                .accessibilityIdentifier("floating-tab-\(tab.title.lowercased())")
             }
         }
         .padding(5)

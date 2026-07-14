@@ -37,6 +37,7 @@ struct StoryDetailView: View {
                     Text(story.title)
                         .font(.display(36))
                         .foregroundStyle(VerseTheme.ink)
+                        .accessibilityIdentifier("story-detail")
                     Text(story.summary)
                         .font(.reading(19))
                         .lineSpacing(4)
@@ -118,7 +119,6 @@ struct StoryDetailView: View {
                 }
             )
         }
-        .accessibilityIdentifier("story-detail")
         .task { await store.load(story: story, repository: feedback) }
     }
 }

@@ -40,3 +40,4 @@ In progress.
 - 2026-07-14: Local contracts and all 55 Python tests passed.
 - 2026-07-14: Added a compact short-screen page composition, corrected small-text contrast, made feedback controls wrap safely, and honored Reduce Motion.
 - 2026-07-14: Made UI coverage content-independent and added Library and Topics dock checks.
+- 2026-07-14: Isolated accessibility identifiers from SwiftUI's hidden native tab items and parent identifier propagation after the first UI run exposed ambiguous controls.

@@ -13,8 +13,8 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(
             app.descendants(matching: .any)["verse-floating-tabs"].waitForExistence(timeout: 5)
         )
-        for tab in ["Today", "Library", "Topics", "Settings"] {
-            XCTAssertTrue(app.buttons[tab].exists)
+        for tab in ["today", "library", "topics", "settings"] {
+            XCTAssertTrue(app.buttons["floating-tab-\(tab)"].exists)
         }
 
         let first = app.descendants(matching: .any)["reader-story-1"]
@@ -55,7 +55,7 @@ final class VerseSmokeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let settings = app.buttons["Settings"]
+        let settings = app.buttons["floating-tab-settings"]
         XCTAssertTrue(settings.waitForExistence(timeout: 8))
         settings.tap()
 
@@ -67,14 +67,15 @@ final class VerseSmokeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        XCTAssertTrue(app.buttons["Library"].waitForExistence(timeout: 8))
-        app.buttons["Library"].tap()
+        let library = app.buttons["floating-tab-library"]
+        XCTAssertTrue(library.waitForExistence(timeout: 8))
+        library.tap()
         XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
 
-        app.buttons["Topics"].tap()
+        app.buttons["floating-tab-topics"].tap()
         XCTAssertTrue(app.navigationBars["Topics"].waitForExistence(timeout: 5))
 
-        app.buttons["Today"].tap()
+        app.buttons["floating-tab-today"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
     }
 

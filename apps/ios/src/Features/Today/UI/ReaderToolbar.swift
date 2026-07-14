@@ -22,6 +22,7 @@ struct ReaderToolbar: View {
                 .contentShape(Circle())
                 .disabled(isRefreshing)
                 .accessibilityLabel("Refresh edition")
+                .accessibilityIdentifier("verse-reader-refresh")
             }
             .padding(.leading, 16)
             .padding(.trailing, 4)
@@ -39,7 +40,6 @@ struct ReaderToolbar: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
-        .accessibilityIdentifier("verse-reader-toolbar")
     }
 }
 
