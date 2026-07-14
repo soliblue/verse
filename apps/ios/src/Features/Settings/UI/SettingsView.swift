@@ -27,7 +27,7 @@ struct SettingsView: View {
     var body: some View {
         Form {
             Section {
-                TextField("https://morrow.example.com", text: $store.serverURL)
+                TextField("https://verse.example.com", text: $store.serverURL)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
@@ -99,7 +99,7 @@ struct SettingsView: View {
                 Section {
                     Text(message)
                         .font(.footnote)
-                        .foregroundStyle(MorrowTheme.secondaryInk)
+                        .foregroundStyle(VerseTheme.secondaryInk)
                 }
             }
 
@@ -128,14 +128,14 @@ struct SettingsView: View {
 
             Section("About") {
                 LabeledContent("Edition editor", value: "Nightjar")
-                LabeledContent("Morrow", value: "v0")
+                LabeledContent("Verse", value: "v0")
                 Text("A private, finite morning reader. No account, analytics, ads, or public feed.")
                     .font(.footnote)
-                    .foregroundStyle(MorrowTheme.secondaryInk)
+                    .foregroundStyle(VerseTheme.secondaryInk)
             }
         }
         .scrollContentBackground(.hidden)
-        .background(MorrowTheme.paper)
+        .background(VerseTheme.paper)
         .navigationTitle("Settings")
         .task { store.refreshMetrics(editions: editions, feedback: feedback) }
     }

@@ -5,18 +5,18 @@ struct EditionHeaderView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            MorrowMark()
+            VerseMark()
             Text(DateFormatting.editionDate(edition.date).uppercased())
                 .font(.caption2.weight(.semibold))
                 .tracking(1.1)
-                .foregroundStyle(MorrowTheme.amber)
+                .foregroundStyle(VerseTheme.amber)
             Text(edition.title)
                 .font(.system(.largeTitle, design: .serif, weight: .bold))
-                .foregroundStyle(MorrowTheme.ink)
+                .foregroundStyle(VerseTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text(edition.dek)
                 .font(.body)
-                .foregroundStyle(MorrowTheme.secondaryInk)
+                .foregroundStyle(VerseTheme.secondaryInk)
                 .fixedSize(horizontal: false, vertical: true)
             HStack {
                 Label("\(edition.items.count) stories", systemImage: "rectangle.stack")
@@ -24,9 +24,9 @@ struct EditionHeaderView: View {
                 Text("A finite edition")
             }
             .font(.caption)
-            .foregroundStyle(MorrowTheme.secondaryInk)
+            .foregroundStyle(VerseTheme.secondaryInk)
             Divider()
-                .overlay(MorrowTheme.ink.opacity(0.25))
+                .overlay(VerseTheme.ink.opacity(0.25))
         }
         .padding(.top, 8)
         .padding(.bottom, 4)
@@ -37,6 +37,6 @@ struct EditionHeaderView: View {
 #Preview("Edition header") {
     EditionHeaderView(edition: PreviewFixtures.edition)
         .padding()
-        .background(MorrowTheme.paper)
+        .background(VerseTheme.paper)
 }
 #endif

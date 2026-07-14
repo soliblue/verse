@@ -49,6 +49,6 @@ struct RootTabView: View {
             .tabItem { Label("Settings", systemImage: "gearshape") }
             .tag(AppTab.settings)
         }
-        .tint(MorrowTheme.blue)
+        .tint(VerseTheme.blue)
     }
 }

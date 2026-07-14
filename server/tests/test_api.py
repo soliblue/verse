@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class APITests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
-        self.path = Path(self.temporary.name) / "morrow.sqlite"
+        self.path = Path(self.temporary.name) / "verse.sqlite"
         connection = connect(self.path)
         migrate(connection)
         replace_topics(connection, json.loads((ROOT / "etl/seeds/default-topics.json").read_text(encoding="utf-8")))

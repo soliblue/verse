@@ -14,11 +14,11 @@ struct TodayView: View {
                 List {
                     EditionHeaderView(edition: edition)
                         .listRowSeparator(.hidden)
-                        .listRowBackground(MorrowTheme.paper)
+                        .listRowBackground(VerseTheme.paper)
                     if let message = store.statusMessage {
                         StatusBanner(message: message, systemImage: "wifi.slash")
                             .listRowSeparator(.hidden)
-                            .listRowBackground(MorrowTheme.paper)
+                            .listRowBackground(VerseTheme.paper)
                     }
                     ForEach(edition.items.sorted { $0.position < $1.position }) { story in
                         NavigationLink {
@@ -26,15 +26,15 @@ struct TodayView: View {
                         } label: {
                             StoryRowView(story: story)
                         }
-                        .listRowBackground(MorrowTheme.paper)
+                        .listRowBackground(VerseTheme.paper)
                     }
                     Text("You reached the end of today’s edition.")
                         .font(.footnote)
-                        .foregroundStyle(MorrowTheme.secondaryInk)
+                        .foregroundStyle(VerseTheme.secondaryInk)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 24)
                         .listRowSeparator(.hidden)
-                        .listRowBackground(MorrowTheme.paper)
+                        .listRowBackground(VerseTheme.paper)
                 }
                 .listStyle(.plain)
                 .scrollContentBackground(.hidden)
@@ -53,11 +53,11 @@ struct TodayView: View {
                 ContentUnavailableView(
                     "Edition unavailable",
                     systemImage: "newspaper",
-                    description: Text(store.statusMessage ?? "Try reopening Morrow.")
+                    description: Text(store.statusMessage ?? "Try reopening Verse.")
                 )
             }
         }
-        .background(MorrowTheme.paper)
+        .background(VerseTheme.paper)
         .navigationTitle("Today")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {

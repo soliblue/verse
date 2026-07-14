@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: morrow-ci-${{ github.ref }}
+  group: verse-ci-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -27,7 +27,7 @@ jobs:
           python-version: '3.12'
 
       - name: Configure temporary database
-        run: echo "MORROW_DB_PATH=$RUNNER_TEMP/morrow.sqlite" >> "$GITHUB_ENV"
+        run: echo "VERSE_DB_PATH=$RUNNER_TEMP/verse.sqlite" >> "$GITHUB_ENV"
 
       - name: Run checks
         run: make check
@@ -40,7 +40,7 @@ jobs:
           import os
           import sqlite3
 
-          connection = sqlite3.connect(os.environ["MORROW_DB_PATH"])
+          connection = sqlite3.connect(os.environ["VERSE_DB_PATH"])
           assert connection.execute("pragma quick_check").fetchone()[0] == "ok"
           assert connection.execute("select count(*) from edition_items").fetchone()[0] == 10
           print("repeatable bootstrap valid")
@@ -72,11 +72,11 @@ jobs:
         run: |
           set -o pipefail
           xcodebuild build \
-            -project apps/ios/Morrow.xcodeproj \
-            -scheme Morrow \
+            -project apps/ios/Verse.xcodeproj \
+            -scheme Verse \
             -configuration Release \
             -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/morrow-build" \
+            -derivedDataPath "$RUNNER_TEMP/verse-build" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
@@ -92,12 +92,12 @@ jobs:
         timeout-minutes: 10
         run: |
           xcodebuild test \
-            -project apps/ios/Morrow.xcodeproj \
-            -scheme Morrow \
+            -project apps/ios/Verse.xcodeproj \
+            -scheme Verse \
             -destination "platform=iOS Simulator,id=$SMOKE_UDID" \
-            -derivedDataPath "$RUNNER_TEMP/morrow-build" \
-            -resultBundlePath "$RUNNER_TEMP/morrow-unit-tests.xcresult" \
-            -only-testing:MorrowTests \
+            -derivedDataPath "$RUNNER_TEMP/verse-build" \
+            -resultBundlePath "$RUNNER_TEMP/verse-unit-tests.xcresult" \
+            -only-testing:VerseTests \
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 60 \
@@ -109,12 +109,12 @@ jobs:
         timeout-minutes: 10
         run: |
           xcodebuild test \
-            -project apps/ios/Morrow.xcodeproj \
-            -scheme Morrow \
+            -project apps/ios/Verse.xcodeproj \
+            -scheme Verse \
             -destination "platform=iOS Simulator,id=$SMOKE_UDID" \
-            -derivedDataPath "$RUNNER_TEMP/morrow-build" \
-            -resultBundlePath "$RUNNER_TEMP/morrow-ui-tests.xcresult" \
-            -only-testing:MorrowUITests \
+            -derivedDataPath "$RUNNER_TEMP/verse-build" \
+            -resultBundlePath "$RUNNER_TEMP/verse-ui-tests.xcresult" \
+            -only-testing:VerseUITests \
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 60 \
@@ -124,24 +124,24 @@ jobs:
 
       - name: Capture smoke screenshots
         run: |
-          APP="$RUNNER_TEMP/morrow-build/Build/Products/Debug-iphonesimulator/Morrow.app"
-          mkdir -p "$RUNNER_TEMP/morrow-smoke"
+          APP="$RUNNER_TEMP/verse-build/Build/Products/Debug-iphonesimulator/Verse.app"
+          mkdir -p "$RUNNER_TEMP/verse-smoke"
           xcrun simctl install "$SMOKE_UDID" "$APP"
           for APPEARANCE in light dark; do
             xcrun simctl ui "$SMOKE_UDID" appearance "$APPEARANCE"
-            xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.Morrow
+            xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse
             sleep 5
-            xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/morrow-smoke/today-$APPEARANCE.png"
+            xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/today-$APPEARANCE.png"
           done
 
       - name: Upload simulator evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:
-          name: morrow-ios-evidence
+          name: verse-ios-evidence
           path: |
-            ${{ runner.temp }}/morrow-smoke/*.png
-            ${{ runner.temp }}/morrow-*-tests.xcresult
+            ${{ runner.temp }}/verse-smoke/*.png
+            ${{ runner.temp }}/verse-*-tests.xcresult
           if-no-files-found: ignore
 
       - name: Shut down simulator

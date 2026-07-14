@@ -20,7 +20,7 @@ struct TopicsView: View {
                 List {
                     if let message = store.statusMessage {
                         StatusBanner(message: message, systemImage: "arrow.triangle.2.circlepath")
-                            .listRowBackground(MorrowTheme.paper)
+                            .listRowBackground(VerseTheme.paper)
                     }
                     Section {
                         ForEach(store.topics) { topic in
@@ -56,7 +56,7 @@ struct TopicsView: View {
                 .refreshable { await store.load(repository: repository) }
             }
         }
-        .background(MorrowTheme.paper)
+        .background(VerseTheme.paper)
         .navigationTitle("Topics")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {

@@ -1,4 +1,4 @@
-name: Morrow
+name: Verse
 options:
   bundleIdPrefix: soli
   deploymentTarget:
@@ -12,7 +12,7 @@ settings:
     SUPPORTS_MACCATALYST: false
     SUPPORTS_XR_DESIGNED_FOR_IPHONE_IPAD: false
 targets:
-  Morrow:
+  Verse:
     type: application
     platform: iOS
     sources:
@@ -29,46 +29,46 @@ targets:
         CURRENT_PROJECT_VERSION: 1
         ENABLE_PREVIEWS: true
         GENERATE_INFOPLIST_FILE: true
-        INFOPLIST_KEY_CFBundleDisplayName: Morrow
+        INFOPLIST_KEY_CFBundleDisplayName: Verse
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.news
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
         MARKETING_VERSION: 0.1.0
-        PRODUCT_BUNDLE_IDENTIFIER: soli.Morrow
-        PRODUCT_NAME: Morrow
+        PRODUCT_BUNDLE_IDENTIFIER: soli.verse
+        PRODUCT_NAME: Verse
         SWIFT_APPROACHABLE_CONCURRENCY: true
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
-  MorrowTests:
+  VerseTests:
     type: bundle.unit-test
     platform: iOS
     sources:
       - path: Tests
     dependencies:
-      - target: Morrow
+      - target: Verse
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: soli.MorrowTests
-  MorrowUITests:
+        PRODUCT_BUNDLE_IDENTIFIER: soli.verse.tests
+  VerseUITests:
     type: bundle.ui-testing
     platform: iOS
     sources:
       - path: UITests
     dependencies:
-      - target: Morrow
+      - target: Verse
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: soli.MorrowUITests
+        PRODUCT_BUNDLE_IDENTIFIER: soli.verse.uitests
 schemes:
-  Morrow:
+  Verse:
     build:
       targets:
-        Morrow: all
-        MorrowTests: [test]
-        MorrowUITests: [test]
+        Verse: all
+        VerseTests: [test]
+        VerseUITests: [test]
     test:
       targets:
-        - MorrowTests
-        - MorrowUITests
+        - VerseTests
+        - VerseUITests
     run:
       config: Debug
     archive:

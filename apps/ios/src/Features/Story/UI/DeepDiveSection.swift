@@ -9,12 +9,12 @@ struct DeepDiveSection: View {
         VStack(alignment: .leading, spacing: 12) {
             Label("Nightjar deep dive", systemImage: "moon.stars")
                 .font(.headline)
-                .foregroundStyle(MorrowTheme.ink)
+                .foregroundStyle(VerseTheme.ink)
             switch state?.deepDiveStatus ?? .notRequested {
             case .notRequested:
                 Text("Queue a deeper, source-backed briefing for the next overnight run.")
                     .font(.subheadline)
-                    .foregroundStyle(MorrowTheme.secondaryInk)
+                    .foregroundStyle(VerseTheme.secondaryInk)
                 requestButton("Request deep dive")
             case .queued:
                 StatusBanner(
@@ -31,12 +31,12 @@ struct DeepDiveSection: View {
                 if let title = state?.deepDiveTitle {
                     Text(title)
                         .font(.system(.title3, design: .serif, weight: .semibold))
-                        .foregroundStyle(MorrowTheme.ink)
+                        .foregroundStyle(VerseTheme.ink)
                 }
                 if let body = state?.deepDiveBody {
                     Text(body)
                         .font(.body)
-                        .foregroundStyle(MorrowTheme.ink)
+                        .foregroundStyle(VerseTheme.ink)
                         .textSelection(.enabled)
                 }
                 ForEach(state?.citations ?? []) { citation in
@@ -45,7 +45,7 @@ struct DeepDiveSection: View {
             }
         }
         .padding(16)
-        .background(MorrowTheme.surface, in: RoundedRectangle(cornerRadius: 16))
+        .background(VerseTheme.surface, in: RoundedRectangle(cornerRadius: 16))
     }
 
     private func requestButton(_ title: String) -> some View {
@@ -53,7 +53,7 @@ struct DeepDiveSection: View {
             onRequest()
         }
         .buttonStyle(.borderedProminent)
-        .tint(MorrowTheme.blue)
+        .tint(VerseTheme.blue)
         .disabled(isDisabled)
     }
 }

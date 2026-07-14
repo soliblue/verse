@@ -12,30 +12,30 @@
 			containerPortal = MB00000000000000000000A6 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = MB00000000000000000000A5;
-			remoteInfo = Morrow;
+			remoteInfo = Verse;
 		};
 		MB00000000000000000000C9 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
 			containerPortal = MB00000000000000000000A6 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = MB00000000000000000000A5;
-			remoteInfo = Morrow;
+			remoteInfo = Verse;
 		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
-		MB00000000000000000000A4 /* Morrow.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Morrow.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		MB00000000000000000000C0 /* MorrowUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorrowUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		MB00000000000000000000D0 /* MorrowTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = MorrowTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		MB00000000000000000000A4 /* Verse.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Verse.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		MB00000000000000000000C0 /* VerseUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VerseUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		MB00000000000000000000D0 /* VerseTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = VerseTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
-		MB00000000000000000000A3 /* Exceptions for "src" folder in "Morrow" target */ = {
+		MB00000000000000000000A3 /* Exceptions for "src" folder in "Verse" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = MB00000000000000000000A5 /* Morrow */;
+			target = MB00000000000000000000A5 /* Verse */;
 		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
@@ -43,7 +43,7 @@
 		MB00000000000000000000A2 /* src */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
-				MB00000000000000000000A3 /* Exceptions for "src" folder in "Morrow" target */,
+				MB00000000000000000000A3 /* Exceptions for "src" folder in "Verse" target */,
 			);
 			path = src;
 			sourceTree = "<group>";
@@ -99,9 +99,9 @@
 		MB00000000000000000000A1 /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				MB00000000000000000000A4 /* Morrow.app */,
-				MB00000000000000000000D0 /* MorrowTests.xctest */,
-				MB00000000000000000000C0 /* MorrowUITests.xctest */,
+				MB00000000000000000000A4 /* Verse.app */,
+				MB00000000000000000000D0 /* VerseTests.xctest */,
+				MB00000000000000000000C0 /* VerseUITests.xctest */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -116,9 +116,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		MB00000000000000000000A5 /* Morrow */ = {
+		MB00000000000000000000A5 /* Verse */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = MB00000000000000000000B3 /* Build configuration list for PBXNativeTarget "Morrow" */;
+			buildConfigurationList = MB00000000000000000000B3 /* Build configuration list for PBXNativeTarget "Verse" */;
 			buildPhases = (
 				MB00000000000000000000A7 /* Sources */,
 				MB00000000000000000000A8 /* Frameworks */,
@@ -131,16 +131,16 @@
 			fileSystemSynchronizedGroups = (
 				MB00000000000000000000A2 /* src */,
 			);
-			name = Morrow;
+			name = Verse;
 			packageProductDependencies = (
 			);
-			productName = Morrow;
-			productReference = MB00000000000000000000A4 /* Morrow.app */;
+			productName = Verse;
+			productReference = MB00000000000000000000A4 /* Verse.app */;
 			productType = "com.apple.product-type.application";
 		};
-		MB00000000000000000000C5 /* MorrowUITests */ = {
+		MB00000000000000000000C5 /* VerseUITests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = MB00000000000000000000C8 /* Build configuration list for PBXNativeTarget "MorrowUITests" */;
+			buildConfigurationList = MB00000000000000000000C8 /* Build configuration list for PBXNativeTarget "VerseUITests" */;
 			buildPhases = (
 				MB00000000000000000000C4 /* Sources */,
 				MB00000000000000000000C2 /* Frameworks */,
@@ -154,16 +154,16 @@
 			fileSystemSynchronizedGroups = (
 				MB00000000000000000000C1 /* UITests */,
 			);
-			name = MorrowUITests;
+			name = VerseUITests;
 			packageProductDependencies = (
 			);
-			productName = MorrowUITests;
-			productReference = MB00000000000000000000C0 /* MorrowUITests.xctest */;
+			productName = VerseUITests;
+			productReference = MB00000000000000000000C0 /* VerseUITests.xctest */;
 			productType = "com.apple.product-type.bundle.ui-testing";
 		};
-		MB00000000000000000000D5 /* MorrowTests */ = {
+		MB00000000000000000000D5 /* VerseTests */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = MB00000000000000000000D8 /* Build configuration list for PBXNativeTarget "MorrowTests" */;
+			buildConfigurationList = MB00000000000000000000D8 /* Build configuration list for PBXNativeTarget "VerseTests" */;
 			buildPhases = (
 				MB00000000000000000000D4 /* Sources */,
 				MB00000000000000000000D2 /* Frameworks */,
@@ -177,11 +177,11 @@
 			fileSystemSynchronizedGroups = (
 				MB00000000000000000000D1 /* Tests */,
 			);
-			name = MorrowTests;
+			name = VerseTests;
 			packageProductDependencies = (
 			);
-			productName = MorrowTests;
-			productReference = MB00000000000000000000D0 /* MorrowTests.xctest */;
+			productName = VerseTests;
+			productReference = MB00000000000000000000D0 /* VerseTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
 /* End PBXNativeTarget section */
@@ -224,9 +224,9 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				MB00000000000000000000A5 /* Morrow */,
-				MB00000000000000000000D5 /* MorrowTests */,
-				MB00000000000000000000C5 /* MorrowUITests */,
+				MB00000000000000000000A5 /* Verse */,
+				MB00000000000000000000D5 /* VerseTests */,
+				MB00000000000000000000C5 /* VerseUITests */,
 			);
 		};
 /* End PBXProject section */
@@ -282,12 +282,12 @@
 /* Begin PBXTargetDependency section */
 		MB00000000000000000000CA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = MB00000000000000000000A5 /* Morrow */;
+			target = MB00000000000000000000A5 /* Verse */;
 			targetProxy = MB00000000000000000000C9 /* PBXContainerItemProxy */;
 		};
 		MB00000000000000000000DA /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = MB00000000000000000000A5 /* Morrow */;
+			target = MB00000000000000000000A5 /* Verse */;
 			targetProxy = MB00000000000000000000D9 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
@@ -428,7 +428,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = src/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Morrow;
+				INFOPLIST_KEY_CFBundleDisplayName = Verse;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.news";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -440,7 +440,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = soli.Morrow;
+				PRODUCT_BUNDLE_IDENTIFIER = soli.verse;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -468,7 +468,7 @@
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = src/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = Morrow;
+				INFOPLIST_KEY_CFBundleDisplayName = Verse;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.news";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
@@ -480,7 +480,7 @@
 					"@executable_path/Frameworks",
 				);
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = soli.Morrow;
+				PRODUCT_BUNDLE_IDENTIFIER = soli.verse;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -504,13 +504,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = soli.MorrowUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = soli.verse.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_TARGET_NAME = Morrow;
+				TEST_TARGET_NAME = Verse;
 			};
 			name = Debug;
 		};
@@ -522,13 +522,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = soli.MorrowUITests;
+				PRODUCT_BUNDLE_IDENTIFIER = soli.verse.uitests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_TARGET_NAME = Morrow;
+				TEST_TARGET_NAME = Verse;
 			};
 			name = Release;
 		};
@@ -541,13 +541,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = soli.MorrowTests;
+				PRODUCT_BUNDLE_IDENTIFIER = soli.verse.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Morrow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Morrow";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Verse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Verse";
 			};
 			name = Debug;
 		};
@@ -560,13 +560,13 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MARKETING_VERSION = 0.1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = soli.MorrowTests;
+				PRODUCT_BUNDLE_IDENTIFIER = soli.verse.tests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = 1;
-				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Morrow.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Morrow";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Verse.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Verse";
 			};
 			name = Release;
 		};
@@ -582,7 +582,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		MB00000000000000000000B3 /* Build configuration list for PBXNativeTarget "Morrow" */ = {
+		MB00000000000000000000B3 /* Build configuration list for PBXNativeTarget "Verse" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				MB00000000000000000000B4 /* Debug */,
@@ -591,7 +591,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		MB00000000000000000000C8 /* Build configuration list for PBXNativeTarget "MorrowUITests" */ = {
+		MB00000000000000000000C8 /* Build configuration list for PBXNativeTarget "VerseUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				MB00000000000000000000C6 /* Debug */,
@@ -600,7 +600,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		MB00000000000000000000D8 /* Build configuration list for PBXNativeTarget "MorrowTests" */ = {
+		MB00000000000000000000D8 /* Build configuration list for PBXNativeTarget "VerseTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				MB00000000000000000000D6 /* Debug */,

@@ -1,7 +1,7 @@
 import SwiftUI
 import UIKit
 
-enum MorrowTheme {
+enum VerseTheme {
     static let paper = Color(
         uiColor: UIColor { traits in
             traits.userInterfaceStyle == .dark

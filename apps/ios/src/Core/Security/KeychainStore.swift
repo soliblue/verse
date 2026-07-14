@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum KeychainStore {
-    private static let service = "soli.Morrow"
+    private static let service = "soli.verse"
 
     static func value(for account: String) -> String {
         let query: [String: Any] = [

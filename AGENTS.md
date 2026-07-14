@@ -1,6 +1,6 @@
-# Morrow
+# Verse
 
-Morrow is a private, single-user iOS reader. It gathers material matching the operator's interests, prepares a finite morning edition on a VPS while they sleep, and supports deeper research when useful. It is a personal tool, not a SaaS and not intended for public App Store release.
+Verse is a private, single-user iOS reader. It gathers material matching the operator's interests, prepares a finite morning edition on a VPS while they sleep, and supports deeper research when useful. It is a personal tool, not a SaaS and not intended for public App Store release.
 
 ## Product
 
@@ -10,7 +10,7 @@ Morrow is a private, single-user iOS reader. It gathers material matching the op
 - Every item keeps its original link, source, publication date, citations, and a short explanation of why it was selected.
 - Feedback includes saved, seen, more like this, less like this, too basic, and request deep dive.
 - Deep-dive requests may be queued for the next nightly run.
-- The working product name is Morrow. The overnight worker may be called Nightjar.
+- The working product name is Verse. The overnight worker may be called Nightjar.
 
 ## v0
 
@@ -69,4 +69,4 @@ runs/                  Ignored nightly logs and artifacts
 
 ## Machtblick Reference
 
-Machtblick is the implementation reference, not a runtime dependency. Read `../machtblick/AGENTS.md` and reuse patterns from `../machtblick/apps/ios`, `../machtblick/.github/workflows/ios-build.yml`, `../machtblick/scripts/scheduled-bundestag-auto-refresh`, and `../machtblick/scripts/codex_app_thread.py`. This file wins when Morrow differs, especially around single-user scope, private distribution, SQLite simplicity, and the absence of publishing requirements.
+Machtblick is the implementation reference, not a runtime dependency. Read `../machtblick/AGENTS.md` and reuse patterns from `../machtblick/apps/ios`, `../machtblick/.github/workflows/ios-build.yml`, `../machtblick/scripts/scheduled-bundestag-auto-refresh`, and `../machtblick/scripts/codex_app_thread.py`. This file wins when Verse differs, especially around single-user scope, private distribution, SQLite simplicity, and the absence of publishing requirements.

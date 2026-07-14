@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import Morrow
+@testable import Verse
 
 @MainActor
 final class RequestContractTests: XCTestCase {

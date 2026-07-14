@@ -75,7 +75,7 @@ final class SettingsStore {
                 } else {
                     connectionStatus = .failed
                     saveMessage =
-                        "The VPS is healthy, but Morrow could not read the current edition. "
+                        "The VPS is healthy, but Verse could not read the current edition. "
                         + "Check the device secret and server contract."
                 }
             } else {
@@ -84,7 +84,7 @@ final class SettingsStore {
             }
         } else {
             connectionStatus = .failed
-            saveMessage = "Morrow could not reach a healthy VPS at this address."
+            saveMessage = "Verse could not reach a healthy VPS at this address."
         }
         if connectionStatus == .connected {
             await feedback.flushPending()

@@ -17,7 +17,7 @@ struct LibraryView: View {
                         if store.savedStories.isEmpty {
                             Label("Stories you bookmark appear here.", systemImage: "bookmark")
                                 .font(.subheadline)
-                                .foregroundStyle(MorrowTheme.secondaryInk)
+                                .foregroundStyle(VerseTheme.secondaryInk)
                         } else {
                             ForEach(store.savedStories) { story in
                                 NavigationLink {
@@ -35,7 +35,7 @@ struct LibraryView: View {
                                 systemImage: "clock.arrow.circlepath"
                             )
                             .font(.subheadline)
-                            .foregroundStyle(MorrowTheme.secondaryInk)
+                            .foregroundStyle(VerseTheme.secondaryInk)
                         } else {
                             ForEach(store.previousEditions) { edition in
                                 NavigationLink {
@@ -57,7 +57,7 @@ struct LibraryView: View {
                 .refreshable { await store.refresh(editions: editions, feedback: feedback) }
             }
         }
-        .background(MorrowTheme.paper)
+        .background(VerseTheme.paper)
         .navigationTitle("Library")
         .onAppear { store.reloadLocal(editions: editions, feedback: feedback) }
         .task { await store.load(editions: editions, feedback: feedback) }

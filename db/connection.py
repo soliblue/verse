@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 def default_database_path() -> Path:
-    return Path(os.environ.get("MORROW_DB_PATH", "db/morrow.sqlite"))
+    return Path(os.environ.get("VERSE_DB_PATH", "db/verse.sqlite"))
 
 
 def utc_now() -> str:

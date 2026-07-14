@@ -15,7 +15,7 @@ struct StoryDetailView: View {
                             .scaledToFill()
                     } placeholder: {
                         Rectangle()
-                            .fill(MorrowTheme.surface)
+                            .fill(VerseTheme.surface)
                             .overlay { ProgressView() }
                     }
                     .frame(height: 220)
@@ -25,13 +25,13 @@ struct StoryDetailView: View {
                     Text(story.kind.replacingOccurrences(of: "_", with: " ").uppercased())
                         .font(.caption2.weight(.semibold))
                         .tracking(0.9)
-                        .foregroundStyle(MorrowTheme.amber)
+                        .foregroundStyle(VerseTheme.amber)
                     Text(story.title)
                         .font(.system(.largeTitle, design: .serif, weight: .bold))
-                        .foregroundStyle(MorrowTheme.ink)
+                        .foregroundStyle(VerseTheme.ink)
                     Text(story.summary)
                         .font(.title3)
-                        .foregroundStyle(MorrowTheme.secondaryInk)
+                        .foregroundStyle(VerseTheme.secondaryInk)
                     HStack(spacing: 6) {
                         Text(story.sourceName)
                         Text("·")
@@ -40,23 +40,23 @@ struct StoryDetailView: View {
                         Text("\(story.readingMinutes) min")
                     }
                     .font(.caption)
-                    .foregroundStyle(MorrowTheme.secondaryInk)
+                    .foregroundStyle(VerseTheme.secondaryInk)
                 }
                 Divider()
                 Text(story.body)
                     .font(.body)
-                    .foregroundStyle(MorrowTheme.ink)
+                    .foregroundStyle(VerseTheme.ink)
                     .lineSpacing(5)
                     .textSelection(.enabled)
                 VStack(alignment: .leading, spacing: 10) {
-                    Text("Why this made Morrow")
+                    Text("Why this made Verse")
                         .font(.headline)
                     Text(story.whySelected)
                         .font(.subheadline)
-                        .foregroundStyle(MorrowTheme.secondaryInk)
+                        .foregroundStyle(VerseTheme.secondaryInk)
                 }
                 .padding(16)
-                .background(MorrowTheme.amber.opacity(0.11), in: RoundedRectangle(cornerRadius: 16))
+                .background(VerseTheme.amber.opacity(0.11), in: RoundedRectangle(cornerRadius: 16))
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Sources")
                         .font(.headline)
@@ -79,7 +79,7 @@ struct StoryDetailView: View {
             }
             .padding(16)
         }
-        .background(MorrowTheme.paper)
+        .background(VerseTheme.paper)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {

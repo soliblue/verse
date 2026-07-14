@@ -3,7 +3,7 @@ require "shellwords"
 default_platform(:ios)
 
 platform :ios do
-  desc "Build and upload Morrow to internal TestFlight"
+  desc "Build and upload Verse to internal TestFlight"
   lane :beta do
     team_id = ENV.fetch("APPLE_TEAM_ID")
     profile_name = ENV.fetch("PROVISIONING_PROFILE_NAME")
@@ -15,32 +15,32 @@ platform :ios do
     )
     build_number = latest_testflight_build_number(
       api_key: api_key,
-      app_identifier: "soli.Morrow"
+      app_identifier: "soli.verse"
     ) + 1
     increment_build_number(
-      xcodeproj: "apps/ios/Morrow.xcodeproj",
+      xcodeproj: "apps/ios/Verse.xcodeproj",
       build_number: build_number
     )
     update_code_signing_settings(
       use_automatic_signing: false,
-      path: "apps/ios/Morrow.xcodeproj",
+      path: "apps/ios/Verse.xcodeproj",
       team_id: team_id,
       code_sign_identity: "Apple Distribution",
       profile_name: profile_name,
-      targets: ["Morrow"]
+      targets: ["Verse"]
     )
     build_app(
-      project: "apps/ios/Morrow.xcodeproj",
-      scheme: "Morrow",
+      project: "apps/ios/Verse.xcodeproj",
+      scheme: "Verse",
       clean: true,
       output_directory: "build/testflight",
-      output_name: "Morrow.ipa",
+      output_name: "Verse.ipa",
       export_method: "app-store",
       export_options: {
         signingStyle: "manual",
         teamID: team_id,
         provisioningProfiles: {
-          "soli.Morrow" => profile_name
+          "soli.verse" => profile_name
         }
       }
     )

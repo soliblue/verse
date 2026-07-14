@@ -3,7 +3,7 @@ import SwiftUI
 
 @main
 @MainActor
-struct MorrowApp: App {
+struct VerseApp: App {
     private let container: ModelContainer
     @State private var configuration: ServerConfiguration
     private let api: APIClient

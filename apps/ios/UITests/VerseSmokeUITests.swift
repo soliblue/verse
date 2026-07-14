@@ -1,13 +1,13 @@
 import XCTest
 
 @MainActor
-final class MorrowSmokeUITests: XCTestCase {
+final class VerseSmokeUITests: XCTestCase {
     func testLaunchesWithBundledEditionAndAllTabs() {
         let app = XCUIApplication()
         app.launch()
 
         XCTAssertTrue(app.tabBars.buttons["Today"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.descendants(matching: .any)["morrow-mark"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.descendants(matching: .any)["verse-mark"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.tabBars.buttons["Library"].exists)
         XCTAssertTrue(app.tabBars.buttons["Topics"].exists)
         XCTAssertTrue(app.tabBars.buttons["Settings"].exists)

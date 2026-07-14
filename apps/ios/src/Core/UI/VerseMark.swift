@@ -1,16 +1,16 @@
 import SwiftUI
 
-struct MorrowMark: View {
+struct VerseMark: View {
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "sun.horizon.fill")
-                .foregroundStyle(MorrowTheme.amber)
-            Text("MORROW")
+                .foregroundStyle(VerseTheme.amber)
+            Text("VERSE")
                 .font(.system(.headline, design: .serif, weight: .bold))
                 .tracking(2.4)
-                .foregroundStyle(MorrowTheme.ink)
+                .foregroundStyle(VerseTheme.ink)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityIdentifier("morrow-mark")
+        .accessibilityIdentifier("verse-mark")
     }
 }

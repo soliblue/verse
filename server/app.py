@@ -20,18 +20,18 @@ from db.repository import (
 from server.config import APIError, ServerConfig
 
 
-class MorrowHTTPServer(ThreadingHTTPServer):
+class VerseHTTPServer(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
     def __init__(self, address: tuple[str, int], config: ServerConfig):
         self.config = config
-        super().__init__(address, MorrowHandler)
+        super().__init__(address, VerseHandler)
 
 
-class MorrowHandler(BaseHTTPRequestHandler):
+class VerseHandler(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
-    server_version = "Morrow/0"
+    server_version = "Verse/0"
     sys_version = ""
 
     def do_GET(self) -> None:
@@ -252,7 +252,7 @@ class MorrowHandler(BaseHTTPRequestHandler):
         self.send_header("X-Content-Type-Options", "nosniff")
         self.send_header("Content-Security-Policy", "default-src 'none'")
         if status == HTTPStatus.UNAUTHORIZED:
-            self.send_header("WWW-Authenticate", 'Bearer realm="Morrow"')
+            self.send_header("WWW-Authenticate", 'Bearer realm="Verse"')
         origin = self.headers.get("Origin")
         if origin in self.server.config.cors_origins:
             self.send_header("Access-Control-Allow-Origin", origin)
@@ -264,5 +264,5 @@ class MorrowHandler(BaseHTTPRequestHandler):
         super().log_message(format, *args)
 
 
-def create_server(config: ServerConfig, host: str = "127.0.0.1", port: int = 8787) -> MorrowHTTPServer:
-    return MorrowHTTPServer((host, port), config)
+def create_server(config: ServerConfig, host: str = "127.0.0.1", port: int = 8787) -> VerseHTTPServer:
+    return VerseHTTPServer((host, port), config)

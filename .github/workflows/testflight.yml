@@ -7,7 +7,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: morrow-testflight
+  group: verse-testflight
   cancel-in-progress: false
 
 jobs:
@@ -62,13 +62,13 @@ jobs:
           DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}
           DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
         run: |
-          KEYCHAIN_PATH="$RUNNER_TEMP/morrow-signing.keychain-db"
+          KEYCHAIN_PATH="$RUNNER_TEMP/verse-signing.keychain-db"
           KEYCHAIN_PASSWORD="$(openssl rand -hex 24)"
-          printf '%s' "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/morrow-distribution.p12"
+          printf '%s' "$DISTRIBUTION_CERTIFICATE_BASE64" | base64 --decode > "$RUNNER_TEMP/verse-distribution.p12"
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security import "$RUNNER_TEMP/morrow-distribution.p12" \
+          security import "$RUNNER_TEMP/verse-distribution.p12" \
             -P "$DISTRIBUTION_CERTIFICATE_PASSWORD" \
             -A \
             -t cert \
@@ -80,14 +80,14 @@ jobs:
             -k "$KEYCHAIN_PASSWORD" \
             "$KEYCHAIN_PATH"
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
-          echo "MORROW_KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
+          echo "VERSE_KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
       - name: Install provisioning profile
         env:
           PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
         run: |
-          PROFILE_SOURCE="$RUNNER_TEMP/morrow.mobileprovision"
-          PROFILE_PLIST="$RUNNER_TEMP/morrow.mobileprovision.plist"
+          PROFILE_SOURCE="$RUNNER_TEMP/verse.mobileprovision"
+          PROFILE_PLIST="$RUNNER_TEMP/verse.mobileprovision.plist"
           mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
           printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_SOURCE"
           security cms -D -i "$PROFILE_SOURCE" > "$PROFILE_PLIST"
@@ -96,7 +96,7 @@ jobs:
           PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
           cp "$PROFILE_SOURCE" "$PROFILE_PATH"
           echo "PROVISIONING_PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
-          echo "MORROW_PROFILE_PATH=$PROFILE_PATH" >> "$GITHUB_ENV"
+          echo "VERSE_PROFILE_PATH=$PROFILE_PATH" >> "$GITHUB_ENV"
 
       - name: Build and upload to internal TestFlight
         env:
@@ -110,11 +110,11 @@ jobs:
         if: always()
         run: |
           security list-keychains -d user -s login.keychain-db
-          if [[ -n "${MORROW_KEYCHAIN_PATH:-}" ]]; then
-            security delete-keychain "$MORROW_KEYCHAIN_PATH"
+          if [[ -n "${VERSE_KEYCHAIN_PATH:-}" ]]; then
+            security delete-keychain "$VERSE_KEYCHAIN_PATH"
           fi
           rm -f \
-            "$RUNNER_TEMP/morrow-distribution.p12" \
-            "$RUNNER_TEMP/morrow.mobileprovision" \
-            "$RUNNER_TEMP/morrow.mobileprovision.plist" \
-            "${MORROW_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}"
+            "$RUNNER_TEMP/verse-distribution.p12" \
+            "$RUNNER_TEMP/verse.mobileprovision" \
+            "$RUNNER_TEMP/verse.mobileprovision.plist" \
+            "${VERSE_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}"

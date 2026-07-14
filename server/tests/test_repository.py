@@ -29,7 +29,7 @@ ROOT = Path(__file__).resolve().parents[2]
 class RepositoryTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
-        self.path = Path(self.temporary.name) / "morrow.sqlite"
+        self.path = Path(self.temporary.name) / "verse.sqlite"
         self.connection = connect(self.path)
         migrate(self.connection)
         self.edition = json.loads((ROOT / "etl/seeds/first-edition.json").read_text(encoding="utf-8"))

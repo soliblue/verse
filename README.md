@@ -1,6 +1,6 @@
-# Morrow
+# Verse
 
-Morrow is a private iPhone reader that prepares one finite morning edition while its operator sleeps. Nightjar collects source material on the VPS, removes duplicates, ranks against editable interests and feedback, writes 8 to 12 cited stories, then publishes one complete payload for the app to cache offline.
+Verse is a private iPhone reader that prepares one finite morning edition while its operator sleeps. Nightjar collects source material on the VPS, removes duplicates, ranks against editable interests and feedback, writes 8 to 12 cited stories, then publishes one complete payload for the app to cache offline.
 
 The repository already includes a source-verified first edition with 10 stories, so the app is useful before a VPS connection is configured.
 
@@ -46,7 +46,7 @@ cp server/.env.example server/.env
 python3 -c 'import secrets; print(secrets.token_urlsafe(32))'
 ```
 
-Put the generated value in `MORROW_DEVICE_SECRET`, then bootstrap and run:
+Put the generated value in `VERSE_DEVICE_SECRET`, then bootstrap and run:
 
 ```bash
 chmod 600 server/.env
@@ -54,7 +54,7 @@ scripts/bootstrap
 python3 -m server
 ```
 
-Fresh database and run artifacts are created with owner-only permissions. For an older checkout, tighten existing files once with `chmod 600 db/morrow.sqlite` and `chmod -R go-rwx runs`.
+Fresh database and run artifacts are created with owner-only permissions. For an older checkout, tighten existing files once with `chmod 600 db/verse.sqlite` and `chmod -R go-rwx runs`.
 
 Check it locally:
 
@@ -63,13 +63,13 @@ set -a
 source server/.env
 set +a
 curl http://127.0.0.1:8787/health
-curl -H "Authorization: Bearer $MORROW_DEVICE_SECRET" \
+curl -H "Authorization: Bearer $VERSE_DEVICE_SECRET" \
   http://127.0.0.1:8787/v1/edition/today
 ```
 
-For a normal internet hostname, keep Morrow bound to `127.0.0.1` and put an HTTPS reverse proxy in front of it. [server/Caddyfile.example](server/Caddyfile.example) is the smallest Caddy configuration. For Tailscale-only access, bind `MORROW_HOST` to the VPS Tailscale address and keep the bearer secret enabled.
+For a normal internet hostname, keep Verse bound to `127.0.0.1` and put an HTTPS reverse proxy in front of it. [server/Caddyfile.example](server/Caddyfile.example) is the smallest Caddy configuration. For Tailscale-only access, bind `VERSE_HOST` to the VPS Tailscale address and keep the bearer secret enabled.
 
-The API refuses to start without a secret. A Tailscale-only deployment can explicitly opt out with `MORROW_ALLOW_UNAUTHENTICATED=1`, but this should never be combined with a public listener or reverse proxy.
+The API refuses to start without a secret. A Tailscale-only deployment can explicitly opt out with `VERSE_ALLOW_UNAUTHENTICATED=1`, but this should never be combined with a public listener or reverse proxy.
 
 ## Install the scheduler
 
@@ -77,15 +77,15 @@ The checked-in timer runs Nightjar at 04:30 UTC and catches a missed run after t
 
 ```bash
 scripts/install-systemd-user-units
-systemctl --user enable --now morrow-server.service morrow-nightjar.timer
+systemctl --user enable --now verse-server.service verse-nightjar.timer
 sudo loginctl enable-linger "$USER"
 ```
 
 Inspect service state and the latest logs:
 
 ```bash
-systemctl --user status morrow-server.service morrow-nightjar.timer
-journalctl --user -u morrow-server.service -u morrow-nightjar.service -n 100
+systemctl --user status verse-server.service verse-nightjar.timer
+journalctl --user -u verse-server.service -u verse-nightjar.service -n 100
 find runs/_nightjar -name result.json -print | sort | tail -1
 ```
 
@@ -101,19 +101,19 @@ Run the normal agent-enriched path:
 python3 -m etl nightly --date "$(date -u +%F)" --agent
 ```
 
-`MORROW_AGENT_COMMAND` can replace the default `codex exec` boundary. It must write one JSON response to the `{output}` placeholder. Prompt versions live in [prompts](prompts), and model protocol artifacts live under the ignored `runs` directory.
+`VERSE_AGENT_COMMAND` can replace the default `codex exec` boundary. It must write one JSON response to the `{output}` placeholder. Prompt versions live in [prompts](prompts), and model protocol artifacts live under the ignored `runs` directory.
 
 ## Run the iOS app
 
-Open [Morrow.xcodeproj](apps/ios/Morrow.xcodeproj) in Xcode 16 or newer and run the `Morrow` scheme on an iOS 17 or newer device or simulator. No signing is needed for Simulator.
+Open [Verse.xcodeproj](apps/ios/Verse.xcodeproj) in Xcode 16 or newer and run the `Verse` scheme on an iOS 17 or newer device or simulator. No signing is needed for Simulator.
 
-On first launch, Morrow opens the bundled edition. In Settings, add the HTTPS or Tailscale server address and the same `MORROW_DEVICE_SECRET`, save, then test the connection. Refresh occurs when the app opens, returns to the foreground, or is manually refreshed.
+On first launch, Verse opens the bundled edition. In Settings, add the HTTPS or Tailscale server address and the same `VERSE_DEVICE_SECRET`, save, then test the connection. Refresh occurs when the app opens, returns to the foreground, or is manually refreshed.
 
 The project also has an XcodeGen source of truth at [project.yml](apps/ios/project.yml). The checked-in project means XcodeGen is optional.
 
 ## Private TestFlight
 
-The manual `Private TestFlight` workflow builds `soli.Morrow` and uploads only to internal TestFlight. It never submits for App Store review or enables external testing.
+The manual `Private TestFlight` workflow builds `soli.verse` and uploads only to internal TestFlight. It never submits for App Store review or enables external testing.
 
 Create the bundle ID and app record in App Store Connect, then configure:
 
@@ -121,7 +121,7 @@ Create the bundle ID and app record in App Store Connect, then configure:
 - Secrets `APP_STORE_CONNECT_API_KEY_ID`, `APP_STORE_CONNECT_API_ISSUER_ID`, and `APP_STORE_CONNECT_API_KEY_CONTENT`
 - Secret `DISTRIBUTION_CERTIFICATE_BASE64` containing a base64-encoded Apple Distribution `.p12`
 - Secret `DISTRIBUTION_CERTIFICATE_PASSWORD`
-- Secret `PROVISIONING_PROFILE_BASE64` containing a base64-encoded App Store profile for `soli.Morrow`
+- Secret `PROVISIONING_PROFILE_BASE64` containing a base64-encoded App Store profile for `soli.verse`
 
 Run the workflow manually after all signing inputs exist. The workflow validates its configuration before importing credentials and deletes temporary signing material afterward.
 
@@ -146,4 +146,4 @@ The Python suite covers migrations, atomic publishing, auth, API errors, persist
 - Never commit `server/.env`, a device secret, signing material, or generated databases.
 - Keep the API private behind HTTPS or Tailscale even when bearer auth is enabled.
 - GitHub Actions builds without signing. Add private TestFlight or ad-hoc signing only when credentials are available.
-- Morrow has no accounts, analytics, ads, social surface, push notifications, or public publishing path.
+- Verse has no accounts, analytics, ads, social surface, push notifications, or public publishing path.

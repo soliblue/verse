@@ -11,11 +11,11 @@ from etl.validation import complete_edition, validate_edition
 
 
 def edition_title(value: date) -> str:
-    return f"Morrow for {value.strftime('%A')}, {value.day} {value.strftime('%B')}"
+    return f"Verse for {value.strftime('%A')}, {value.day} {value.strftime('%B')}"
 
 
 def write_artifact(run_id: str, payload: dict) -> Path:
-    directory = Path(os.environ.get("MORROW_RUNS_DIR", "runs")) / re.sub(r"[^a-zA-Z0-9._-]", "-", run_id)
+    directory = Path(os.environ.get("VERSE_RUNS_DIR", "runs")) / re.sub(r"[^a-zA-Z0-9._-]", "-", run_id)
     directory.mkdir(parents=True, exist_ok=True)
     temporary = directory / "edition.json.tmp"
     destination = directory / "edition.json"

@@ -20,7 +20,7 @@ final class ServerConfiguration {
     var isConfigured: Bool { serverURL != nil }
 
     init(defaults: UserDefaults = .standard) {
-        serverURLString = defaults.string(forKey: "morrow.serverURL") ?? ""
+        serverURLString = defaults.string(forKey: "verse.serverURL") ?? ""
         deviceSecret = KeychainStore.value(for: "device-secret")
     }
 
@@ -31,7 +31,7 @@ final class ServerConfiguration {
             .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         self.serverURLString = normalized
         self.deviceSecret = deviceSecret.trimmingCharacters(in: .whitespacesAndNewlines)
-        defaults.set(normalized, forKey: "morrow.serverURL")
+        defaults.set(normalized, forKey: "verse.serverURL")
         return KeychainStore.set(self.deviceSecret, for: "device-secret")
     }
 }

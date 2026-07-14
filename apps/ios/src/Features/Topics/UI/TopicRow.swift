@@ -9,29 +9,29 @@ struct TopicRow: View {
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: topic.kind.systemImage)
-                .foregroundStyle(topic.kind == .exclusion ? .red : MorrowTheme.blue)
+                .foregroundStyle(topic.kind == .exclusion ? .red : VerseTheme.blue)
                 .frame(width: 24)
                 .accessibilityHidden(true)
             VStack(alignment: .leading, spacing: 3) {
                 Text(topic.name)
                     .font(.body.weight(.medium))
-                    .foregroundStyle(MorrowTheme.ink)
+                    .foregroundStyle(VerseTheme.ink)
                 if !topic.description.isEmpty {
                     Text(topic.description)
                         .font(.caption)
-                        .foregroundStyle(MorrowTheme.secondaryInk)
+                        .foregroundStyle(VerseTheme.secondaryInk)
                         .lineLimit(2)
                 }
                 Text(topic.kind.label)
                     .font(.caption2)
-                    .foregroundStyle(MorrowTheme.secondaryInk)
+                    .foregroundStyle(VerseTheme.secondaryInk)
             }
             Spacer()
             Button {
                 onEdit()
             } label: {
                 Image(systemName: "pencil")
-                    .foregroundStyle(MorrowTheme.secondaryInk)
+                    .foregroundStyle(VerseTheme.secondaryInk)
             }
             .buttonStyle(.borderless)
             .disabled(isDisabled)

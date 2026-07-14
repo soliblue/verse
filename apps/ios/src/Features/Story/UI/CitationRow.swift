@@ -7,11 +7,11 @@ struct CitationRow: View {
         Link(destination: citation.url) {
             HStack(alignment: .top, spacing: 12) {
                 Image(systemName: "arrow.up.right.square")
-                    .foregroundStyle(MorrowTheme.blue)
+                    .foregroundStyle(VerseTheme.blue)
                 VStack(alignment: .leading, spacing: 3) {
                     Text(citation.title)
                         .font(.subheadline.weight(.medium))
-                        .foregroundStyle(MorrowTheme.ink)
+                        .foregroundStyle(VerseTheme.ink)
                         .multilineTextAlignment(.leading)
                     HStack(spacing: 5) {
                         Text(citation.sourceName)
@@ -21,7 +21,7 @@ struct CitationRow: View {
                         }
                     }
                     .font(.caption)
-                    .foregroundStyle(MorrowTheme.secondaryInk)
+                    .foregroundStyle(VerseTheme.secondaryInk)
                 }
                 Spacer()
             }

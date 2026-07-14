@@ -58,7 +58,7 @@ final class TodayStore {
             statusMessage = nil
         } else {
             statusMessage =
-                "Morrow could not refresh from the VPS. "
+                "Verse could not refresh from the VPS. "
                 + "Your downloaded edition is still available."
         }
         isRefreshing = false

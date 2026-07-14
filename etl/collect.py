@@ -19,7 +19,7 @@ def term_present(text: str, term: str) -> bool:
 
 
 def fetch(source: dict, timeout_seconds: int) -> list[dict]:
-    request = Request(source["url"], headers={"Accept": "application/feed+json, application/atom+xml, application/rss+xml, application/xml", "User-Agent": "Morrow-Nightjar/0"})
+    request = Request(source["url"], headers={"Accept": "application/feed+json, application/atom+xml, application/rss+xml, application/xml", "User-Agent": "Verse-Nightjar/0"})
     with urlopen(request, timeout=timeout_seconds) as response:
         data = response.read(MAXIMUM_SOURCE_BYTES + 1)
         content_type = response.headers.get_content_type()

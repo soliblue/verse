@@ -1,5 +1,5 @@
 [Unit]
-Description=Daily Morrow Nightjar morning edition
+Description=Daily Verse Nightjar morning edition
 
 [Timer]
 OnCalendar=*-*-* 04:30:00 UTC

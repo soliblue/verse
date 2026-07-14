@@ -10,21 +10,21 @@ struct StoryRowView: View {
                 Text(story.kind.replacingOccurrences(of: "_", with: " ").uppercased())
                     .font(.caption2.weight(.semibold))
                     .tracking(0.8)
-                    .foregroundStyle(MorrowTheme.amber)
+                    .foregroundStyle(VerseTheme.amber)
                 Spacer()
                 if isSaved {
                     Image(systemName: "bookmark.fill")
-                        .foregroundStyle(MorrowTheme.blue)
+                        .foregroundStyle(VerseTheme.blue)
                         .accessibilityLabel("Saved")
                 }
             }
             Text(story.title)
                 .font(.system(.title3, design: .serif, weight: .semibold))
-                .foregroundStyle(MorrowTheme.ink)
+                .foregroundStyle(VerseTheme.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Text(story.summary)
                 .font(.subheadline)
-                .foregroundStyle(MorrowTheme.secondaryInk)
+                .foregroundStyle(VerseTheme.secondaryInk)
                 .lineLimit(3)
             HStack(spacing: 6) {
                 Text(story.sourceName)
@@ -32,7 +32,7 @@ struct StoryRowView: View {
                 Text("\(story.readingMinutes) min")
             }
             .font(.caption)
-            .foregroundStyle(MorrowTheme.secondaryInk)
+            .foregroundStyle(VerseTheme.secondaryInk)
         }
         .padding(.vertical, 10)
         .contentShape(Rectangle())
@@ -43,6 +43,6 @@ struct StoryRowView: View {
 #Preview("Story") {
     StoryRowView(story: PreviewFixtures.story, isSaved: true)
         .padding()
-        .background(MorrowTheme.paper)
+        .background(VerseTheme.paper)
 }
 #endif

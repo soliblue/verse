@@ -15,18 +15,18 @@ class ServerConfig:
 
     @classmethod
     def environment(cls) -> "ServerConfig":
-        origins = tuple(origin.strip() for origin in os.environ.get("MORROW_CORS_ORIGINS", "").split(",") if origin.strip())
-        secret = os.environ.get("MORROW_DEVICE_SECRET") or None
-        allow_unauthenticated = os.environ.get("MORROW_ALLOW_UNAUTHENTICATED", "0") == "1"
-        maximum = int(os.environ.get("MORROW_MAX_REQUEST_BYTES", "65536"))
+        origins = tuple(origin.strip() for origin in os.environ.get("VERSE_CORS_ORIGINS", "").split(",") if origin.strip())
+        secret = os.environ.get("VERSE_DEVICE_SECRET") or None
+        allow_unauthenticated = os.environ.get("VERSE_ALLOW_UNAUTHENTICATED", "0") == "1"
+        maximum = int(os.environ.get("VERSE_MAX_REQUEST_BYTES", "65536"))
         if maximum < 1:
-            raise ValueError("MORROW_MAX_REQUEST_BYTES must be positive")
+            raise ValueError("VERSE_MAX_REQUEST_BYTES must be positive")
         if secret is None and not allow_unauthenticated:
             raise ValueError(
-                "MORROW_DEVICE_SECRET is required unless MORROW_ALLOW_UNAUTHENTICATED=1"
+                "VERSE_DEVICE_SECRET is required unless VERSE_ALLOW_UNAUTHENTICATED=1"
             )
         if secret is not None and (len(secret) < 24 or secret.startswith("replace-with-")):
-            raise ValueError("MORROW_DEVICE_SECRET must contain at least 24 characters and cannot be a placeholder")
+            raise ValueError("VERSE_DEVICE_SECRET must contain at least 24 characters and cannot be a placeholder")
         return cls(default_database_path(), secret, origins, maximum, allow_unauthenticated)
 
 

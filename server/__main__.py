@@ -10,13 +10,13 @@ def main() -> int:
     os.umask(0o077)
     load_environment()
     config = ServerConfig.environment()
-    if os.environ.get("MORROW_AUTO_MIGRATE", "1") == "1":
+    if os.environ.get("VERSE_AUTO_MIGRATE", "1") == "1":
         with database(config.database_path) as connection:
             migrate(connection)
-    host = os.environ.get("MORROW_HOST", "127.0.0.1")
-    port = int(os.environ.get("MORROW_PORT", "8787"))
+    host = os.environ.get("VERSE_HOST", "127.0.0.1")
+    port = int(os.environ.get("VERSE_PORT", "8787"))
     server = create_server(config, host, port)
-    print(f"morrow server listening on http://{host}:{server.server_port}", flush=True)
+    print(f"verse server listening on http://{host}:{server.server_port}", flush=True)
     try:
         server.serve_forever()
     except KeyboardInterrupt:

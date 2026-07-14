@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "MB00000000000000000000A5"
-               BuildableName = "Morrow.app"
-               BlueprintName = "Morrow"
-               ReferencedContainer = "container:Morrow.xcodeproj">
+               BuildableName = "Verse.app"
+               BlueprintName = "Verse"
+               ReferencedContainer = "container:Verse.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -30,9 +30,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "MB00000000000000000000D5"
-               BuildableName = "MorrowTests.xctest"
-               BlueprintName = "MorrowTests"
-               ReferencedContainer = "container:Morrow.xcodeproj">
+               BuildableName = "VerseTests.xctest"
+               BlueprintName = "VerseTests"
+               ReferencedContainer = "container:Verse.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
          <BuildActionEntry
@@ -44,9 +44,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "MB00000000000000000000C5"
-               BuildableName = "MorrowUITests.xctest"
-               BlueprintName = "MorrowUITests"
-               ReferencedContainer = "container:Morrow.xcodeproj">
+               BuildableName = "VerseUITests.xctest"
+               BlueprintName = "VerseUITests"
+               ReferencedContainer = "container:Verse.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -63,9 +63,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "MB00000000000000000000D5"
-               BuildableName = "MorrowTests.xctest"
-               BlueprintName = "MorrowTests"
-               ReferencedContainer = "container:Morrow.xcodeproj">
+               BuildableName = "VerseTests.xctest"
+               BlueprintName = "VerseTests"
+               ReferencedContainer = "container:Verse.xcodeproj">
             </BuildableReference>
          </TestableReference>
          <TestableReference
@@ -74,9 +74,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "MB00000000000000000000C5"
-               BuildableName = "MorrowUITests.xctest"
-               BlueprintName = "MorrowUITests"
-               ReferencedContainer = "container:Morrow.xcodeproj">
+               BuildableName = "VerseUITests.xctest"
+               BlueprintName = "VerseUITests"
+               ReferencedContainer = "container:Verse.xcodeproj">
             </BuildableReference>
          </TestableReference>
       </Testables>
@@ -96,9 +96,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "MB00000000000000000000A5"
-            BuildableName = "Morrow.app"
-            BlueprintName = "Morrow"
-            ReferencedContainer = "container:Morrow.xcodeproj">
+            BuildableName = "Verse.app"
+            BlueprintName = "Verse"
+            ReferencedContainer = "container:Verse.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -113,9 +113,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "MB00000000000000000000A5"
-            BuildableName = "Morrow.app"
-            BlueprintName = "Morrow"
-            ReferencedContainer = "container:Morrow.xcodeproj">
+            BuildableName = "Verse.app"
+            BlueprintName = "Verse"
+            ReferencedContainer = "container:Verse.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

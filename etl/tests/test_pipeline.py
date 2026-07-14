@@ -48,7 +48,7 @@ class PipelineTests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.root = Path(self.temporary.name)
-        self.database = self.root / "morrow.sqlite"
+        self.database = self.root / "verse.sqlite"
         self.sources = self.root / "sources.json"
         self.sources.write_text(
             json.dumps(
@@ -90,7 +90,7 @@ class PipelineTests(unittest.TestCase):
         self.assertEqual(run_stage(self.connection, self.run_id, "deduplicate", lambda: deduplicate_stage(self.connection, self.run_id)), 10)
         self.assertEqual(run_stage(self.connection, self.run_id, "rank", lambda: rank_stage(self.connection, self.run_id)), 10)
         self.assertEqual(run_stage(self.connection, self.run_id, "enrich", lambda: enrich_stage(self.connection, self.run_id)), 10)
-        with patch.dict(os.environ, {"MORROW_RUNS_DIR": str(self.root / "runs")}):
+        with patch.dict(os.environ, {"VERSE_RUNS_DIR": str(self.root / "runs")}):
             self.assertEqual(run_stage(self.connection, self.run_id, "write", lambda: write_stage(self.connection, self.run_id)), 10)
         payload = current_edition(self.connection)
         validate_edition(payload)
@@ -173,7 +173,7 @@ class PipelineTests(unittest.TestCase):
             ).fetchone()[0],
             "failed",
         )
-        with patch.dict(os.environ, {"MORROW_RUNS_DIR": str(self.root / "runs")}):
+        with patch.dict(os.environ, {"VERSE_RUNS_DIR": str(self.root / "runs")}):
             self.assertEqual(write_stage(self.connection, self.run_id), 10)
         self.assertEqual(current_edition(self.connection)["date"], "2026-07-13")
 
@@ -222,7 +222,7 @@ class PipelineTests(unittest.TestCase):
             )
         }
         enrich_stage(self.connection, self.run_id)
-        with patch.dict(os.environ, {"MORROW_RUNS_DIR": str(self.root / "runs")}):
+        with patch.dict(os.environ, {"VERSE_RUNS_DIR": str(self.root / "runs")}):
             write_stage(self.connection, self.run_id)
         rank_stage(self.connection, self.run_id)
         after = {
@@ -332,7 +332,7 @@ class ParsingAndValidationTests(unittest.TestCase):
             {
                 "HOME": "/tmp/home",
                 "PATH": "/usr/bin",
-                "MORROW_DEVICE_SECRET": "device-secret",
+                "VERSE_DEVICE_SECRET": "device-secret",
                 "OPENAI_API_KEY": "provider-secret",
             },
             clear=True,

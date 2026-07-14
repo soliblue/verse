@@ -1,7 +1,7 @@
 import Foundation
 import SwiftData
 import XCTest
-@testable import Morrow
+@testable import Verse
 
 @MainActor
 final class TopicsPersistenceTests: XCTestCase {

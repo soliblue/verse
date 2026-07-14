@@ -9,7 +9,7 @@ struct FeedbackBar: View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Shape tomorrow")
                 .font(.headline)
-                .foregroundStyle(MorrowTheme.ink)
+                .foregroundStyle(VerseTheme.ink)
             HStack(spacing: 8) {
                 feedbackButton("More like this", icon: "hand.thumbsup", value: .moreLikeThis)
                 feedbackButton("Less", icon: "hand.thumbsdown", value: .lessLikeThis)
@@ -32,7 +32,7 @@ struct FeedbackBar: View {
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
                 .background(
-                    preference == value ? MorrowTheme.blue.opacity(0.16) : MorrowTheme.surface,
+                    preference == value ? VerseTheme.blue.opacity(0.16) : VerseTheme.surface,
                     in: RoundedRectangle(cornerRadius: 10)
                 )
         }
@@ -49,6 +49,6 @@ struct FeedbackBar: View {
         FeedbackBar(preference: .moreLikeThis, isDisabled: false) { _ in }
     }
     .padding()
-    .background(MorrowTheme.paper)
+    .background(VerseTheme.paper)
 }
 #endif

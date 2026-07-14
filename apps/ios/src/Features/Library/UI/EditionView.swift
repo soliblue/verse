@@ -14,8 +14,8 @@ struct EditionView: View {
                     Section {
                         Text(edition.dek)
                             .font(.subheadline)
-                            .foregroundStyle(MorrowTheme.secondaryInk)
-                            .listRowBackground(MorrowTheme.paper)
+                            .foregroundStyle(VerseTheme.secondaryInk)
+                            .listRowBackground(VerseTheme.paper)
                     }
                     ForEach(edition.items.sorted { $0.position < $1.position }) { story in
                         NavigationLink {
@@ -23,7 +23,7 @@ struct EditionView: View {
                         } label: {
                             StoryRowView(story: story)
                         }
-                        .listRowBackground(MorrowTheme.paper)
+                        .listRowBackground(VerseTheme.paper)
                     }
                 }
                 .listStyle(.plain)
@@ -49,7 +49,7 @@ struct EditionView: View {
                 }
             }
         }
-        .background(MorrowTheme.paper)
+        .background(VerseTheme.paper)
         .navigationTitle(summary.title)
         .navigationBarTitleDisplayMode(.inline)
         .task {

@@ -3,7 +3,7 @@ set -euo pipefail
 umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT="${MORROW_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+ROOT="${VERSE_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
 
 if [[ -f "$ROOT/server/.env" ]]; then
   set -a
@@ -11,12 +11,12 @@ if [[ -f "$ROOT/server/.env" ]]; then
   set +a
 fi
 
-RUNS_ROOT="${MORROW_RUNS_DIR:-runs}"
+RUNS_ROOT="${VERSE_RUNS_DIR:-runs}"
 if [[ "$RUNS_ROOT" != /* ]]; then
   RUNS_ROOT="$ROOT/$RUNS_ROOT"
 fi
 RESULT_ROOT="$RUNS_ROOT/_nightjar"
-TIMEOUT_SECONDS="${MORROW_NIGHTJAR_TIMEOUT_SECONDS:-14400}"
+TIMEOUT_SECONDS="${VERSE_NIGHTJAR_TIMEOUT_SECONDS:-14400}"
 mkdir -p "$RESULT_ROOT"
 
 exec 9>"$RESULT_ROOT/nightjar.lock"
@@ -28,7 +28,7 @@ fi
 cd "$ROOT"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
-RUN_DATE="${MORROW_RUN_DATE:-$(date -u +%F)}"
+RUN_DATE="${VERSE_RUN_DATE:-$(date -u +%F)}"
 RUN_ID="nightjar-$RUN_DATE"
 RUN_DIR="$RESULT_ROOT/$STAMP"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
@@ -62,15 +62,15 @@ ARGS=(
   python3 -m etl nightly
   --date "$RUN_DATE"
   --run-id "$RUN_ID"
-  --sources "${MORROW_SOURCES_FILE:-etl/sources.json}"
-  --agent-timeout-seconds "${MORROW_AGENT_TIMEOUT_SECONDS:-10800}"
+  --sources "${VERSE_SOURCES_FILE:-etl/sources.json}"
+  --agent-timeout-seconds "${VERSE_AGENT_TIMEOUT_SECONDS:-10800}"
 )
 
-if [[ "${MORROW_NIGHTJAR_AGENT:-1}" == "1" ]]; then
+if [[ "${VERSE_NIGHTJAR_AGENT:-1}" == "1" ]]; then
   ARGS+=(--agent)
 fi
 
-if [[ "${MORROW_NIGHTJAR_FORCE:-0}" == "1" ]]; then
+if [[ "${VERSE_NIGHTJAR_FORCE:-0}" == "1" ]]; then
   ARGS+=(--force)
 fi
 

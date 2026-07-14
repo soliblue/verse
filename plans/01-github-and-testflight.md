@@ -6,7 +6,7 @@ Publish the source as a public GitHub repository, configure reusable secrets wit
 
 ## Status
 
-GitHub publication, secrets, and CI verification are complete. TestFlight remains intentionally blocked on Morrow-specific Apple records and signing assets.
+GitHub publication, secrets, and CI verification are complete. TestFlight remains intentionally blocked on Verse-specific Apple records and signing assets.
 
 ## Contracts
 
@@ -14,14 +14,14 @@ GitHub publication, secrets, and CI verification are complete. TestFlight remain
 - Secret values move directly from local ignored files to GitHub Actions through `gh` without appearing in logs.
 - The release workflow is manual and uploads only to internal TestFlight.
 - No App Store review, public TestFlight group, or automatic release is configured.
-- Morrow uses bundle identifier `soli.Morrow` and Apple team `Q9U8224WWM`.
+- Verse uses bundle identifier `soli.verse` and Apple team `Q9U8224WWM`.
 
 ## Decisions
 
 - Reuse the App Store Connect API key already used by Cloude.
-- Generate a distinct Morrow device secret instead of reusing another application secret.
-- Do not copy Cloudflare credentials into Morrow until a deployment workflow consumes them.
-- Require a Morrow-specific App Store provisioning profile and a matching Apple Distribution certificate before enabling TestFlight.
+- Preserve the distinct device secret while renaming its environment key to `VERSE_DEVICE_SECRET`.
+- Do not copy Cloudflare credentials into Verse until a deployment workflow consumes them.
+- Require a Verse-specific App Store provisioning profile and a matching Apple Distribution certificate before enabling TestFlight.
 
 ## Log
 
@@ -37,3 +37,4 @@ GitHub publication, secrets, and CI verification are complete. TestFlight remain
 - 2026-07-12: Crash attachments refined the diagnosis to Swift's Xcode 26.2 isolated-deinitializer runtime bug during synchronous XCTest teardown; timestamp parsing was not on either crash stack.
 - 2026-07-12: Added explicit nonisolated deinitializers to the affected main-actor dependency chain while retaining the value-type timestamp parser.
 - 2026-07-12: GitHub Actions run `29198014723` passed backend checks, signing-free Release build, unit tests, UI smoke tests, and light and dark screenshot capture.
+- 2026-07-14: Began renaming the product, bundle identifier, repository, and device-secret key to Verse.

@@ -37,7 +37,7 @@ def prompt_text(name: str) -> str:
 
 
 def write_protocol_log(run_id: str, payload: dict) -> Path:
-    directory = Path(os.environ.get("MORROW_RUNS_DIR", "runs")) / re.sub(r"[^a-zA-Z0-9._-]", "-", run_id)
+    directory = Path(os.environ.get("VERSE_RUNS_DIR", "runs")) / re.sub(r"[^a-zA-Z0-9._-]", "-", run_id)
     directory.mkdir(parents=True, exist_ok=True)
     destination = directory / "agent-protocol.json"
     temporary = destination.with_suffix(".json.tmp")
@@ -48,10 +48,10 @@ def write_protocol_log(run_id: str, payload: dict) -> Path:
 
 def run_agent_json(prompt: str, timeout_seconds: int = 3600, run_id: str = "manual") -> tuple[dict, dict]:
     prompt_hash = hashlib.sha256(prompt.encode()).hexdigest()
-    with tempfile.TemporaryDirectory(prefix="morrow-agent-") as directory:
+    with tempfile.TemporaryDirectory(prefix="verse-agent-") as directory:
         output = Path(directory) / "response.json"
-        configured = os.environ.get("MORROW_AGENT_COMMAND")
-        model = os.environ.get("MORROW_AGENT_MODEL") or None
+        configured = os.environ.get("VERSE_AGENT_COMMAND")
+        model = os.environ.get("VERSE_AGENT_MODEL") or None
         command = (
             [part.format(output=str(output)) for part in shlex.split(configured)]
             if configured
@@ -112,7 +112,7 @@ def run_agent_json(prompt: str, timeout_seconds: int = 3600, run_id: str = "manu
             run_id,
             {
                 "provider": command[0],
-                "started_from": "morrow-nightjar",
+                "started_from": "verse-nightjar",
                 "prompt_sha256": prompt_hash,
                 "return_code": result.returncode,
                 "completed_at": utc_now(),
