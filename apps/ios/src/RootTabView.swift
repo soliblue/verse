@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct RootTabView: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     let configuration: ServerConfiguration
     let api: APIClient
     let editions: EditionRepository
@@ -77,11 +78,13 @@ struct RootTabView: View {
             if showsFloatingTabs {
                 FloatingTabBar(selection: $selectedTab)
                     .padding(.bottom, 8)
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .transition(
+                        reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity)
+                    )
             }
         }
         .tint(VerseTheme.accent)
-        .animation(.snappy(duration: 0.24), value: showsFloatingTabs)
+        .animation(reduceMotion ? nil : .snappy(duration: 0.24), value: showsFloatingTabs)
         .sensoryFeedback(.selection, trigger: selectedTab)
     }
 }

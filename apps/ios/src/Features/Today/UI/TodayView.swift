@@ -27,7 +27,7 @@ struct TodayView: View {
                             .buttonStyle(.plain)
                             .id(story.id)
                             .containerRelativeFrame(.vertical)
-                            .accessibilityIdentifier("reader-story-\(story.id)")
+                            .accessibilityIdentifier("reader-story-\(index + 1)")
                         }
                     }
                     .scrollTargetLayout()

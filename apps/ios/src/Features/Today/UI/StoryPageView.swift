@@ -1,65 +1,70 @@
 import SwiftUI
 
 struct StoryPageView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let story: StoryItem
     let number: Int
     let total: Int
 
     var body: some View {
-        ZStack {
-            VerseTheme.paper
-            pixelField
-                .allowsHitTesting(false)
+        GeometryReader { geometry in
+            let compact = geometry.size.height < 740 || dynamicTypeSize.isAccessibilitySize
 
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: 8) {
-                    Text("\(number) / \(total)")
-                    Text("·")
-                    Text(story.kind.replacingOccurrences(of: "_", with: " ").uppercased())
-                }
-                .font(.utility(12, weight: .semibold))
-                .tracking(1.1)
-                .foregroundStyle(VerseTheme.amber)
+            ZStack {
+                VerseTheme.paper
+                pixelField
+                    .allowsHitTesting(false)
 
-                Text(story.title)
-                    .font(.display(44, weight: .bold))
-                    .foregroundStyle(VerseTheme.ink)
-                    .minimumScaleFactor(0.78)
-                    .lineLimit(5)
-                    .padding(.top, 18)
-
-                Text(story.summary)
-                    .font(.reading(22))
+                VStack(alignment: .leading, spacing: 0) {
+                    HStack(spacing: 8) {
+                        Text("\(number) / \(total)")
+                        Text("·")
+                        Text(story.kind.replacingOccurrences(of: "_", with: " ").uppercased())
+                    }
+                    .font(.utility(12, weight: .semibold))
+                    .tracking(1.1)
                     .foregroundStyle(VerseTheme.secondaryInk)
-                    .lineSpacing(5)
-                    .lineLimit(7)
-                    .padding(.top, 22)
 
-                Spacer(minLength: 18)
+                    Text(story.title)
+                        .font(.display(compact ? 34 : 40, weight: .bold))
+                        .foregroundStyle(VerseTheme.ink)
+                        .minimumScaleFactor(0.82)
+                        .lineLimit(compact ? 4 : 5)
+                        .padding(.top, compact ? 14 : 18)
 
-                HStack(spacing: 7) {
-                    Text(story.sourceName)
-                        .lineLimit(1)
-                    Text("·")
-                    Text(DateFormatting.shortDate(story.publishedAt))
-                    Text("·")
-                    Text("\(story.readingMinutes) min")
+                    Text(story.summary)
+                        .font(.reading(compact ? 17 : 20))
+                        .foregroundStyle(VerseTheme.secondaryInk)
+                        .lineSpacing(compact ? 3 : 5)
+                        .lineLimit(compact ? 6 : 7)
+                        .padding(.top, compact ? 16 : 22)
+
+                    Spacer(minLength: compact ? 12 : 18)
+
+                    HStack(spacing: 7) {
+                        Text(story.sourceName)
+                            .lineLimit(1)
+                        Text("·")
+                        Text(DateFormatting.shortDate(story.publishedAt))
+                        Text("·")
+                        Text("\(story.readingMinutes) min")
+                    }
+                    .font(.utility(12, weight: .medium))
+                    .foregroundStyle(VerseTheme.secondaryInk)
+
+                    HStack {
+                        Text("Read story")
+                        Spacer()
+                        Image(systemName: "arrow.up.right")
+                    }
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(VerseTheme.ink)
+                    .padding(.top, compact ? 12 : 16)
                 }
-                .font(.utility(12, weight: .medium))
-                .foregroundStyle(VerseTheme.secondaryInk)
-
-                HStack {
-                    Text("Read story")
-                    Spacer()
-                    Image(systemName: "arrow.up.right")
-                }
-                .font(.subheadline.weight(.semibold))
-                .foregroundStyle(VerseTheme.ink)
-                .padding(.top, 16)
+                .padding(.horizontal, 24)
+                .padding(.top, compact ? 92 : 104)
+                .padding(.bottom, compact ? 96 : 112)
             }
-            .padding(.horizontal, 24)
-            .padding(.top, 104)
-            .padding(.bottom, 112)
         }
         .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
@@ -87,7 +92,7 @@ struct StoryPageView: View {
                     )
                     context.fill(
                         Path(rect),
-                        with: .color(VerseTheme.blue.opacity(value == 0 ? 0.13 : 0.07))
+                        with: .color(VerseTheme.accent.opacity(value == 0 ? 0.13 : 0.07))
                     )
                 }
             }

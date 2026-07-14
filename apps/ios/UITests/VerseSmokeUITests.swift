@@ -13,18 +13,17 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(
             app.descendants(matching: .any)["verse-floating-tabs"].waitForExistence(timeout: 5)
         )
+        for tab in ["Today", "Library", "Topics", "Settings"] {
+            XCTAssertTrue(app.buttons[tab].exists)
+        }
 
-        let first = app.descendants(matching: .any)[
-            "reader-story-meta-physics-video-world-models-2026"
-        ]
+        let first = app.descendants(matching: .any)["reader-story-1"]
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         assertHittable(first)
 
         app.descendants(matching: .any)["verse-reader"].swipeUp()
 
-        let second = app.descendants(matching: .any)[
-            "reader-story-p61-digital-dimensions-2026"
-        ]
+        let second = app.descendants(matching: .any)["reader-story-2"]
         XCTAssertTrue(second.waitForExistence(timeout: 5))
         assertHittable(second)
     }
@@ -33,9 +32,7 @@ final class VerseSmokeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let first = app.descendants(matching: .any)[
-            "reader-story-meta-physics-video-world-models-2026"
-        ]
+        let first = app.descendants(matching: .any)["reader-story-1"]
         XCTAssertTrue(first.waitForExistence(timeout: 8))
         first.tap()
 
@@ -64,6 +61,21 @@ final class VerseSmokeUITests: XCTestCase {
 
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["Server URL"].exists)
+    }
+
+    func testLibraryAndTopicsOpenFromFloatingTabs() {
+        let app = XCUIApplication()
+        app.launch()
+
+        XCTAssertTrue(app.buttons["Library"].waitForExistence(timeout: 8))
+        app.buttons["Library"].tap()
+        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
+
+        app.buttons["Topics"].tap()
+        XCTAssertTrue(app.navigationBars["Topics"].waitForExistence(timeout: 5))
+
+        app.buttons["Today"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
     }
 
     private func assertHittable(_ element: XCUIElement) {

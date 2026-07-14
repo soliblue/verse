@@ -38,3 +38,5 @@ In progress.
 - 2026-07-14: Updated fixture and UI smoke coverage for paging, story navigation, and floating settings access.
 - 2026-07-14: Replaced the sunrise-and-book icon with an opaque nine-pixel orbit icon generated from the new identity direction and normalized to the app palette.
 - 2026-07-14: Local contracts and all 55 Python tests passed.
+- 2026-07-14: Added a compact short-screen page composition, corrected small-text contrast, made feedback controls wrap safely, and honored Reduce Motion.
+- 2026-07-14: Made UI coverage content-independent and added Library and Topics dock checks.

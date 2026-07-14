@@ -12,10 +12,13 @@ struct FeedbackBar: View {
                 .tracking(0.9)
                 .textCase(.uppercase)
                 .foregroundStyle(VerseTheme.ink)
-            HStack(spacing: 8) {
-                feedbackButton("More like this", icon: "hand.thumbsup", value: .moreLikeThis)
-                feedbackButton("Less", icon: "hand.thumbsdown", value: .lessLikeThis)
+            Grid(horizontalSpacing: 8, verticalSpacing: 8) {
+                GridRow {
+                    feedbackButton("More like this", icon: "hand.thumbsup", value: .moreLikeThis)
+                    feedbackButton("Less", icon: "hand.thumbsdown", value: .lessLikeThis)
+                }
                 feedbackButton("Too basic", icon: "textformat.size.smaller", value: .tooBasic)
+                    .gridCellColumns(2)
             }
         }
     }
