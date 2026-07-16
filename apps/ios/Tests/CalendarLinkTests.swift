@@ -6,50 +6,41 @@ import XCTest
 final class CalendarLinkTests: XCTestCase {
     func testLocalLinkPreventsDuplicateExportState() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
-        let item = try event()
-        let fingerprint = [
-            item.title,
-            item.occurrence.startAt,
-            item.occurrence.endAt ?? "",
-            item.venue.address ?? item.venue.name,
-            item.occurrence.state.rawValue,
-        ].joined(separator: "|")
-        let repository = CalendarRepository(defaults: defaults)
-        repository.recordLink(
-            occurrenceID: item.occurrence.id,
+        let store = CalendarLinkStore(defaults: defaults)
+        store.record(
+            occurrenceID: "event-occurrence",
             eventIdentifier: "calendar-event",
-            fingerprint: fingerprint
+            fingerprint: "current"
         )
 
-        let reopened = CalendarRepository(defaults: defaults)
-        XCTAssertEqual(reopened.state(for: item), .linked)
+        let reopened = CalendarLinkStore(defaults: defaults)
+        XCTAssertEqual(
+            reopened.state(
+                occurrenceID: "event-occurrence",
+                fingerprint: "current",
+                isCancelled: false
+            ),
+            .linked
+        )
     }
 
     func testUnresolvedLinkStillPreventsDuplicateExportState() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
-        let item = try event()
-        let fingerprint = [
-            item.title,
-            item.occurrence.startAt,
-            item.occurrence.endAt ?? "",
-            item.venue.address ?? item.venue.name,
-            item.occurrence.state.rawValue,
-        ].joined(separator: "|")
-        let repository = CalendarRepository(defaults: defaults)
-        repository.recordLink(
-            occurrenceID: item.occurrence.id,
+        let store = CalendarLinkStore(defaults: defaults)
+        store.record(
+            occurrenceID: "event-occurrence",
             eventIdentifier: nil,
-            fingerprint: fingerprint
+            fingerprint: "current"
         )
 
-        let reopened = CalendarRepository(defaults: defaults)
-        XCTAssertEqual(reopened.state(for: item), .linked)
-    }
-
-    private func event() throws -> EventItem {
-        let url = try XCTUnwrap(Bundle.main.url(forResource: "first-explore", withExtension: "json"))
-        return try XCTUnwrap(
-            JSONDecoder().decode(ExplorePayload.self, from: Data(contentsOf: url)).featuredEvents.first
+        let reopened = CalendarLinkStore(defaults: defaults)
+        XCTAssertEqual(
+            reopened.state(
+                occurrenceID: "event-occurrence",
+                fingerprint: "current",
+                isCancelled: false
+            ),
+            .linked
         )
     }
 }

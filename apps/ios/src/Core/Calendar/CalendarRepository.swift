@@ -9,31 +9,26 @@ final class CalendarRepository {
         case unresolved
     }
 
-    private static let storageKey = "verse.calendarLinks"
     private static let sharedEventStore = EKEventStore()
-    private let defaults: UserDefaults
-    private var links: [String: CachedCalendarLink]
+    private let links: CalendarLinkStore
 
     var eventStore: EKEventStore { Self.sharedEventStore }
 
     init(defaults: UserDefaults = .standard) {
-        self.defaults = defaults
-        links = defaults.data(forKey: Self.storageKey)
-            .flatMap { try? JSONDecoder().decode([String: CachedCalendarLink].self, from: $0) }
-            ?? [:]
+        links = CalendarLinkStore(defaults: defaults)
     }
 
     func state(for item: EventItem) -> CalendarLinkState {
-        guard let link = link(for: item.occurrence.id) else {
-            return item.occurrence.state == .cancelled ? .cancelled : .notAdded
-        }
-        if item.occurrence.state == .cancelled { return .cancelled }
-        return link.fingerprint == fingerprint(for: item) ? .linked : .updated
+        links.state(
+            occurrenceID: item.occurrence.id,
+            fingerprint: fingerprint(for: item),
+            isCancelled: item.occurrence.state == .cancelled
+        )
     }
 
     func prepare(_ item: EventItem) async -> Preparation {
         guard await requestAccess() else { return .denied }
-        let link = link(for: item.occurrence.id)
+        let link = links.link(for: item.occurrence.id)
         let event: EKEvent
         if let link {
             guard
@@ -83,14 +78,11 @@ final class CalendarRepository {
     }
 
     func recordLink(occurrenceID: String, eventIdentifier: String?, fingerprint: String) {
-        links[occurrenceID] = CachedCalendarLink(
+        links.record(
             occurrenceID: occurrenceID,
             eventIdentifier: eventIdentifier,
             fingerprint: fingerprint
         )
-        if let data = try? JSONEncoder().encode(links) {
-            defaults.set(data, forKey: Self.storageKey)
-        }
     }
 
     private func resolveIdentifier(for request: CalendarEditorRequest) -> String? {
@@ -127,10 +119,6 @@ final class CalendarRepository {
         @unknown default:
             return false
         }
-    }
-
-    private func link(for occurrenceID: String) -> CachedCalendarLink? {
-        links[occurrenceID]
     }
 
     private func fingerprint(for item: EventItem) -> String {
