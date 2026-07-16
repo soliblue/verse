@@ -10,7 +10,7 @@ final class CalendarRepository {
     }
 
     private let context: ModelContext
-    let eventStore = EKEventStore()
+    lazy var eventStore = EKEventStore()
 
     init(context: ModelContext) {
         self.context = context

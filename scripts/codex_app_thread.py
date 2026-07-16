@@ -175,7 +175,14 @@ def main():
         try:
             server.request(
                 "initialize",
-                {"clientInfo": {"name": "verse-nightjar", "title": "Verse Nightjar", "version": "0.1.0"}, "capabilities": None},
+                {
+                    "clientInfo": {
+                        "name": "verse-nightjar",
+                        "title": "Verse Nightjar",
+                        "version": "0.1.0",
+                    },
+                    "capabilities": {"experimentalApi": True},
+                },
                 deadline,
             )
             thread_response = server.request(
