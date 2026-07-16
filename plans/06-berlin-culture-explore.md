@@ -6,7 +6,7 @@ Make the Berlin discoveries useful inside Verse: show a small, current list of n
 
 ## Status
 
-In progress.
+Implemented for v0. Dedicated venue adapters and a map remain optional follow-ups.
 
 ## Product outcome
 
@@ -417,6 +417,7 @@ Human-editable event and venue files remain authoritative; `current.json` is gen
 - Apple Calendar export uses EventKit's native confirmation UI and stores linkage only on the device.
 - Articles and Explore share the same event occurrence contract and calendar-export state.
 - Past research is retained as seed and taste evidence but never presented as current without re-verification.
+- Nightjar reads the calendar URLs in `content/places.md` during each isolated run. Dedicated deterministic adapters remain deferred until a source proves stable enough to justify one.
 
 ## Log
 
@@ -425,3 +426,7 @@ Human-editable event and venue files remain authoritative; `current.json` is gen
 - 2026-07-16: Recorded the initial public event and venue inventory while keeping personal history in private configuration.
 - 2026-07-16: Added an in-app week calendar and explicit Apple Calendar export from both events and event-related articles.
 - 2026-07-16: Implemented Markdown events and places, the finite Explore payload, SQLite relations and feedback, offline iOS caching, List, Calendar, Places, EventKit export, and Today's two-event cap.
+- 2026-07-16: Materialized 8 featured choices, 10 calendar occurrences, watched places, and bounded attended history from durable feedback.
+- 2026-07-16: Enforced cross-night occurrence and series suppression with exceptions for meaningful updates and final chances.
+- 2026-07-16: Completed explicit EventKit handling for new, changed, cancelled, and ended occurrences without silently writing or deleting phone events.
+- 2026-07-16: Verified decoding, ranking, expiry, feedback, calendar state, UI behavior, offline use, simulator smoke launch, and visual screenshots in CI.

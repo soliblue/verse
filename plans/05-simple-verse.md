@@ -6,7 +6,7 @@ Make Verse easy to understand, edit, move, and recover. Markdown is the human-re
 
 ## Status
 
-In progress.
+Implemented for v0.
 
 ## Principles
 
@@ -150,3 +150,7 @@ The phone sends small mutations for seen, saved, more like this, less like this,
 - 2026-07-16: Made a fresh Codex app-server thread with web and image tools the default Nightjar editor.
 - 2026-07-16: Isolated agent writes to a staged content workspace and kept live publishing behind deterministic validation and materialization.
 - 2026-07-16: Kept `VERSE_NIGHTJAR_MODE=etl` as the explicit model-free fallback.
+- 2026-07-16: Deployed the Markdown source, generated JSON transport, SQLite feedback state, private tunnel, offline iOS cache, and nightly timer.
+- 2026-07-16: Published a fresh edition with 10 stories, 18 source citations, and 10 generated covers through the validated staging and rollback path.
+- 2026-07-16: Sealed the editor in a disposable container with only its staged workspace and temporary agent credentials available.
+- 2026-07-16: Verified exact model provenance, bounded retries, authenticated delivery at `verse.soli.blue`, backend tests, iOS tests, simulator smoke launch, and visual screenshots.
