@@ -18,6 +18,8 @@ final class CalendarRepository {
         links = CalendarLinkStore(defaults: defaults)
     }
 
+    nonisolated deinit {}
+
     func state(for item: EventItem) -> CalendarLinkState {
         links.state(
             occurrenceID: item.occurrence.id,

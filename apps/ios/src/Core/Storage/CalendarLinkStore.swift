@@ -13,6 +13,8 @@ final class CalendarLinkStore {
             ?? [:]
     }
 
+    nonisolated deinit {}
+
     func state(occurrenceID: String, fingerprint: String, isCancelled: Bool) -> CalendarLinkState {
         if isCancelled { return .cancelled }
         guard let link = links[occurrenceID] else { return .notAdded }

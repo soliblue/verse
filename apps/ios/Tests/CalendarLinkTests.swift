@@ -4,6 +4,16 @@ import XCTest
 
 @MainActor
 final class CalendarLinkTests: XCTestCase {
+    func testRepositoryCanReleaseAfterStoringALink() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let repository = CalendarRepository(defaults: defaults)
+        repository.recordLink(
+            occurrenceID: "event-occurrence",
+            eventIdentifier: "calendar-event",
+            fingerprint: "current"
+        )
+    }
+
     func testLocalLinkPreventsDuplicateExportState() throws {
         let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         let store = CalendarLinkStore(defaults: defaults)
