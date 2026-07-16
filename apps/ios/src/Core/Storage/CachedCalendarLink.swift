@@ -1,9 +1,7 @@
 import Foundation
-import SwiftData
 
-@Model
-final class CachedCalendarLink {
-    @Attribute(.unique) var occurrenceID: String
+struct CachedCalendarLink: Codable, Equatable {
+    let occurrenceID: String
     var eventIdentifier: String?
     var fingerprint: String
     var updatedAt: Date

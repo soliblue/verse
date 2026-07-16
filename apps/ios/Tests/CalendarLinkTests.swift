@@ -1,16 +1,11 @@
 import Foundation
-import SwiftData
 import XCTest
 @testable import Verse
 
 @MainActor
 final class CalendarLinkTests: XCTestCase {
     func testLocalLinkPreventsDuplicateExportState() throws {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
-            for: CachedCalendarLink.self,
-            configurations: configuration
-        )
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         let item = try event()
         let fingerprint = [
             item.title,
@@ -19,25 +14,19 @@ final class CalendarLinkTests: XCTestCase {
             item.venue.address ?? item.venue.name,
             item.occurrence.state.rawValue,
         ].joined(separator: "|")
-        container.mainContext.insert(
-            CachedCalendarLink(
-                occurrenceID: item.occurrence.id,
-                eventIdentifier: "calendar-event",
-                fingerprint: fingerprint
-            )
+        let repository = CalendarRepository(defaults: defaults)
+        repository.recordLink(
+            occurrenceID: item.occurrence.id,
+            eventIdentifier: "calendar-event",
+            fingerprint: fingerprint
         )
-        try container.mainContext.save()
 
-        let repository = CalendarRepository(context: container.mainContext)
-        XCTAssertEqual(repository.state(for: item), .linked)
+        let reopened = CalendarRepository(defaults: defaults)
+        XCTAssertEqual(reopened.state(for: item), .linked)
     }
 
     func testUnresolvedLinkStillPreventsDuplicateExportState() throws {
-        let configuration = ModelConfiguration(isStoredInMemoryOnly: true)
-        let container = try ModelContainer(
-            for: CachedCalendarLink.self,
-            configurations: configuration
-        )
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
         let item = try event()
         let fingerprint = [
             item.title,
@@ -46,17 +35,15 @@ final class CalendarLinkTests: XCTestCase {
             item.venue.address ?? item.venue.name,
             item.occurrence.state.rawValue,
         ].joined(separator: "|")
-        container.mainContext.insert(
-            CachedCalendarLink(
-                occurrenceID: item.occurrence.id,
-                eventIdentifier: nil,
-                fingerprint: fingerprint
-            )
+        let repository = CalendarRepository(defaults: defaults)
+        repository.recordLink(
+            occurrenceID: item.occurrence.id,
+            eventIdentifier: nil,
+            fingerprint: fingerprint
         )
-        try container.mainContext.save()
 
-        let repository = CalendarRepository(context: container.mainContext)
-        XCTAssertEqual(repository.state(for: item), .linked)
+        let reopened = CalendarRepository(defaults: defaults)
+        XCTAssertEqual(reopened.state(for: item), .linked)
     }
 
     private func event() throws -> EventItem {

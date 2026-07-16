@@ -102,7 +102,7 @@ For an explicit deterministic fallback with no model or web research:
 VERSE_NIGHTJAR_MODE=etl scripts/scheduled-nightjar
 ```
 
-The default `VERSE_NIGHTJAR_MODE=agent` starts a fresh Codex app-server thread in an isolated copy of `content/`. Its shell writes are sandboxed to that workspace while web and image tools remain available. The agent cannot publish directly. Verse validates the Markdown, citations, edition size, events, and cover provenance, creates deterministic cover fallbacks when needed, atomically swaps content, and then materializes SQLite and transport JSON. Prompt, result, assistant, and protocol artifacts stay under the ignored `runs/_nightjar` directory. Set `VERSE_AGENT_MODEL` only when a specific installed model is required.
+The default `VERSE_NIGHTJAR_MODE=agent` starts a fresh Codex app-server thread in a disposable copy of `content/` with a stripped environment. The agent has no database credentials or publication path. Verse validates the Markdown, citations, edition size, events, and cover provenance, creates deterministic cover fallbacks when needed, atomically swaps content, and then materializes SQLite and transport JSON. Prompt, result, assistant, and protocol artifacts stay under the ignored `runs/_nightjar` directory. The default `danger-full-access` agent sandbox supports VPS hosts that prohibit unprivileged namespaces; use `VERSE_AGENT_SANDBOX=workspace-write` on hosts that support them. Set `VERSE_AGENT_MODEL` only when a specific installed model is required.
 
 ## Run the iOS app
 

@@ -1,5 +1,5 @@
 import EventKit
-import SwiftData
+import Foundation
 
 @MainActor
 final class CalendarRepository {
@@ -9,11 +9,16 @@ final class CalendarRepository {
         case unresolved
     }
 
-    private let context: ModelContext
+    private static let storageKey = "verse.calendarLinks"
+    private let defaults: UserDefaults
+    private var links: [String: CachedCalendarLink]
     lazy var eventStore = EKEventStore()
 
-    init(context: ModelContext) {
-        self.context = context
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        links = defaults.data(forKey: Self.storageKey)
+            .flatMap { try? JSONDecoder().decode([String: CachedCalendarLink].self, from: $0) }
+            ?? [:]
     }
 
     func state(for item: EventItem) -> CalendarLinkState {
@@ -68,20 +73,22 @@ final class CalendarRepository {
 
     func record(_ request: CalendarEditorRequest) {
         let identifier = resolveIdentifier(for: request)
-        if let link = link(for: request.occurrenceID) {
-            link.eventIdentifier = identifier
-            link.fingerprint = request.fingerprint
-            link.updatedAt = Date()
-        } else {
-            context.insert(
-                CachedCalendarLink(
-                    occurrenceID: request.occurrenceID,
-                    eventIdentifier: identifier,
-                    fingerprint: request.fingerprint
-                )
-            )
+        recordLink(
+            occurrenceID: request.occurrenceID,
+            eventIdentifier: identifier,
+            fingerprint: request.fingerprint
+        )
+    }
+
+    func recordLink(occurrenceID: String, eventIdentifier: String?, fingerprint: String) {
+        links[occurrenceID] = CachedCalendarLink(
+            occurrenceID: occurrenceID,
+            eventIdentifier: eventIdentifier,
+            fingerprint: fingerprint
+        )
+        if let data = try? JSONEncoder().encode(links) {
+            defaults.set(data, forKey: Self.storageKey)
         }
-        try? context.save()
     }
 
     private func resolveIdentifier(for request: CalendarEditorRequest) -> String? {
@@ -121,11 +128,7 @@ final class CalendarRepository {
     }
 
     private func link(for occurrenceID: String) -> CachedCalendarLink? {
-        var descriptor = FetchDescriptor<CachedCalendarLink>(
-            predicate: #Predicate { $0.occurrenceID == occurrenceID }
-        )
-        descriptor.fetchLimit = 1
-        return (try? context.fetch(descriptor))?.first
+        links[occurrenceID]
     }
 
     private func fingerprint(for item: EventItem) -> String {

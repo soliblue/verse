@@ -45,7 +45,7 @@ AGENT_ARGS=(
   --protocol-log "$PROTOCOL_LOG"
   --timeout-seconds "${VERSE_AGENT_TIMEOUT_SECONDS:-10800}"
   --effort "${VERSE_AGENT_EFFORT:-high}"
-  --sandbox workspace-write
+  --sandbox "${VERSE_AGENT_SANDBOX:-danger-full-access}"
 )
 
 if [[ -n "${VERSE_AGENT_MODEL:-}" ]]; then

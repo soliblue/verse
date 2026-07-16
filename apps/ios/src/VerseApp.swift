@@ -27,7 +27,6 @@ struct VerseApp: App {
             PendingMutation.self,
             CachedExplore.self,
             CachedEventFeedbackState.self,
-            CachedCalendarLink.self,
             CachedCoverAsset.self
         )
         let configuration = ServerConfiguration()
@@ -42,7 +41,7 @@ struct VerseApp: App {
         explore = ExploreRepository(context: container.mainContext, api: api)
         eventFeedback = EventFeedbackRepository(context: container.mainContext, api: api)
         venueFeedback = VenueFeedbackRepository(context: container.mainContext, api: api)
-        calendar = CalendarRepository(context: container.mainContext)
+        calendar = CalendarRepository()
         covers = CoverRepository(context: container.mainContext, api: api)
     }
 
