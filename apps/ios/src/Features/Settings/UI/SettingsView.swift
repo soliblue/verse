@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("verse.textOnly") private var textOnly = false
     let configuration: ServerConfiguration
     let api: APIClient
     let editions: EditionRepository
@@ -47,6 +48,8 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.menu)
                 .accessibilityIdentifier("appearance-picker")
+                Toggle("Text only", isOn: $textOnly)
+                    .accessibilityIdentifier("text-only-toggle")
             }
 
             Section {

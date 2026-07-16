@@ -17,6 +17,7 @@ if [[ "$RUNS_ROOT" != /* ]]; then
 fi
 RESULT_ROOT="$RUNS_ROOT/_nightjar"
 TIMEOUT_SECONDS="${VERSE_NIGHTJAR_TIMEOUT_SECONDS:-14400}"
+MODE="${VERSE_NIGHTJAR_MODE:-agent}"
 mkdir -p "$RESULT_ROOT"
 
 exec 9>"$RESULT_ROOT/nightjar.lock"
@@ -34,6 +35,9 @@ RUN_DIR="$RESULT_ROOT/$STAMP"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
 PIPELINE_LOG="$RUN_DIR/pipeline.log"
 RESULT_FILE="$RUN_DIR/result.json"
+AGENT_RESULT="$RUN_DIR/agent-result.json"
+PROTOCOL_LOG="$RUN_DIR/agent-protocol.jsonl"
+WORKSPACE="$RUN_DIR/workspace"
 STARTED_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 mkdir -p "$RUN_DIR"
 : > "$PIPELINE_LOG"
@@ -53,25 +57,27 @@ if [[ "$PREFLIGHT_STATUS" -ne 0 ]]; then
     --completed-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
     --exit-code "$PREFLIGHT_STATUS" \
     --preflight-log "$PREFLIGHT_LOG" \
-    --pipeline-log "$PIPELINE_LOG"
+    --pipeline-log "$PIPELINE_LOG" \
+    --mode "$MODE" \
+    --agent-result "$AGENT_RESULT" \
+    --protocol-log "$PROTOCOL_LOG" \
+    --workspace "$WORKSPACE"
   cat "$PREFLIGHT_LOG"
   exit "$PREFLIGHT_STATUS"
 fi
 
-ARGS=(
-  python3 -m etl nightly
-  --date "$RUN_DATE"
-  --run-id "$RUN_ID"
-  --sources "${VERSE_SOURCES_FILE:-etl/sources.json}"
-  --agent-timeout-seconds "${VERSE_AGENT_TIMEOUT_SECONDS:-10800}"
-)
-
-if [[ "${VERSE_NIGHTJAR_AGENT:-1}" == "1" ]]; then
-  ARGS+=(--agent)
-fi
-
-if [[ "${VERSE_NIGHTJAR_FORCE:-0}" == "1" ]]; then
-  ARGS+=(--force)
+if [[ "$MODE" == "agent" ]]; then
+  ARGS=(bash "$ROOT/scripts/nightjar-agent-run" "$ROOT" "$RUN_DATE" "$RUN_ID" "$RUN_DIR")
+else
+  ARGS=(
+    python3 -m etl nightly
+    --date "$RUN_DATE"
+    --run-id "$RUN_ID"
+    --sources "${VERSE_SOURCES_FILE:-etl/sources.json}"
+  )
+  if [[ "${VERSE_NIGHTJAR_FORCE:-0}" == "1" ]]; then
+    ARGS+=(--force)
+  fi
 fi
 
 set +e
@@ -95,7 +101,11 @@ python3 "$ROOT/scripts/nightjar_result.py" \
   --completed-at "$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
   --exit-code "$PIPELINE_STATUS" \
   --preflight-log "$PREFLIGHT_LOG" \
-  --pipeline-log "$PIPELINE_LOG"
+  --pipeline-log "$PIPELINE_LOG" \
+  --mode "$MODE" \
+  --agent-result "$AGENT_RESULT" \
+  --protocol-log "$PROTOCOL_LOG" \
+  --workspace "$WORKSPACE"
 
 cat "$PIPELINE_LOG"
 exit "$PIPELINE_STATUS"

@@ -32,6 +32,26 @@ class ConfigurationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "placeholder"):
                 ServerConfig.environment()
 
+    def test_content_and_public_asset_configuration_are_explicit(self):
+        values = {
+            "VERSE_DEVICE_SECRET": "a-valid-device-secret-with-length",
+            "VERSE_CONTENT_DIR": "private-content",
+            "VERSE_PUBLIC_BASE_URL": "https://verse.example/",
+        }
+        with patch.dict(os.environ, values, clear=True):
+            config = ServerConfig.environment()
+        self.assertEqual(config.content_path, Path("private-content"))
+        self.assertEqual(config.public_base_url, "https://verse.example")
+
+    def test_invalid_public_base_url_is_rejected(self):
+        values = {
+            "VERSE_DEVICE_SECRET": "a-valid-device-secret-with-length",
+            "VERSE_PUBLIC_BASE_URL": "file:///tmp/content",
+        }
+        with patch.dict(os.environ, values, clear=True):
+            with self.assertRaisesRegex(ValueError, "http or https origin"):
+                ServerConfig.environment()
+
     def test_environment_file_is_loaded_without_overwriting_process_values(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".env"

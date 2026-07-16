@@ -6,7 +6,11 @@ from datetime import date
 from pathlib import Path
 
 from db.connection import transaction, utc_now
+from db.content import index_edition
+from db.explore import event_ranking_profile, publish_explore
 from db.repository import edition, publish_edition, store_deep_dive
+from etl.content import content_root, write_deep_dive, write_edition
+from etl.explore import build_explore, write_explore
 from etl.validation import complete_edition, validate_edition
 
 
@@ -46,21 +50,36 @@ def write_stage(connection: sqlite3.Connection, run_id: str) -> int:
     validate_edition(payload)
     evidence = {row["story_id"]: json.loads(row["evidence_json"]) for row in rows}
     provenance = {row["story_id"]: json.loads(row["model_provenance_json"]) for row in rows}
+    root = content_root()
+    markdown_payload, markdown_index = write_edition(
+        payload,
+        root,
+        provenance,
+        os.environ.get("VERSE_PUBLIC_BASE_URL") or None,
+    )
     deep_dives = connection.execute(
         "SELECT story_id, payload_json, model_provenance_json FROM run_deep_dives WHERE run_id = ?", (run_id,)
     ).fetchall()
     with transaction(connection, immediate=True):
-        publish_edition(connection, payload, evidence, provenance)
+        publish_edition(connection, markdown_payload, evidence, provenance)
+        index_edition(connection, markdown_payload, markdown_index, root)
         for row in deep_dives:
+            deep_dive_payload = json.loads(row["payload_json"])
+            deep_dive_provenance = json.loads(row["model_provenance_json"])
             store_deep_dive(
                 connection,
                 row["story_id"],
-                json.loads(row["payload_json"]),
-                json.loads(row["model_provenance_json"]),
+                deep_dive_payload,
+                deep_dive_provenance,
             )
-        published = edition(connection, payload["id"])
+            write_deep_dive(root, row["story_id"], deep_dive_payload, deep_dive_provenance)
+        published = edition(connection, markdown_payload["id"])
         if published is None:
             raise RuntimeError("published edition could not be materialized")
         validate_edition(published)
         write_artifact(run_id, published)
+        if (root / "places.md").is_file() and (root / "events" / "upcoming").is_dir():
+            explore, source_events = build_explore(root, ranking_profile=event_ranking_profile(connection))
+            write_explore(root, explore)
+            publish_explore(connection, explore, source_events)
     return len(rows)

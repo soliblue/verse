@@ -76,4 +76,38 @@ final class APIClient {
         else { return .transportFailure }
         return 200..<300 ~= http.statusCode ? .success(data) : .httpFailure(http.statusCode)
     }
+
+    func data(from url: URL) async -> Data? {
+        guard let serverURL = configuration.serverURL, sameOrigin(url, serverURL) else {
+            return nil
+        }
+        var request = URLRequest(url: url, timeoutInterval: 20)
+        request.setValue("image/*", forHTTPHeaderField: "Accept")
+        if !configuration.deviceSecret.isEmpty {
+            request.setValue("Bearer \(configuration.deviceSecret)", forHTTPHeaderField: "Authorization")
+        }
+        guard
+            let (data, response) = try? await session.data(for: request),
+            let http = response as? HTTPURLResponse,
+            200..<300 ~= http.statusCode,
+            http.mimeType?.hasPrefix("image/") == true,
+            data.count <= 10_485_760
+        else { return nil }
+        return data
+    }
+
+    private func sameOrigin(_ lhs: URL, _ rhs: URL) -> Bool {
+        lhs.scheme?.lowercased() == rhs.scheme?.lowercased()
+            && lhs.host?.lowercased() == rhs.host?.lowercased()
+            && originPort(lhs) == originPort(rhs)
+    }
+
+    private func originPort(_ url: URL) -> Int? {
+        if let port = url.port { return port }
+        switch url.scheme?.lowercased() {
+        case "http": return 80
+        case "https": return 443
+        default: return nil
+        }
+    }
 }

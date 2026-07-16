@@ -1,0 +1,10 @@
+{
+  "story_id": "transgressive-memory-festival-2026",
+  "prompt": "Minimal abstract pixel universe cover with generous negative space, no text, no logos, no faces. Quiet spatial form inspired by At silent green, archives become glitches, loops, code, and sound and berlin events, media art, silent green.",
+  "provider": "openai-imagegen",
+  "model": "builtin-imagegen",
+  "width": 1122,
+  "height": 1402,
+  "is_fallback": false,
+  "generated_at": "2026-07-16T06:27:06Z"
+}

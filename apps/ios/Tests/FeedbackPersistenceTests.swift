@@ -156,6 +156,7 @@ final class FeedbackPersistenceTests: XCTestCase {
             publishedAt: "2026-07-12T06:00:00Z",
             readingMinutes: 2,
             imageURL: nil,
+            relatedEventIDs: nil,
             citations: [],
             feedback: .empty,
             deepDive: deepDive

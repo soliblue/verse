@@ -66,9 +66,41 @@ final class VerseSmokeUITests: XCTestCase {
         openTab("Settings", app: app)
         XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["Server URL"].exists)
+        XCTAssertTrue(app.switches["text-only-toggle"].exists)
 
         openTab("Today", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
+    }
+
+    func testExploreIsFiniteAndKeepsCalendarAndPlacesTogether() {
+        executionTimeAllowance = 90
+        let app = XCUIApplication()
+        app.launch()
+
+        openTab("Explore", app: app)
+        XCTAssertTrue(app.navigationBars["Explore"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["explore-mode"].exists)
+
+        let event = app.staticTexts["SoundS Rundgang: Slack"].firstMatch
+        XCTAssertTrue(event.waitForExistence(timeout: 5))
+        event.tap()
+        XCTAssertTrue(app.descendants(matching: .any)["event-detail"].waitForExistence(timeout: 5))
+        app.navigationBars.buttons["Explore"].tap()
+
+        app.buttons["Calendar"].tap()
+        let july16 = app.staticTexts["16"].firstMatch
+        if !july16.waitForExistence(timeout: 2) {
+            app.buttons["Previous week"].tap()
+        }
+        XCTAssertTrue(july16.waitForExistence(timeout: 5))
+        july16.tap()
+        XCTAssertTrue(app.staticTexts["Berlin Beats: GiGi FM"].waitForExistence(timeout: 5))
+
+        app.staticTexts["18"].firstMatch.tap()
+        XCTAssertTrue(app.staticTexts["DayDreamLab by Transmission"].waitForExistence(timeout: 5))
+
+        app.buttons["Places"].tap()
+        XCTAssertTrue(app.staticTexts["UdK Sound Studies"].waitForExistence(timeout: 5))
     }
 
     func testAppearanceDefaultsToLightAndSwitchesImmediately() {

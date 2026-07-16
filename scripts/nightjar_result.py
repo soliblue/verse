@@ -14,6 +14,10 @@ def main() -> int:
     parser.add_argument("--exit-code", type=int)
     parser.add_argument("--preflight-log", required=True)
     parser.add_argument("--pipeline-log", required=True)
+    parser.add_argument("--mode")
+    parser.add_argument("--agent-result")
+    parser.add_argument("--protocol-log")
+    parser.add_argument("--workspace")
     args = parser.parse_args()
     payload = {
         "status": args.status,
@@ -25,6 +29,14 @@ def main() -> int:
         "preflight_log": args.preflight_log,
         "pipeline_log": args.pipeline_log,
     }
+    if args.mode:
+        payload["mode"] = args.mode
+    if args.agent_result:
+        payload["agent_result"] = args.agent_result
+    if args.protocol_log:
+        payload["protocol_log"] = args.protocol_log
+    if args.workspace:
+        payload["workspace"] = args.workspace
     args.path.parent.mkdir(parents=True, exist_ok=True)
     temporary = args.path.with_suffix(args.path.suffix + ".tmp")
     temporary.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")

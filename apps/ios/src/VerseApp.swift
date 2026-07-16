@@ -11,6 +11,11 @@ struct VerseApp: App {
     private let editions: EditionRepository
     private let feedback: FeedbackRepository
     private let topics: TopicsRepository
+    private let explore: ExploreRepository
+    private let eventFeedback: EventFeedbackRepository
+    private let venueFeedback: VenueFeedbackRepository
+    private let calendar: CalendarRepository
+    private let covers: CoverRepository
 
     init() {
         FontRegistrar.registerBundledFonts()
@@ -19,7 +24,11 @@ struct VerseApp: App {
             CachedEditionIndex.self,
             CachedTopics.self,
             CachedStoryState.self,
-            PendingMutation.self
+            PendingMutation.self,
+            CachedExplore.self,
+            CachedEventFeedbackState.self,
+            CachedCalendarLink.self,
+            CachedCoverAsset.self
         )
         let configuration = ServerConfiguration()
         let api = APIClient(configuration: configuration)
@@ -30,6 +39,11 @@ struct VerseApp: App {
         editions = EditionRepository(context: container.mainContext, api: api)
         feedback = FeedbackRepository(context: container.mainContext, api: api)
         topics = TopicsRepository(context: container.mainContext, api: api)
+        explore = ExploreRepository(context: container.mainContext, api: api)
+        eventFeedback = EventFeedbackRepository(context: container.mainContext, api: api)
+        venueFeedback = VenueFeedbackRepository(context: container.mainContext, api: api)
+        calendar = CalendarRepository(context: container.mainContext)
+        covers = CoverRepository(context: container.mainContext, api: api)
     }
 
     var body: some Scene {
@@ -40,6 +54,11 @@ struct VerseApp: App {
                 editions: editions,
                 feedback: feedback,
                 topics: topics,
+                explore: explore,
+                eventFeedback: eventFeedback,
+                venueFeedback: venueFeedback,
+                calendar: calendar,
+                covers: covers,
                 appTheme: $appTheme
             )
             .preferredColorScheme(appTheme.colorScheme)

@@ -5,8 +5,8 @@ bootstrap:
 
 check:
 	python3 -m unittest discover -v
-	python3 -m compileall -q db etl server scripts/nightjar_result.py
-	for script in scripts/bootstrap scripts/nightjar-preflight scripts/scheduled-nightjar scripts/install-systemd-user-units; do bash -n "$$script"; done
+	python3 -m compileall -q db etl server scripts
+	for script in scripts/bootstrap scripts/nightjar-preflight scripts/nightjar-agent-run scripts/scheduled-nightjar scripts/install-systemd-user-units; do bash -n "$$script"; done
 	python3 -m scripts.check_contracts
 
 seed:
@@ -16,4 +16,4 @@ serve:
 	python3 -m server
 
 nightly:
-	python3 -m etl nightly --date "$$(date -u +%F)" --agent
+	scripts/scheduled-nightjar

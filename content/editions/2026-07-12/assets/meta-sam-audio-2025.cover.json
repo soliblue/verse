@@ -1,0 +1,10 @@
+{
+  "story_id": "meta-sam-audio-2025",
+  "prompt": "Minimal abstract pixel universe cover with generous negative space, no text, no logos, no faces. Quiet spatial form inspired by Prompt a sound by naming it, pointing at it, or marking its time and audiovisual techniques, sound design, meta ai research.",
+  "provider": "openai-imagegen",
+  "model": "builtin-imagegen",
+  "width": 1122,
+  "height": 1402,
+  "is_fallback": false,
+  "generated_at": "2026-07-16T06:27:06Z"
+}

@@ -6,6 +6,7 @@ struct TodayView: View {
     let feedback: FeedbackRepository
     let topics: TopicsRepository
     let configuration: ServerConfiguration
+    let covers: CoverRepository
     @Binding var selectedTab: AppTab
     @State private var store = TodayStore()
     @State private var toolbarStore = StoryDetailStore()
@@ -22,7 +23,8 @@ struct TodayView: View {
                             TodayStoryPage(
                                 story: story,
                                 number: index + 1,
-                                total: stories.count
+                                total: stories.count,
+                                covers: covers
                             )
                             .id(story.id)
                             .containerRelativeFrame(.vertical)

@@ -50,6 +50,8 @@ class PipelineTests(unittest.TestCase):
         self.root = Path(self.temporary.name)
         self.database = self.root / "verse.sqlite"
         self.sources = self.root / "sources.json"
+        self.environment = patch.dict(os.environ, {"VERSE_CONTENT_DIR": str(self.root / "content")})
+        self.environment.start()
         self.sources.write_text(
             json.dumps(
                 {
@@ -81,6 +83,7 @@ class PipelineTests(unittest.TestCase):
 
     def tearDown(self):
         self.connection.close()
+        self.environment.stop()
         self.temporary.cleanup()
 
     def test_full_pipeline_publishes_validated_materialized_edition(self):
@@ -259,6 +262,46 @@ class PipelineTests(unittest.TestCase):
                 "SELECT count(*) FROM run_candidates WHERE selected = 1 AND rationale LIKE '%excluded true%'"
             ).fetchone()[0],
             0,
+        )
+
+    def test_today_selects_at_most_two_berlin_events(self):
+        payload = json.loads(self.sources.read_text(encoding="utf-8"))
+        payload["sources"] = [
+            {
+                **payload["sources"][0],
+                "id": "berlin-events",
+                "name": "Berlin Events",
+                "url": "https://example.com/events",
+                "topic_ids": ["berlin-events"],
+                "quality": 1.0,
+            },
+            {
+                **payload["sources"][0],
+                "id": "research",
+                "name": "Research",
+                "url": "https://example.com/research",
+                "quality": 0.2,
+            },
+        ]
+        self.sources.write_text(json.dumps(payload), encoding="utf-8")
+        event_items = collected_items(12)
+        research_items = collected_items(12)
+        for item in research_items:
+            item["title"] = f"Research {item['title']}"
+        with patch("etl.collect.fetch", side_effect=[event_items, research_items]):
+            collect_stage(self.connection, self.run_id, self.sources)
+        normalize_stage(self.connection, self.run_id)
+        deduplicate_stage(self.connection, self.run_id)
+
+        self.assertEqual(rank_stage(self.connection, self.run_id), 10)
+        self.assertEqual(
+            self.connection.execute(
+                "SELECT count(*) FROM run_candidates c "
+                "JOIN normalized_items n ON n.id = c.normalized_item_id "
+                "WHERE c.run_id = ? AND c.selected = 1 AND n.topic_ids_json LIKE '%berlin-events%'",
+                (self.run_id,),
+            ).fetchone()[0],
+            2,
         )
 
     def test_feedback_follows_topics_instead_of_source_name(self):

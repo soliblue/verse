@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+umask 077
+
+ROOT="$1"
+RUN_DATE="$2"
+RUN_ID="$3"
+RUN_DIR="$4"
+WORKSPACE="$RUN_DIR/workspace"
+AGENT_RESULT="$RUN_DIR/agent-result.json"
+PROTOCOL_LOG="$RUN_DIR/agent-protocol.jsonl"
+BACKUP="$ROOT/.content-nightjar-${RUN_ID//[^a-zA-Z0-9._-]/-}-${RUN_DIR##*/}.backup"
+DATABASE="${VERSE_DB_PATH:-db/verse.sqlite}"
+DATABASE_BACKUP="$RUN_DIR/database.previous.sqlite"
+PUBLISHED=0
+DATABASE_BACKED_UP=0
+
+rollback() {
+  status=$?
+  if [[ "$DATABASE_BACKED_UP" == "1" && -f "$DATABASE_BACKUP" ]]; then
+    python3 -m scripts.nightjar_workspace restore-database --database "$DATABASE" --backup "$DATABASE_BACKUP"
+  fi
+  if [[ "$PUBLISHED" == "1" && -d "$BACKUP" ]]; then
+    python3 -m scripts.nightjar_workspace rollback --root "$ROOT" --backup "$BACKUP"
+  fi
+  exit "$status"
+}
+
+trap rollback EXIT
+cd "$ROOT"
+
+printf 'phase=prepare_workspace\n'
+python3 -m scripts.nightjar_workspace prepare \
+  --root "$ROOT" \
+  --workspace "$WORKSPACE" \
+  --database "$DATABASE"
+
+AGENT_ARGS=(
+  python3 "$ROOT/scripts/codex_app_thread.py"
+  --cwd "$WORKSPACE"
+  --name "Verse Nightjar $RUN_DATE"
+  --prompt-file "$ROOT/prompts/nightjar-refresh.md"
+  --prompt "The run date is $RUN_DATE. Replace every literal RUN_DATE in the instructions with $RUN_DATE."
+  --result-file "$AGENT_RESULT"
+  --protocol-log "$PROTOCOL_LOG"
+  --timeout-seconds "${VERSE_AGENT_TIMEOUT_SECONDS:-10800}"
+  --effort "${VERSE_AGENT_EFFORT:-high}"
+  --sandbox workspace-write
+)
+
+if [[ -n "${VERSE_AGENT_MODEL:-}" ]]; then
+  AGENT_ARGS+=(--model "$VERSE_AGENT_MODEL")
+fi
+
+printf 'phase=agent\n'
+"${AGENT_ARGS[@]}"
+
+printf 'phase=validate\n'
+python3 -m scripts.nightjar_workspace validate \
+  --root "$ROOT" \
+  --workspace "$WORKSPACE" \
+  --date "$RUN_DATE"
+
+printf 'phase=backup_database\n'
+python3 -m scripts.nightjar_workspace backup-database --database "$DATABASE" --backup "$DATABASE_BACKUP"
+DATABASE_BACKED_UP=1
+
+printf 'phase=publish_content\n'
+python3 -m scripts.nightjar_workspace publish \
+  --root "$ROOT" \
+  --workspace "$WORKSPACE" \
+  --backup "$BACKUP"
+PUBLISHED=1
+
+printf 'phase=materialize\n'
+python3 -m etl materialize
+
+printf 'phase=complete\n'
+python3 -m scripts.nightjar_workspace finalize --backup "$BACKUP" --database-backup "$DATABASE_BACKUP"
+PUBLISHED=0
+DATABASE_BACKED_UP=0
+trap - EXIT

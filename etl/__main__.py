@@ -5,11 +5,15 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from db.connection import connect
+from db.content import sync_content
 from db.environment import load_environment
+from db.explore import event_ranking_profile, publish_explore
 from db.migrations import migrate
 from etl.collect import collect_stage
+from etl.content import content_root
 from etl.deduplicate import deduplicate_stage
 from etl.enrich import enrich_stage
+from etl.explore import build_explore, write_explore
 from etl.normalize import normalize_stage
 from etl.rank import rank_stage
 from etl.runs import STAGES, require_run, run_stage, start_run
@@ -46,6 +50,7 @@ def parser() -> argparse.ArgumentParser:
     enrich.add_argument("--agent-timeout-seconds", type=int, default=3600)
     write = commands.add_parser("write")
     add_shared_stage_arguments(write)
+    commands.add_parser("materialize")
     nightly = commands.add_parser("nightly")
     nightly.add_argument("--date", default=datetime.now(UTC).date().isoformat())
     nightly.add_argument("--run-id")
@@ -78,6 +83,26 @@ def main() -> int:
     args = parser().parse_args()
     connection = connect()
     migrate(connection)
+    root = content_root()
+    materialized = None
+    if root.is_dir():
+        content_status = sync_content(connection, root, os.environ.get("VERSE_PUBLIC_BASE_URL") or None)
+        materialized = {"content": content_status, "explore": None}
+        if (root / "places.md").is_file():
+            explore, source_events = build_explore(root, ranking_profile=event_ranking_profile(connection))
+            write_explore(root, explore)
+            publish_explore(connection, explore, source_events)
+            materialized["explore"] = {
+                "id": explore["id"],
+                "featured_events": len(explore["featured_events"]),
+                "calendar_occurrences": len(explore["calendar"]),
+            }
+    if args.command == "materialize":
+        if materialized is None:
+            raise RuntimeError(f"content directory does not exist: {root}")
+        print(json.dumps(materialized, ensure_ascii=False, sort_keys=True))
+        connection.close()
+        return 0
     if args.command == "start":
         print(start_run(connection, args.date, args.run_id))
         connection.close()

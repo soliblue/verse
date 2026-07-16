@@ -6,6 +6,7 @@ import unittest
 from pathlib import Path
 
 from db.connection import connect
+from db.explore import publish_explore
 from db.migrations import migrate
 from db.repository import publish_edition, replace_topics
 from server.app import ServerConfig, create_server
@@ -18,12 +19,24 @@ class APITests(unittest.TestCase):
     def setUp(self):
         self.temporary = tempfile.TemporaryDirectory()
         self.path = Path(self.temporary.name) / "verse.sqlite"
+        self.content = Path(self.temporary.name) / "content"
         connection = connect(self.path)
         migrate(connection)
         replace_topics(connection, json.loads((ROOT / "etl/seeds/default-topics.json").read_text(encoding="utf-8")))
         publish_edition(connection, json.loads((ROOT / "etl/seeds/first-edition.json").read_text(encoding="utf-8")))
+        publish_explore(connection, json.loads((ROOT / "content/explore/current.json").read_text(encoding="utf-8")))
         connection.close()
-        self.server = create_server(ServerConfig(self.path, "secret", ("https://reader.example",), 512), port=0)
+        self.server = create_server(
+            ServerConfig(
+                self.path,
+                "secret",
+                ("https://reader.example",),
+                512,
+                content_path=self.content,
+                public_base_url="https://verse.example",
+            ),
+            port=0,
+        )
         self.thread = threading.Thread(target=self.server.serve_forever, daemon=True)
         self.thread.start()
 
@@ -43,7 +56,8 @@ class APITests(unittest.TestCase):
         connection = http.client.HTTPConnection("127.0.0.1", self.server.server_port, timeout=3)
         connection.request(method, path, body=body, headers=request_headers)
         response = connection.getresponse()
-        data = json.loads(response.read())
+        raw = response.read()
+        data = json.loads(raw) if response.getheader("Content-Type", "").startswith("application/json") else raw
         result = response.status, data, dict(response.headers)
         connection.close()
         return result
@@ -86,6 +100,7 @@ class APITests(unittest.TestCase):
         status, saved, _ = self.request("PUT", "/v1/topics", updated)
         self.assertEqual(status, 200)
         self.assertEqual(saved, updated)
+        self.assertTrue((self.content / "preferences.md").is_file())
 
     def test_feedback_persists_into_edition_payload(self):
         story_id = "meta-physics-video-world-models-2026"
@@ -120,6 +135,135 @@ class APITests(unittest.TestCase):
         self.assertEqual(first[0], 202)
         self.assertEqual(first[1], second[1])
         self.assertEqual(first[1]["deep_dive"]["status"], "queued")
+
+    def test_explore_venues_and_event_feedback_are_available(self):
+        status, explore, _ = self.request("GET", "/v1/explore")
+        self.assertEqual(status, 200)
+        self.assertLessEqual(len(explore["featured_events"]), 12)
+        self.assertEqual(len(explore["events"]), len(explore["calendar"]))
+        self.assertEqual(
+            {event["occurrence"]["id"] for event in explore["events"]},
+            {occurrence["id"] for occurrence in explore["calendar"]},
+        )
+        status, venues, _ = self.request("GET", "/v1/venues")
+        self.assertEqual(status, 200)
+        self.assertEqual(venues["venues"], explore["venues"])
+        event = explore["featured_events"][0]
+        request = {
+            "event_id": event["id"],
+            "occurrence_id": event["occurrence"]["id"],
+            "kind": "loved",
+            "value": True,
+        }
+        first = self.request("POST", "/v1/event-feedback", request, headers={"Idempotency-Key": "event-1"})
+        second = self.request("POST", "/v1/event-feedback", request, headers={"Idempotency-Key": "event-1"})
+        self.assertEqual(first[:2], second[:2])
+        self.assertTrue(first[1]["feedback"]["signals"]["loved"])
+        connection = connect(self.path)
+        self.assertEqual(connection.execute("SELECT count(*) FROM event_feedback_events").fetchone()[0], 1)
+        connection.close()
+
+    def test_venue_feedback_is_durable_and_updates_explore(self):
+        more = {
+            "venue_id": "thf-tower",
+            "kind": "more_from_here",
+            "value": True,
+        }
+        first = self.request("POST", "/v1/venue-feedback", more, headers={"Idempotency-Key": "venue-1"})
+        second = self.request("POST", "/v1/venue-feedback", more, headers={"Idempotency-Key": "venue-1"})
+        self.assertEqual(first[:2], second[:2])
+        self.assertTrue(first[1]["feedback"]["more_from_here"])
+        self.assertEqual(first[1]["venue"]["watch_state"], "favorite")
+
+        mute = {"venue_id": "thf-tower", "kind": "mute", "value": True}
+        status, response, _ = self.request(
+            "POST",
+            "/v1/venue-feedback",
+            mute,
+            headers={"Idempotency-Key": "venue-2"},
+        )
+        self.assertEqual(status, 200)
+        self.assertTrue(response["feedback"]["muted"])
+        self.assertEqual(response["venue"]["watch_state"], "muted")
+
+        status, venues, _ = self.request("GET", "/v1/venues")
+        self.assertEqual(status, 200)
+        self.assertNotIn("thf-tower", {venue["id"] for venue in venues["venues"]})
+        status, explore, _ = self.request("GET", "/v1/explore")
+        self.assertEqual(status, 200)
+        self.assertTrue(all(event["venue"]["id"] != "thf-tower" for event in explore["featured_events"]))
+        self.assertEqual(
+            {event["occurrence"]["id"] for event in explore["events"]},
+            {occurrence["id"] for occurrence in explore["calendar"]},
+        )
+        thf_events = [event for event in explore["events"] if event["venue"]["id"] == "thf-tower"]
+        self.assertTrue(thf_events)
+        self.assertTrue(all(event["venue"]["watch_state"] == "muted" for event in thf_events))
+
+        connection = connect(self.path)
+        self.assertEqual(connection.execute("SELECT count(*) FROM venue_feedback_events").fetchone()[0], 2)
+        connection.close()
+        status, payload, _ = self.request(
+            "POST",
+            "/v1/event-feedback",
+            {"event_id": "venue:thf-tower", "kind": "more_from_venue", "value": True},
+        )
+        self.assertEqual((status, payload["error"]["code"]), (404, "not_found"))
+
+    def test_cover_assets_are_authenticated_and_paths_are_bounded(self):
+        assets = self.content / "editions/2026-07-12/assets"
+        assets.mkdir(parents=True)
+        cover = assets / "story.png"
+        cover.write_bytes(b"\x89PNG\r\n\x1a\nfixture")
+        connection = connect(self.path)
+        now = "2026-07-16T06:30:00Z"
+        connection.execute(
+            "INSERT INTO story_documents "
+            "(story_id, markdown_path, content_sha256, cover_path, cover_is_fallback, indexed_at) "
+            "VALUES (?, ?, ?, ?, 1, ?)",
+            (
+                "meta-physics-video-world-models-2026",
+                "editions/2026-07-12/01-story.md",
+                "fixture",
+                "editions/2026-07-12/assets/story.png",
+                now,
+            ),
+        )
+        connection.commit()
+        connection.close()
+
+        status, today, _ = self.request("GET", "/v1/edition/today")
+        self.assertEqual(status, 200)
+        self.assertEqual(
+            today["items"][0]["image_url"],
+            "https://verse.example/v1/assets/2026-07-12/assets/story.png",
+        )
+        status, body, headers = self.request("GET", "/v1/assets/2026-07-12/assets/story.png")
+        self.assertEqual((status, body, headers["Content-Type"]), (200, cover.read_bytes(), "image/png"))
+        status, payload, _ = self.request(
+            "GET",
+            "/v1/assets/2026-07-12/assets/story.png",
+            authorized=False,
+        )
+        self.assertEqual((status, payload["error"]["code"]), (401, "unauthorized"))
+        status, payload, _ = self.request("GET", "/v1/assets/..%2Fserver%2F.env")
+        self.assertEqual((status, payload["error"]["code"]), (404, "asset_not_found"))
+
+    def test_related_story_route_is_bidirectional(self):
+        source = "meta-physics-video-world-models-2026"
+        target = "foley-omni-complete-soundtracks-2026"
+        connection = connect(self.path)
+        connection.execute(
+            "INSERT INTO story_relations "
+            "(source_story_id, target_story_id, relation, score, evidence, created_at, updated_at) "
+            "VALUES (?, ?, 'related', 1, 'fixture', ?, ?)",
+            (source, target, "2026-07-16T06:30:00Z", "2026-07-16T06:30:00Z"),
+        )
+        connection.commit()
+        connection.close()
+        status, payload, _ = self.request("GET", f"/v1/stories/{target}/related")
+        self.assertEqual(status, 200)
+        self.assertEqual(payload["stories"][0]["item"]["id"], source)
 
     def test_json_errors_are_bounded_and_structured(self):
         status, payload, _ = self.request("POST", "/v1/feedback", b"{", headers={"Content-Type": "application/json"})

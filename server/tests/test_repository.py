@@ -41,7 +41,7 @@ class RepositoryTests(unittest.TestCase):
 
     def test_migrations_are_repeatable(self):
         self.assertEqual(migrate(self.connection), [])
-        self.assertEqual(self.connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0], 3)
+        self.assertEqual(self.connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0], 5)
 
     def test_publish_is_repeatable_and_materialized(self):
         first = publish_edition(self.connection, self.edition)
@@ -222,9 +222,9 @@ class MigrationIntegrityTests(unittest.TestCase):
 
             with ThreadPoolExecutor(max_workers=4) as executor:
                 results = list(executor.map(lambda _: apply(), range(4)))
-            self.assertEqual(sum(len(result) for result in results), 3)
+            self.assertEqual(sum(len(result) for result in results), 5)
             connection = connect(path)
-            self.assertEqual(connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0], 3)
+            self.assertEqual(connection.execute("SELECT count(*) FROM schema_migrations").fetchone()[0], 5)
             connection.close()
 
     def test_changed_applied_migration_is_rejected(self):

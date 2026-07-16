@@ -4,6 +4,9 @@ enum APIEndpoint {
     static let topics = "v1/topics"
     static let feedback = "v1/feedback"
     static let deepDives = "v1/deep-dives"
+    static let explore = "v1/explore"
+    static let eventFeedback = "v1/event-feedback"
+    static let venueFeedback = "v1/venue-feedback"
     static let health = "health"
 
     static func edition(_ id: String) -> String { "v1/editions/\(id)" }

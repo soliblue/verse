@@ -110,6 +110,14 @@ def validate_edition(payload: object, minimum_items: int = 8, maximum_items: int
             raise ValueError(f"{path}.topic_ids must be a non-empty string array")
         if len(topic_ids) != len(set(topic_ids)):
             raise ValueError(f"{path}.topic_ids must be unique")
+        for field in ("related_story_ids", "related_event_ids"):
+            values = item.get(field, [])
+            if not isinstance(values, list) or any(not isinstance(value, str) or not value for value in values):
+                raise ValueError(f"{path}.{field} must be a string array")
+            if len(values) != len(set(values)):
+                raise ValueError(f"{path}.{field} must be unique")
+        if item["id"] in item.get("related_story_ids", []):
+            raise ValueError(f"{path}.related_story_ids cannot contain itself")
         for field in ("title", "summary", "body", "why_selected", "source_name"):
             require_text(item.get(field), f"{path}.{field}")
         require_url(item.get("source_url"), f"{path}.source_url")

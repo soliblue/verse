@@ -1,0 +1,10 @@
+{
+  "story_id": "touchdesigner-2025-pops-guide",
+  "prompt": "Minimal abstract pixel universe cover with generous negative space, no text, no logos, no faces. Quiet spatial form inspired by A practical way into TouchDesigner's GPU-native POPs and audiovisual techniques, real time graphics, touchdesigner.",
+  "provider": "openai-imagegen",
+  "model": "builtin-imagegen",
+  "width": 1122,
+  "height": 1402,
+  "is_fallback": false,
+  "generated_at": "2026-07-16T06:27:05Z"
+}

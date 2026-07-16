@@ -6,14 +6,15 @@ The repository already includes a source-verified first edition with 10 stories,
 
 ## What is included
 
-- Native SwiftUI app with Today, Library, Topics, and Settings
+- Native SwiftUI app with Today, Explore, Library, Topics, and Settings
 - Offline SwiftData cache for editions, saved state, feedback, topics, and queued writes
 - Configurable VPS URL and a device secret stored in the iOS Keychain
 - SQLite migrations and a repeatable first-edition seed
 - Private HTTP API for editions, topics, feedback, and deep dives
-- Resumable Nightjar stages for collection, normalization, deduplication, ranking, enrichment, and publishing
+- Fresh, isolated Nightjar app-server thread with web research and image generation
+- Deterministic validation, materialization, and an ETL-only fallback
 - Live collectors for arXiv, Ars Electronica, Google DeepMind, and Berlin.de events
-- Optional local `codex exec` enrichment with stored prompt and model provenance
+- Stored research, cover, prompt, model, result, and protocol provenance
 - Locked, bounded systemd scheduling with preflight and inspectable run artifacts
 - GitHub Actions checks for the Python stack and signing-free iOS build, tests, smoke launch, and screenshots
 
@@ -23,19 +24,19 @@ The repository already includes a source-verified first edition with 10 stories,
 live sources
     |
     v
-Nightjar: collect -> normalize -> deduplicate -> rank -> enrich -> validate
-    |                                                           |
-    |                                                           v
-feedback + topics ------------------------------------------> SQLite
-                                                                |
-                                                                v
-                                                      prepared JSON API
-                                                                |
-                                                                v
-                                                    SwiftData offline app
+Nightjar agent: preferences + feedback -> web research -> Markdown + covers
+                                                        |
+                                                        v
+                                         deterministic validation
+                                                        |
+                                                        v
+                                      SQLite relations and prepared JSON
+                                                        |
+                                                        v
+                                             SwiftData offline app
 ```
 
-SQLite is the source of truth. The read path never invokes a model. A nightly failure leaves the previous good edition current.
+Markdown owns editable content. SQLite owns relations, feedback, deduplication, and job state. The read path never invokes a model, and a failed Nightjar run restores the previous good content.
 
 ## Start the VPS service
 
@@ -89,19 +90,19 @@ journalctl --user -u verse-server.service -u verse-nightjar.service -n 100
 find runs/_nightjar -name result.json -print | sort | tail -1
 ```
 
-Run an edition manually without model enrichment:
+Run the same fresh-agent path manually:
 
 ```bash
-python3 -m etl nightly --date "$(date -u +%F)"
+scripts/scheduled-nightjar
 ```
 
-Run the normal agent-enriched path:
+For an explicit deterministic fallback with no model or web research:
 
 ```bash
-python3 -m etl nightly --date "$(date -u +%F)" --agent
+VERSE_NIGHTJAR_MODE=etl scripts/scheduled-nightjar
 ```
 
-`VERSE_AGENT_COMMAND` can replace the default `codex exec` boundary. It must write one JSON response to the `{output}` placeholder. Prompt versions live in [prompts](prompts), and model protocol artifacts live under the ignored `runs` directory.
+The default `VERSE_NIGHTJAR_MODE=agent` starts a fresh Codex app-server thread in an isolated copy of `content/`. Its shell writes are sandboxed to that workspace while web and image tools remain available. The agent cannot publish directly. Verse validates the Markdown, citations, edition size, events, and cover provenance, creates deterministic cover fallbacks when needed, atomically swaps content, and then materializes SQLite and transport JSON. Prompt, result, assistant, and protocol artifacts stay under the ignored `runs/_nightjar` directory. Set `VERSE_AGENT_MODEL` only when a specific installed model is required.
 
 ## Run the iOS app
 

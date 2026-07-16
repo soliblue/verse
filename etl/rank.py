@@ -4,6 +4,8 @@ import re
 import sqlite3
 from datetime import date, datetime
 
+from db.explore import event_ranking_profile
+
 
 EXCLUSION_NOISE_WORDS = {"and", "content", "exclude", "only"}
 
@@ -54,6 +56,7 @@ def rank_stage(connection: sqlite3.Connection, run_id: str, selection_limit: int
     ).fetchall()
     run_date = date.fromisoformat(connection.execute("SELECT edition_date FROM etl_runs WHERE id = ?", (run_id,)).fetchone()[0])
     signals = feedback_signals(connection)
+    event_profile = event_ranking_profile(connection)
     scored = []
     for row in candidates:
         raw = json.loads(row["raw_json"])
@@ -84,6 +87,16 @@ def rank_stage(connection: sqlite3.Connection, run_id: str, selection_limit: int
                     None: 0.0,
                 }[preference]
                 feedback += weight * 0.15 if saved else 0.0
+        event_feedback = 0.0
+        for category, score in event_profile["categories"].items():
+            terms = searchable_words(category.replace("-", " "))
+            if terms and terms <= words:
+                event_feedback += score * 0.08
+        for venue, score in event_profile["venues"].items():
+            terms = searchable_words(venue.replace("-", " "))
+            if terms and terms <= words:
+                event_feedback += score * 0.08
+        feedback += max(-0.75, min(0.75, event_feedback))
         feedback = max(-2.0, min(2.0, feedback))
         total = source_quality * 2.0 + interest + novelty + feedback
         if row["duplicate_of"] is not None or is_excluded:
@@ -92,19 +105,39 @@ def rank_stage(connection: sqlite3.Connection, run_id: str, selection_limit: int
             f"source {source_quality:.2f}, interests {interest:.2f}, novelty {novelty:.2f}, "
             f"feedback {feedback:.2f}, excluded {str(is_excluded).lower()}"
         )
-        scored.append((total, row["normalized_item_id"], row["source_name"], source_quality, interest, novelty, feedback, rationale))
+        scored.append(
+            (
+                total,
+                row["normalized_item_id"],
+                row["source_name"],
+                source_quality,
+                interest,
+                novelty,
+                feedback,
+                rationale,
+                "berlin-events" in declared_topics,
+            )
+        )
     ranked = sorted(scored, key=lambda item: (-item[0], item[1]))
     selected_ids = set()
     source_counts: dict[str, int] = {}
+    event_count = 0
     for item in ranked:
-        if math.isfinite(item[0]) and source_counts.get(item[2], 0) < 4 and len(selected_ids) < selection_limit:
+        if (
+            math.isfinite(item[0])
+            and source_counts.get(item[2], 0) < 4
+            and len(selected_ids) < selection_limit
+            and (not item[8] or event_count < 2)
+        ):
             selected_ids.add(item[1])
             source_counts[item[2]] = source_counts.get(item[2], 0) + 1
+            event_count += int(item[8])
     for item in ranked:
-        if math.isfinite(item[0]) and len(selected_ids) < selection_limit:
+        if math.isfinite(item[0]) and len(selected_ids) < selection_limit and (not item[8] or event_count < 2):
             selected_ids.add(item[1])
+            event_count += int(item[8])
     with connection:
-        for total, identifier, _, source_quality, interest, novelty, feedback, rationale in scored:
+        for total, identifier, _, source_quality, interest, novelty, feedback, rationale, _ in scored:
             connection.execute(
                 "UPDATE run_candidates SET source_quality = ?, interest_score = ?, novelty_score = ?, feedback_score = ?, total_score = ?, selected = ?, rationale = ? WHERE run_id = ? AND normalized_item_id = ?",
                 (

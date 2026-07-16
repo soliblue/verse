@@ -1,6 +1,8 @@
 import hashlib
 import hmac
 import json
+import mimetypes
+import re
 import sqlite3
 from collections.abc import Callable
 from http import HTTPStatus
@@ -8,15 +10,22 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import unquote, urlsplit
 
 from db.connection import database, json_text, transaction, utc_now
+from db.content import hydrate_cover_urls
 from db.repository import (
     current_edition,
+    current_explore,
     edition,
     edition_summaries,
     queue_deep_dive,
+    record_event_feedback,
     record_feedback,
+    record_venue_feedback,
+    related_stories,
     replace_topics,
     topics,
+    watched_venues,
 )
+from etl.content import write_preferences
 from server.config import APIError, ServerConfig
 
 
@@ -65,6 +74,12 @@ class VerseHandler(BaseHTTPRequestHandler):
 
     def handle_request(self, method: str) -> None:
         try:
+            path = urlsplit(self.path).path
+            if path.startswith("/v1/assets/"):
+                self.require_method(method, "GET")
+                self.authorize()
+                self.send_asset(path)
+                return
             status, payload = self.dispatch(method)
             self.send_json(status, payload)
         except APIError as error:
@@ -94,6 +109,8 @@ class VerseHandler(BaseHTTPRequestHandler):
             self.require_method(method, "GET")
             with database(self.server.config.database_path, readonly=True) as connection:
                 payload = current_edition(connection)
+                if payload is not None:
+                    payload = hydrate_cover_urls(connection, payload, self.server.config.public_base_url)
             if payload is None:
                 raise APIError(HTTPStatus.NOT_FOUND, "edition_not_found", "no current edition is available")
             return HTTPStatus.OK, payload
@@ -108,6 +125,8 @@ class VerseHandler(BaseHTTPRequestHandler):
                 raise APIError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
             with database(self.server.config.database_path, readonly=True) as connection:
                 payload = edition(connection, edition_id)
+                if payload is not None:
+                    payload = hydrate_cover_urls(connection, payload, self.server.config.public_base_url)
             if payload is None:
                 raise APIError(HTTPStatus.NOT_FOUND, "edition_not_found", "edition not found")
             return HTTPStatus.OK, payload
@@ -116,9 +135,51 @@ class VerseHandler(BaseHTTPRequestHandler):
                 with database(self.server.config.database_path, readonly=True) as connection:
                     return HTTPStatus.OK, topics(connection)
             if method == "PUT":
+                request = self.read_json_object()
+                write_preferences(self.server.config.content_path / "preferences.md", request)
                 with database(self.server.config.database_path) as connection:
-                    return HTTPStatus.OK, replace_topics(connection, self.read_json_object())
+                    return HTTPStatus.OK, replace_topics(connection, request)
             self.require_method(method, "GET", "PUT")
+        if path == "/v1/explore":
+            self.require_method(method, "GET")
+            with database(self.server.config.database_path, readonly=True) as connection:
+                payload = current_explore(connection)
+            if payload is None:
+                raise APIError(HTTPStatus.NOT_FOUND, "explore_not_found", "no current Explore snapshot is available")
+            return HTTPStatus.OK, payload
+        if path == "/v1/venues":
+            self.require_method(method, "GET")
+            with database(self.server.config.database_path, readonly=True) as connection:
+                return HTTPStatus.OK, watched_venues(connection)
+        if path == "/v1/venue-feedback":
+            self.require_method(method, "POST")
+            request = self.read_json_object()
+            venue_id = request.get("venue_id")
+            if not isinstance(venue_id, str) or not venue_id or len(venue_id) > 200:
+                raise ValueError("venue_id must be a non-empty string")
+            with database(self.server.config.database_path) as connection:
+                return self.idempotent_write(
+                    connection,
+                    path,
+                    request,
+                    HTTPStatus.OK,
+                    lambda: {
+                        "venue_id": venue_id,
+                        **record_venue_feedback(
+                            connection,
+                            venue_id,
+                            request.get("kind"),
+                            request.get("value"),
+                        ),
+                    },
+                )
+        if path.startswith("/v1/stories/") and path.endswith("/related"):
+            self.require_method(method, "GET")
+            story_id = unquote(path.removeprefix("/v1/stories/").removesuffix("/related"))
+            if not story_id or "/" in story_id or len(story_id) > 200:
+                raise APIError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
+            with database(self.server.config.database_path, readonly=True) as connection:
+                return HTTPStatus.OK, related_stories(connection, story_id)
         if path == "/v1/feedback":
             self.require_method(method, "POST")
             request = self.read_json_object()
@@ -151,6 +212,35 @@ class VerseHandler(BaseHTTPRequestHandler):
                     request,
                     HTTPStatus.ACCEPTED,
                     lambda: {"story_id": story_id, "deep_dive": queue_deep_dive(connection, story_id)},
+                )
+        if path == "/v1/event-feedback":
+            self.require_method(method, "POST")
+            request = self.read_json_object()
+            event_id = request.get("event_id")
+            occurrence_id = request.get("occurrence_id")
+            if not isinstance(event_id, str) or not event_id or len(event_id) > 200:
+                raise ValueError("event_id must be a non-empty string")
+            if occurrence_id is not None and (
+                not isinstance(occurrence_id, str) or not occurrence_id or len(occurrence_id) > 200
+            ):
+                raise ValueError("occurrence_id must be a non-empty string when supplied")
+            with database(self.server.config.database_path) as connection:
+                return self.idempotent_write(
+                    connection,
+                    path,
+                    request,
+                    HTTPStatus.OK,
+                    lambda: {
+                        "event_id": event_id,
+                        "occurrence_id": occurrence_id,
+                        "feedback": record_event_feedback(
+                            connection,
+                            event_id,
+                            occurrence_id,
+                            request.get("kind"),
+                            request.get("value"),
+                        ),
+                    },
                 )
         raise APIError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
 
@@ -238,6 +328,36 @@ class VerseHandler(BaseHTTPRequestHandler):
             connection.execute("SELECT 1").fetchone()
             row = connection.execute("SELECT value FROM settings WHERE key = 'current_edition_id'").fetchone()
         return {"status": "ok", "database": "ok", "current_edition_id": None if row is None else row["value"]}
+
+    def send_asset(self, request_path: str) -> None:
+        relative = unquote(request_path.removeprefix("/v1/assets/"))
+        parts = relative.split("/")
+        if (
+            len(parts) != 3
+            or parts[1] != "assets"
+            or any(not part or part in {".", ".."} or "\\" in part for part in parts)
+            or not re.fullmatch(r"[a-zA-Z0-9._-]+", parts[0])
+            or not re.fullmatch(r"[a-zA-Z0-9._-]+\.(?:png|jpe?g|webp)", parts[2], re.IGNORECASE)
+        ):
+            raise APIError(HTTPStatus.NOT_FOUND, "asset_not_found", "asset not found")
+        root = self.server.config.content_path.resolve()
+        path = (root / "editions" / parts[0] / "assets" / parts[2]).resolve()
+        if root not in path.parents or not path.is_file():
+            raise APIError(HTTPStatus.NOT_FOUND, "asset_not_found", "asset not found")
+        size = path.stat().st_size
+        if size > self.server.config.maximum_asset_bytes:
+            raise APIError(HTTPStatus.REQUEST_ENTITY_TOO_LARGE, "asset_too_large", "asset is too large")
+        media_type = mimetypes.guess_type(path.name)[0]
+        if media_type not in {"image/png", "image/jpeg", "image/webp"}:
+            raise APIError(HTTPStatus.NOT_FOUND, "asset_not_found", "asset not found")
+        body = path.read_bytes()
+        self.send_response(HTTPStatus.OK)
+        self.send_header("Content-Type", media_type)
+        self.send_header("Content-Length", str(len(body)))
+        self.send_header("Cache-Control", "private, max-age=86400, immutable")
+        self.send_header("X-Content-Type-Options", "nosniff")
+        self.end_headers()
+        self.wfile.write(body)
 
     def send_error_payload(self, status: int, code: str, message: str) -> None:
         self.close_connection = True

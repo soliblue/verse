@@ -41,8 +41,15 @@ fi
 command -v flock
 command -v timeout
 
-if [[ "${VERSE_NIGHTJAR_AGENT:-1}" == "1" ]]; then
+MODE="${VERSE_NIGHTJAR_MODE:-agent}"
+printf 'mode=%s\n' "$MODE"
+if [[ "$MODE" == "agent" ]]; then
   command -v codex
+  test -f "$ROOT/prompts/nightjar-refresh.md"
+  test -f "$ROOT/scripts/codex_app_thread.py"
+elif [[ "$MODE" != "etl" ]]; then
+  printf 'invalid_nightjar_mode=%s\n' "$MODE"
+  exit 1
 fi
 
 python3 - <<'PY'

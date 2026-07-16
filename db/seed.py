@@ -8,6 +8,7 @@ from db.connection import utc_now
 from db.environment import load_environment
 from db.migrations import migrate
 from db.repository import publish_edition, replace_topics
+from etl.content import content_root, load_edition, parse_preferences
 
 
 def parse_args() -> argparse.Namespace:
@@ -17,6 +18,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--skip-edition", action="store_true")
     parser.add_argument("--skip-topics", action="store_true")
     parser.add_argument("--replace-existing", action="store_true")
+    parser.add_argument("--content-root", type=Path, default=content_root())
     return parser.parse_args()
 
 
@@ -72,10 +74,18 @@ def main() -> int:
     args = parse_args()
     connection = connect()
     migrate(connection)
+    edition_payload = load(args.edition)
+    topics_payload = load(args.topics)
+    markdown_editions = sorted((args.content_root / "editions").glob("*/edition.md"))
+    markdown_preferences = args.content_root / "preferences.md"
+    if markdown_editions:
+        edition_payload = load_edition(markdown_editions[-1], os.environ.get("VERSE_PUBLIC_BASE_URL") or None)[0]
+    if markdown_preferences.is_file():
+        topics_payload = parse_preferences(markdown_preferences)
     status = seed_database(
         connection,
-        load(args.edition),
-        load(args.topics),
+        edition_payload,
+        topics_payload,
         args.skip_edition,
         args.skip_topics,
         args.replace_existing,

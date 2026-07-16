@@ -21,6 +21,8 @@
 	</dict>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>Verse connects to your private reader service to refresh editions and sync feedback.</string>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Verse uses calendar access only to add events you choose, prevent duplicates, and show changes to those events.</string>
 	<key>UIAppFonts</key>
 	<array>
 		<string>Fraunces-Regular.ttf</string>
