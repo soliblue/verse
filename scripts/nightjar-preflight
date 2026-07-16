@@ -47,6 +47,15 @@ if [[ "$MODE" == "agent" ]]; then
   command -v codex
   test -f "$ROOT/prompts/nightjar-refresh.md"
   test -f "$ROOT/scripts/codex_app_thread.py"
+  AGENT_RUNTIME="${VERSE_AGENT_RUNTIME:-container}"
+  printf 'agent_runtime=%s\n' "$AGENT_RUNTIME"
+  if [[ "$AGENT_RUNTIME" == "container" ]]; then
+    command -v docker
+    sudo -n docker image inspect "${VERSE_AGENT_CONTAINER_IMAGE:-verse-nightjar-codex:0.144.1}" >/dev/null
+  elif [[ "$AGENT_RUNTIME" != "local" ]]; then
+    printf 'invalid_agent_runtime=%s\n' "$AGENT_RUNTIME"
+    exit 1
+  fi
 elif [[ "$MODE" != "etl" ]]; then
   printf 'invalid_nightjar_mode=%s\n' "$MODE"
   exit 1

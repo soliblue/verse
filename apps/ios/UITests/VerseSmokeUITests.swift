@@ -85,6 +85,7 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(event.waitForExistence(timeout: 5))
         event.tap()
         XCTAssertTrue(app.descendants(matching: .any)["event-detail"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Add to Calendar"].waitForExistence(timeout: 5))
         app.navigationBars.buttons["Explore"].tap()
 
         app.buttons["Calendar"].tap()

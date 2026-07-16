@@ -26,6 +26,7 @@ EVENT_FEEDBACK_KINDS = {
     "more_from_venue",
     "more_like_this",
 }
+ATTENDED_HISTORY_LIMIT = 12
 
 
 def private_anchor() -> tuple[float, float] | None:
@@ -287,6 +288,16 @@ def validate_explore(payload: object) -> dict:
         validate_event(item, f"explore.featured_events[{index}]")
         if item["occurrence"]["state"] in {"ended", "cancelled", "unknown"}:
             raise ValueError("ended, cancelled, or unknown events cannot be featured")
+    attended = payload.get("attended_events", [])
+    if not isinstance(attended, list) or len(attended) > ATTENDED_HISTORY_LIMIT:
+        raise ValueError(f"explore.attended_events must contain at most {ATTENDED_HISTORY_LIMIT} events")
+    for index, item in enumerate(attended):
+        validate_event(item, f"explore.attended_events[{index}]")
+        if item["occurrence"]["state"] != "ended":
+            raise ValueError("attended history must contain only ended events")
+    attended_occurrence_ids = [item["occurrence"]["id"] for item in attended]
+    if len(attended_occurrence_ids) != len(set(attended_occurrence_ids)):
+        raise ValueError("attended history occurrences must be unique")
     events = payload.get("events")
     if events is not None:
         if not isinstance(events, list):
@@ -362,12 +373,21 @@ def build_explore(
     for item in items:
         item["rank_score"] += sum(ranking_profile.get("categories", {}).get(value, 0) for value in item["categories"])
         item["rank_score"] += ranking_profile.get("venues", {}).get(item["venue"]["id"], 0)
+    previous_occurrences = set()
+    previous_series = set()
+    for snapshot in ranking_profile.get("featured_history", []):
+        snapshot_start = date.fromisoformat(snapshot["horizon_start"])
+        snapshot_end = date.fromisoformat(snapshot["horizon_end"])
+        if snapshot_start < horizon_start <= snapshot_end:
+            previous_occurrences.update(snapshot.get("occurrence_ids", []))
+            previous_series.update(snapshot.get("series_keys", []))
+    for item in items + archived:
+        item["occurrence"]["state"] = current_state(item["occurrence"], now)
     active = []
     calendar = []
     calendar_events = []
     for item in items:
         occurrence = item["occurrence"]
-        occurrence["state"] = current_state(occurrence, now)
         start_date = datetime.fromisoformat(occurrence["start_at"]).astimezone(BERLIN).date()
         if not item["verified"] or not horizon_start <= start_date <= horizon_end:
             continue
@@ -382,10 +402,26 @@ def build_explore(
         series_key = item["series_id"] or item["id"]
         if series_key in series:
             continue
+        occurrence = item["occurrence"]
+        if occurrence["novelty"] not in {"meaningful_update", "final_chance"} and (
+            occurrence["id"] in previous_occurrences or series_key in previous_series
+        ):
+            continue
         series.add(series_key)
         featured.append(transport_event(item))
         if len(featured) == 12:
             break
+    attended_occurrence_ids = set(ranking_profile.get("attended_occurrence_ids", []))
+    attended_by_occurrence = {
+        item["occurrence"]["id"]: transport_event(item)
+        for item in items + archived
+        if item["occurrence"]["id"] in attended_occurrence_ids and item["occurrence"]["state"] == "ended"
+    }
+    attended = sorted(
+        attended_by_occurrence.values(),
+        key=lambda item: (datetime.fromisoformat(item["occurrence"]["start_at"]), item["occurrence"]["id"]),
+        reverse=True,
+    )[:ATTENDED_HISTORY_LIMIT]
     for venue in venue_values:
         next_event = next(
             (item["occurrence"]["id"] for item in active if item["venue"]["id"] == venue["id"]),
@@ -399,6 +435,7 @@ def build_explore(
         "horizon_start": horizon_start.isoformat(),
         "horizon_end": horizon_end.isoformat(),
         "featured_events": featured,
+        "attended_events": attended,
         "events": sorted(calendar_events, key=lambda item: (item["occurrence"]["start_at"], item["occurrence"]["id"])),
         "venues": [venue for venue in venue_values if venue["watch_state"] not in {"muted", "archived"}],
         "calendar": sorted(calendar, key=lambda item: (item["start_at"], item["id"])),

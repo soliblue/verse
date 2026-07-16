@@ -5,11 +5,12 @@ struct ExplorePayload: Codable, Hashable, Identifiable {
     let horizonStart: String
     let horizonEnd: String
     let featuredEvents: [EventItem]
+    let attendedEvents: [EventItem]?
     let events: [EventItem]
     let venues: [Venue]
     let calendar: [EventOccurrence]
 
-    var allEvents: [EventItem] { events }
+    var allEvents: [EventItem] { events + (attendedEvents ?? []) }
 
     enum CodingKeys: String, CodingKey {
         case id
@@ -18,6 +19,7 @@ struct ExplorePayload: Codable, Hashable, Identifiable {
         case horizonStart = "horizon_start"
         case horizonEnd = "horizon_end"
         case featuredEvents = "featured_events"
+        case attendedEvents = "attended_events"
         case events
         case venues
         case calendar

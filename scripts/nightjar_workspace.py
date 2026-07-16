@@ -236,6 +236,8 @@ def validate_workspace(root: Path, workspace: Path, run_date: str) -> dict:
         raise ValueError("target edition identity does not match its run date")
     if not 8 <= len(payload["items"]) <= 12:
         raise ValueError("target edition must contain 8 to 12 stories")
+    if sum(item["kind"] == "event" for item in payload["items"]) > 2:
+        raise ValueError("target edition must contain at most two event stories")
     for item in payload["items"]:
         urls = [item["source_url"], *(citation["url"] for citation in item["citations"])]
         if any(not value.startswith("https://") for value in urls):

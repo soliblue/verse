@@ -24,7 +24,8 @@ final class CalendarRepository {
         links.state(
             occurrenceID: item.occurrence.id,
             fingerprint: fingerprint(for: item),
-            isCancelled: item.occurrence.state == .cancelled
+            isCancelled: item.occurrence.state == .cancelled,
+            isEnded: item.occurrence.state == .ended
         )
     }
 

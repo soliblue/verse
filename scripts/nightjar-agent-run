@@ -12,11 +12,15 @@ PROTOCOL_LOG="$RUN_DIR/agent-protocol.jsonl"
 BACKUP="$ROOT/.content-nightjar-${RUN_ID//[^a-zA-Z0-9._-]/-}-${RUN_DIR##*/}.backup"
 DATABASE="${VERSE_DB_PATH:-db/verse.sqlite}"
 DATABASE_BACKUP="$RUN_DIR/database.previous.sqlite"
+AGENT_CODEX_HOME=""
 PUBLISHED=0
 DATABASE_BACKED_UP=0
 
 rollback() {
   status=$?
+  if [[ -n "$AGENT_CODEX_HOME" ]]; then
+    rm -rf "$AGENT_CODEX_HOME"
+  fi
   if [[ "$DATABASE_BACKED_UP" == "1" && -f "$DATABASE_BACKUP" ]]; then
     python3 -m scripts.nightjar_workspace restore-database --database "$DATABASE" --backup "$DATABASE_BACKUP"
   fi
@@ -35,6 +39,12 @@ python3 -m scripts.nightjar_workspace prepare \
   --workspace "$WORKSPACE" \
   --database "$DATABASE"
 
+AGENT_RUNTIME="${VERSE_AGENT_RUNTIME:-container}"
+AGENT_SANDBOX="${VERSE_AGENT_SANDBOX:-workspace-write}"
+if [[ "$AGENT_RUNTIME" == "container" ]]; then
+  AGENT_SANDBOX="danger-full-access"
+fi
+
 AGENT_ARGS=(
   python3 "$ROOT/scripts/codex_app_thread.py"
   --cwd "$WORKSPACE"
@@ -45,8 +55,25 @@ AGENT_ARGS=(
   --protocol-log "$PROTOCOL_LOG"
   --timeout-seconds "${VERSE_AGENT_TIMEOUT_SECONDS:-10800}"
   --effort "${VERSE_AGENT_EFFORT:-high}"
-  --sandbox "${VERSE_AGENT_SANDBOX:-danger-full-access}"
+  --sandbox "$AGENT_SANDBOX"
 )
+
+if [[ "$AGENT_RUNTIME" == "container" ]]; then
+  CREDENTIAL_ROOT="${XDG_RUNTIME_DIR:-$RUN_DIR}"
+  find "$CREDENTIAL_ROOT" -maxdepth 1 -type d -name 'verse-nightjar-codex.*' -exec rm -rf {} +
+  AGENT_CODEX_HOME="$(mktemp -d "$CREDENTIAL_ROOT/verse-nightjar-codex.XXXXXX")"
+  install -m 600 "${CODEX_HOME:-$HOME/.codex}/auth.json" "$AGENT_CODEX_HOME/auth.json"
+  export VERSE_AGENT_WORKSPACE="$WORKSPACE"
+  export VERSE_AGENT_CODEX_HOME="$AGENT_CODEX_HOME"
+  export VERSE_AGENT_CONTAINER_IMAGE="${VERSE_AGENT_CONTAINER_IMAGE:-verse-nightjar-codex:0.144.1}"
+  AGENT_ARGS+=(
+    --runtime-cwd /workspace
+    --app-server-executable "$ROOT/scripts/nightjar-codex-container"
+  )
+elif [[ "$AGENT_RUNTIME" != "local" ]]; then
+  printf 'invalid_agent_runtime=%s\n' "$AGENT_RUNTIME"
+  exit 1
+fi
 
 if [[ -n "${VERSE_AGENT_MODEL:-}" ]]; then
   AGENT_ARGS+=(--model "$VERSE_AGENT_MODEL")
@@ -54,6 +81,10 @@ fi
 
 printf 'phase=agent\n'
 "${AGENT_ARGS[@]}"
+if [[ -n "$AGENT_CODEX_HOME" ]]; then
+  rm -rf "$AGENT_CODEX_HOME"
+  AGENT_CODEX_HOME=""
+fi
 
 printf 'phase=stamp_provenance\n'
 python3 -m scripts.nightjar_workspace stamp-provenance \

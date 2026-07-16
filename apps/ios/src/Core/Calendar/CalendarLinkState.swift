@@ -3,6 +3,7 @@ enum CalendarLinkState: Equatable {
     case linked
     case updated
     case cancelled
+    case ended
 
     var title: String {
         switch self {
@@ -10,6 +11,7 @@ enum CalendarLinkState: Equatable {
         case .linked: "View in Calendar"
         case .updated: "Event updated"
         case .cancelled: "Event cancelled"
+        case .ended: "Event ended"
         }
     }
 
@@ -19,6 +21,7 @@ enum CalendarLinkState: Equatable {
         case .linked: "calendar"
         case .updated: "calendar.badge.exclamationmark"
         case .cancelled: "exclamationmark.triangle"
+        case .ended: "clock"
         }
     }
 }

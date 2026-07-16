@@ -6,7 +6,12 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.codex_app_thread import agent_environment, sandbox_policy, should_wait_for_retry
+from scripts.codex_app_thread import (
+    agent_environment,
+    completed_after_idle,
+    sandbox_policy,
+    should_wait_for_retry,
+)
 from scripts.nightjar_workspace import (
     backup_database,
     prepare_workspace,
@@ -16,13 +21,18 @@ from scripts.nightjar_workspace import (
     stamp_agent_provenance,
     validate_workspace,
 )
-from etl.content import parse_document
+from etl.content import parse_document, render_document
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class NightjarAgentTests(unittest.TestCase):
+    def set_story_kind(self, path: Path, kind: str) -> None:
+        metadata, body = parse_document(path)
+        metadata["kind"] = kind
+        path.write_text(render_document(metadata, body), encoding="utf-8")
+
     def test_agent_environment_excludes_server_secrets(self):
         with patch.dict(
             os.environ,
@@ -43,6 +53,22 @@ class NightjarAgentTests(unittest.TestCase):
         )
         self.assertTrue(should_wait_for_retry({"willRetry": True}))
         self.assertFalse(should_wait_for_retry({"willRetry": False}))
+        self.assertTrue(
+            completed_after_idle(
+                "thread/status/changed",
+                {"threadId": "thread", "status": {"type": "idle"}},
+                "thread",
+                True,
+            )
+        )
+        self.assertFalse(
+            completed_after_idle(
+                "thread/status/changed",
+                {"threadId": "thread", "status": {"type": "idle"}},
+                "thread",
+                False,
+            )
+        )
 
     def test_agent_model_identity_is_stamped_from_protocol(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -77,12 +103,33 @@ class NightjarAgentTests(unittest.TestCase):
             shutil.copytree(ROOT / "content", root / "content")
             workspace = Path(directory) / "workspace"
             prepare_workspace(root, workspace, None)
+            event_paths = []
+            for path in sorted((workspace / "content/editions/2026-07-12").glob("*.md")):
+                metadata, _ = parse_document(path)
+                if metadata.get("kind") == "event":
+                    event_paths.append(path)
+            for path in event_paths[2:]:
+                self.set_story_kind(path, "technique")
 
             result = validate_workspace(root, workspace, "2026-07-12")
 
             self.assertEqual(result["stories"], 10)
             self.assertGreater(result["citations"], 10)
             self.assertTrue((workspace / "content/explore/current.json").is_file())
+
+    def test_agent_edition_rejects_more_than_two_event_stories(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "verse"
+            root.mkdir()
+            shutil.copytree(ROOT / "content", root / "content")
+            workspace = Path(directory) / "workspace"
+            prepare_workspace(root, workspace, None)
+            story_paths = sorted((workspace / "content/editions/2026-07-12").glob("[0-9][0-9]-*.md"))
+            for path in story_paths[:3]:
+                self.set_story_kind(path, "event")
+
+            with self.assertRaisesRegex(ValueError, "at most two event stories"):
+                validate_workspace(root, workspace, "2026-07-12")
 
     def test_publish_can_restore_the_previous_content(self):
         with tempfile.TemporaryDirectory() as directory:

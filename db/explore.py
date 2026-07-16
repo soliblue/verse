@@ -11,13 +11,20 @@ EMPTY_VENUE_FEEDBACK = {"more_from_here": False, "muted": False, "updated_at": N
 
 
 def publish_explore(connection: sqlite3.Connection, payload: dict, source_events: list[dict] | None = None) -> dict:
+    payload = {**payload, "attended_events": payload.get("attended_events", [])}
     validate_explore(payload)
     now = utc_now()
-    events = [
-        item
-        for item in (source_events or payload.get("events") or payload["featured_events"])
-        if item.get("verified", True) or item.get("historical", False)
-    ]
+    payload_events = payload.get("events")
+    if payload_events is None:
+        payload_events = payload["featured_events"]
+    candidates = source_events or [*payload_events, *payload["attended_events"]]
+    events = list(
+        {
+            item["occurrence"]["id"]: item
+            for item in candidates
+            if item.get("verified", True) or item.get("historical", False)
+        }.values()
+    )
     venue_values = {venue["id"]: venue for venue in payload["venues"]}
     venue_values.update({item["venue"]["id"]: item["venue"] for item in events})
     with transaction(connection, immediate=True):
@@ -124,7 +131,11 @@ def current_explore(connection: sqlite3.Connection) -> dict | None:
         "SELECT s.payload_json FROM explore_snapshots s JOIN explore_settings c "
         "ON c.key = 'current_snapshot_id' AND c.value = s.id"
     ).fetchone()
-    return None if row is None else json.loads(row["payload_json"])
+    if row is None:
+        return None
+    payload = json.loads(row["payload_json"])
+    payload.setdefault("attended_events", [])
+    return payload
 
 
 def watched_venues(connection: sqlite3.Connection) -> dict:
@@ -199,7 +210,7 @@ def materialize_venue_state(connection: sqlite3.Connection, venue: dict) -> None
         if venue["watch_state"] in {"muted", "archived"}
         else sorted(venues, key=lambda value: (value["name"].casefold(), value["id"]))
     )
-    for key in ("featured_events", "events"):
+    for key in ("featured_events", "events", "attended_events"):
         if key not in payload:
             continue
         values = payload[key]
@@ -327,4 +338,31 @@ def event_ranking_profile(connection: sqlite3.Connection) -> dict:
         venue_scores[row["venue_id"]] = venue_scores.get(row["venue_id"], 0) + (
             -4 if row["muted"] else 2 if row["more_from_here"] else 0
         )
-    return {"categories": category_scores, "venues": venue_scores, "watch_states": watch_states}
+    attended_occurrence_ids = sorted(
+        row["occurrence_id"]
+        for row in connection.execute(
+            "SELECT occurrence_id, signals_json FROM event_feedback_state WHERE occurrence_id IS NOT NULL"
+        )
+        if json.loads(row["signals_json"]).get("attended") is True
+    )
+    featured_history = []
+    for row in connection.execute(
+        "SELECT horizon_start, horizon_end, payload_json FROM explore_snapshots ORDER BY horizon_start DESC"
+    ):
+        payload = json.loads(row["payload_json"])
+        featured = payload.get("featured_events", [])
+        featured_history.append(
+            {
+                "horizon_start": row["horizon_start"],
+                "horizon_end": row["horizon_end"],
+                "occurrence_ids": sorted({item["occurrence"]["id"] for item in featured}),
+                "series_keys": sorted({item.get("series_id") or item["id"] for item in featured}),
+            }
+        )
+    return {
+        "categories": category_scores,
+        "venues": venue_scores,
+        "watch_states": watch_states,
+        "attended_occurrence_ids": attended_occurrence_ids,
+        "featured_history": featured_history,
+    }

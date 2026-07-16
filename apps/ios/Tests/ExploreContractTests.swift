@@ -10,6 +10,7 @@ final class ExploreContractTests: XCTestCase {
 
         XCTAssertEqual(payload.timezone, "Europe/Berlin")
         XCTAssertLessThanOrEqual(payload.featuredEvents.count, 12)
+        XCTAssertLessThanOrEqual(payload.attendedEvents?.count ?? 0, 12)
         XCTAssertFalse(payload.featuredEvents.isEmpty)
         XCTAssertEqual(
             Set(payload.featuredEvents.map(\.id)).count,
@@ -42,6 +43,28 @@ final class ExploreContractTests: XCTestCase {
         let edition = try JSONDecoder().decode(EditionPayload.self, from: Data(contentsOf: url))
 
         XCTAssertTrue(edition.items.allSatisfy { $0.relatedEventIDs == nil })
+    }
+
+    func testAttendedHistoryDecodesAndRemainsPartOfEventLookup() throws {
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "first-explore", withExtension: "json"))
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        )
+        var events = try XCTUnwrap(object["events"] as? [[String: Any]])
+        var attended = events.removeFirst()
+        var occurrence = try XCTUnwrap(attended["occurrence"] as? [String: Any])
+        occurrence["state"] = "ended"
+        attended["occurrence"] = occurrence
+        object["events"] = events
+        object["attended_events"] = [attended]
+
+        let payload = try JSONDecoder().decode(
+            ExplorePayload.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertEqual(payload.attendedEvents?.count, 1)
+        XCTAssertTrue(payload.allEvents.contains { $0.occurrence.id == occurrence["id"] as? String })
     }
 
     func testStoryDecodesRelatedEventIdentifiers() throws {
@@ -89,5 +112,38 @@ final class ExploreContractTests: XCTestCase {
         )
 
         XCTAssertEqual(venue.distanceLabel, "Short Ride")
+    }
+
+    func testSoldOutAndCancelledOccurrencesAreNeverAttendable() throws {
+        let url = try XCTUnwrap(Bundle.main.url(forResource: "first-explore", withExtension: "json"))
+        var object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: Data(contentsOf: url)) as? [String: Any]
+        )
+        var events = try XCTUnwrap(object["events"] as? [[String: Any]])
+        var occurrence = try XCTUnwrap(events[0]["occurrence"] as? [String: Any])
+        occurrence["sold_out"] = true
+        events[0]["occurrence"] = occurrence
+        object["events"] = events
+        var payload = try JSONDecoder().decode(
+            ExplorePayload.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertEqual(payload.events[0].occurrence.bookingLabel, "Sold out")
+        XCTAssertFalse(payload.events[0].occurrence.isAttendable(at: .distantPast))
+
+        events = try XCTUnwrap(object["events"] as? [[String: Any]])
+        occurrence = try XCTUnwrap(events[0]["occurrence"] as? [String: Any])
+        occurrence["sold_out"] = false
+        occurrence["state"] = "cancelled"
+        events[0]["occurrence"] = occurrence
+        object["events"] = events
+        payload = try JSONDecoder().decode(
+            ExplorePayload.self,
+            from: JSONSerialization.data(withJSONObject: object)
+        )
+
+        XCTAssertEqual(payload.events[0].occurrence.bookingLabel, "Cancelled")
+        XCTAssertFalse(payload.events[0].occurrence.isAttendable(at: .distantPast))
     }
 }

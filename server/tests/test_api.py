@@ -140,6 +140,7 @@ class APITests(unittest.TestCase):
         status, explore, _ = self.request("GET", "/v1/explore")
         self.assertEqual(status, 200)
         self.assertLessEqual(len(explore["featured_events"]), 12)
+        self.assertEqual(explore["attended_events"], [])
         self.assertEqual(len(explore["events"]), len(explore["calendar"]))
         self.assertEqual(
             {event["occurrence"]["id"] for event in explore["events"]},

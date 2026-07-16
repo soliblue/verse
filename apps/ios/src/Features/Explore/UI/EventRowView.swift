@@ -38,9 +38,11 @@ struct EventRowView: View {
             }
             .buttonStyle(.plain)
 
-            EventCalendarButton(event: event, calendar: calendar)
-                .font(.utility(13))
-                .foregroundStyle(VerseTheme.ink)
+            if event.occurrence.state != .ended {
+                EventCalendarButton(event: event, calendar: calendar)
+                    .font(.utility(13))
+                    .foregroundStyle(VerseTheme.ink)
+            }
         }
         .padding(.vertical, 8)
         .accessibilityIdentifier("event-row-\(event.id)")

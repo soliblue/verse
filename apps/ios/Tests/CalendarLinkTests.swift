@@ -53,4 +53,43 @@ final class CalendarLinkTests: XCTestCase {
             .linked
         )
     }
+
+    func testChangedAndCancelledEventsRequireExplicitReview() throws {
+        let defaults = try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        let store = CalendarLinkStore(defaults: defaults)
+        store.record(
+            occurrenceID: "event-occurrence",
+            eventIdentifier: "calendar-event",
+            fingerprint: "original"
+        )
+
+        XCTAssertEqual(
+            store.state(
+                occurrenceID: "event-occurrence",
+                fingerprint: "changed",
+                isCancelled: false
+            ),
+            .updated
+        )
+        XCTAssertEqual(
+            store.state(
+                occurrenceID: "event-occurrence",
+                fingerprint: "changed",
+                isCancelled: true
+            ),
+            .cancelled
+        )
+        let endedStore = CalendarLinkStore(
+            defaults: try XCTUnwrap(UserDefaults(suiteName: UUID().uuidString))
+        )
+        XCTAssertEqual(
+            endedStore.state(
+                occurrenceID: "ended-occurrence",
+                fingerprint: "current",
+                isCancelled: false,
+                isEnded: true
+            ),
+            .ended
+        )
+    }
 }

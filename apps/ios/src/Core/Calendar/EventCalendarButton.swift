@@ -14,12 +14,14 @@ struct EventCalendarButton: View {
             switch state {
             case .updated: prompt = .updated
             case .cancelled: prompt = .cancelled
+            case .ended: return
             case .notAdded, .linked: Task { await openEditor() }
             }
         } label: {
             Label(state.title, systemImage: state.systemImage)
         }
         .id(refreshID)
+        .disabled(state == .ended)
         .sheet(item: $editor) { request in
             CalendarEventEditor(
                 request: request,

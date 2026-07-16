@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+: "${VERSE_AGENT_WORKSPACE:?}"
+: "${VERSE_AGENT_CODEX_HOME:?}"
+
+IMAGE="${VERSE_AGENT_CONTAINER_IMAGE:-verse-nightjar-codex:0.144.1}"
+
+exec sudo -n docker run --rm -i \
+  --read-only \
+  --cap-drop ALL \
+  --security-opt no-new-privileges \
+  --pids-limit 512 \
+  --memory 4g \
+  --cpus 4 \
+  --user 1000:1000 \
+  --workdir /workspace \
+  --tmpfs /tmp:rw,nosuid,nodev,size=2g \
+  --env CODEX_HOME=/codex \
+  --env HOME=/tmp \
+  --mount "type=bind,source=$VERSE_AGENT_WORKSPACE,target=/workspace" \
+  --mount "type=bind,source=$VERSE_AGENT_CODEX_HOME,target=/codex" \
+  "$IMAGE" "$@"

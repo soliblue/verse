@@ -24,12 +24,17 @@ AGENT_ENVIRONMENT_KEYS = {
     "XDG_CACHE_HOME",
     "XDG_CONFIG_HOME",
     "XDG_DATA_HOME",
+    "VERSE_AGENT_CODEX_HOME",
+    "VERSE_AGENT_CONTAINER_IMAGE",
+    "VERSE_AGENT_WORKSPACE",
 }
 
 
 def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("--cwd", required=True)
+    parser.add_argument("--runtime-cwd")
+    parser.add_argument("--app-server-executable", default="codex")
     parser.add_argument("--name", required=True)
     parser.add_argument("--prompt-file", action="append", default=[])
     parser.add_argument("--prompt", action="append", default=[])
@@ -72,13 +77,22 @@ def should_wait_for_retry(params):
     return bool(params.get("willRetry"))
 
 
+def completed_after_idle(method, params, thread_id, final_message_completed):
+    return (
+        final_message_completed
+        and method == "thread/status/changed"
+        and params.get("threadId") == thread_id
+        and (params.get("status") or {}).get("type") == "idle"
+    )
+
+
 class AppServer:
-    def __init__(self, protocol_log, cwd):
+    def __init__(self, protocol_log, cwd, executable):
         self.protocol_log = protocol_log
         self.next_id = 1
         self.selector = selectors.DefaultSelector()
         self.process = subprocess.Popen(
-            ["codex", "app-server", "--listen", "stdio://"],
+            [executable, "app-server", "--listen", "stdio://"],
             stdin=subprocess.PIPE,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -152,6 +166,7 @@ class AppServer:
 
 def main():
     args = parse_args()
+    runtime_cwd = args.runtime_cwd or args.cwd
     prompt = build_prompt(args)
     result_path = Path(args.result_file)
     protocol_path = Path(args.protocol_log)
@@ -173,7 +188,7 @@ def main():
     }
 
     with protocol_path.open("a", encoding="utf-8") as protocol_log:
-        server = AppServer(protocol_log, args.cwd)
+        server = AppServer(protocol_log, args.cwd, args.app_server_executable)
         deadline = time.time() + args.timeout_seconds
         final_text = []
         try:
@@ -192,10 +207,10 @@ def main():
             thread_response = server.request(
                 "thread/start",
                 {
-                    "cwd": args.cwd,
+                    "cwd": runtime_cwd,
                     "approvalPolicy": args.approval_policy,
                     "sandbox": args.sandbox,
-                    "runtimeWorkspaceRoots": [str(Path(args.cwd).resolve())],
+                    "runtimeWorkspaceRoots": [runtime_cwd],
                     "ephemeral": False,
                     "sessionStartSource": "startup",
                     "threadSource": "user",
@@ -214,8 +229,8 @@ def main():
                     "threadId": thread_id,
                     "input": [{"type": "text", "text": prompt, "text_elements": []}],
                     "approvalPolicy": args.approval_policy,
-                    "sandboxPolicy": sandbox_policy(args.sandbox, args.cwd),
-                    "runtimeWorkspaceRoots": [str(Path(args.cwd).resolve())],
+                    "sandboxPolicy": sandbox_policy(args.sandbox, runtime_cwd),
+                    "runtimeWorkspaceRoots": [runtime_cwd],
                     "effort": args.effort,
                 },
                 deadline,
@@ -223,6 +238,7 @@ def main():
             result["turn_start_response"] = turn_response
             result["status"] = "running"
             result_path.write_text(json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+            final_message_completed = False
             while True:
                 payload = server.read(deadline)
                 if "id" in payload and "method" in payload:
@@ -232,6 +248,10 @@ def main():
                 params = payload.get("params") or {}
                 if method == "item/agentMessage/delta" and params.get("threadId") == thread_id:
                     final_text.append(params.get("delta", ""))
+                if method == "item/completed" and params.get("threadId") == thread_id:
+                    item = params.get("item") or {}
+                    if item.get("type") == "agentMessage" and item.get("phase") == "final_answer":
+                        final_message_completed = True
                 if method == "error" and params.get("threadId") == thread_id:
                     if should_wait_for_retry(params):
                         continue
@@ -242,6 +262,10 @@ def main():
                     turn = params.get("turn") or {}
                     result["status"] = turn.get("status", "completed")
                     result["turn"] = turn
+                    break
+                if completed_after_idle(method, params, thread_id, final_message_completed):
+                    result["status"] = "completed"
+                    result["completion_signal"] = "thread_idle_after_final_message"
                     break
         except Exception as exc:
             result["status"] = "failed"

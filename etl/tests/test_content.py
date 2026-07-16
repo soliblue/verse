@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import tempfile
 import unittest
 from copy import deepcopy
@@ -201,6 +202,90 @@ class ExploreContentTests(unittest.TestCase):
             )
             publish_explore(connection, rebuilt, rebuilt_sources)
             self.assertEqual(current_explore(connection)["id"], rebuilt["id"])
+            connection.close()
+
+    def test_attended_history_uses_durable_feedback_and_only_ended_occurrences(self):
+        now = datetime(2026, 7, 16, 8, 30, tzinfo=ZoneInfo("Europe/Berlin"))
+        payload, source_events = build_explore(ROOT / "content", now=now)
+        self.assertEqual(payload["attended_events"], [])
+        with tempfile.TemporaryDirectory() as directory:
+            connection = connect(Path(directory) / "verse.sqlite")
+            migrate(connection)
+            publish_explore(connection, payload, source_events)
+            live = payload["featured_events"][0]
+            record_event_feedback(connection, live["id"], live["occurrence"]["id"], "attended", True)
+
+            profile = event_ranking_profile(connection)
+            self.assertEqual(
+                profile["attended_occurrence_ids"],
+                sorted([live["occurrence"]["id"], "sputnik-open-screening-attended"]),
+            )
+            rebuilt = build_explore(ROOT / "content", now=now, ranking_profile=profile)[0]
+            self.assertEqual(
+                [item["occurrence"]["id"] for item in rebuilt["attended_events"]],
+                ["sputnik-open-screening-attended"],
+            )
+            self.assertTrue(all(item["occurrence"]["state"] == "ended" for item in rebuilt["attended_events"]))
+            self.assertLessEqual(len(rebuilt["attended_events"]), 12)
+
+            invalid = deepcopy(rebuilt)
+            invalid["attended_events"] = [deepcopy(rebuilt["attended_events"][0]) for _ in range(13)]
+            with self.assertRaisesRegex(ValueError, "at most 12"):
+                validate_explore(invalid)
+            invalid = deepcopy(rebuilt)
+            invalid["attended_events"] = [deepcopy(live)]
+            with self.assertRaisesRegex(ValueError, "only ended"):
+                validate_explore(invalid)
+
+            record_event_feedback(
+                connection,
+                "sputnik-open-screening-taste-example",
+                "sputnik-open-screening-attended",
+                "attended",
+                False,
+            )
+            profile = event_ranking_profile(connection)
+            rebuilt = build_explore(ROOT / "content", now=now, ranking_profile=profile)[0]
+            self.assertEqual(rebuilt["attended_events"], [])
+            connection.close()
+
+    def test_prior_featured_events_are_suppressed_until_a_meaningful_update(self):
+        first_now = datetime(2026, 7, 16, 8, 30, tzinfo=ZoneInfo("Europe/Berlin"))
+        second_now = datetime(2026, 7, 17, 8, 30, tzinfo=ZoneInfo("Europe/Berlin"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "content"
+            shutil.copytree(ROOT / "content", root)
+            connection = connect(Path(directory) / "verse.sqlite")
+            migrate(connection)
+            first, sources = build_explore(root, now=first_now)
+            publish_explore(connection, first, sources)
+            without_history = build_explore(root, now=second_now)[0]
+            repeated = {
+                item["occurrence"]["id"] for item in first["featured_events"]
+            } & {
+                item["occurrence"]["id"] for item in without_history["featured_events"]
+            }
+            self.assertTrue(repeated)
+
+            profile = event_ranking_profile(connection)
+            second = build_explore(root, now=second_now, ranking_profile=profile)[0]
+            self.assertTrue(repeated.isdisjoint({item["occurrence"]["id"] for item in second["featured_events"]}))
+            self.assertTrue(repeated <= {item["id"] for item in second["calendar"]})
+            first_series = {item["series_id"] or item["id"] for item in first["featured_events"]}
+            second_series = {item["series_id"] or item["id"] for item in second["featured_events"]}
+            self.assertTrue(first_series.isdisjoint(second_series))
+
+            occurrence_id = sorted(repeated)[0]
+            path = next(
+                path
+                for path in (root / "events" / "upcoming").glob("*.md")
+                if f'occurrence_id: "{occurrence_id}"' in path.read_text(encoding="utf-8")
+            )
+            text = path.read_text(encoding="utf-8")
+            for novelty in ("meaningful_update", "final_chance"):
+                path.write_text(text.replace('novelty: "new"', f'novelty: "{novelty}"'), encoding="utf-8")
+                updated = build_explore(root, now=second_now, ranking_profile=profile)[0]
+                self.assertIn(occurrence_id, {item["occurrence"]["id"] for item in updated["featured_events"]})
             connection.close()
 
 

@@ -22,7 +22,11 @@ struct ExploreView: View {
             if let payload = store.payload {
                 switch store.mode {
                 case .list:
-                    ExploreListView(sections: store.sections, calendar: calendar)
+                    ExploreListView(
+                        sections: store.sections,
+                        attendedEvents: payload.attendedEvents ?? [],
+                        calendar: calendar
+                    )
                 case .calendar:
                     ExploreCalendarView(payload: payload, calendarRepository: calendar)
                 case .places:
