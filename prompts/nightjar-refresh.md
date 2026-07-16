@@ -32,7 +32,7 @@ Write the edition to `content/editions/RUN_DATE/` using recent editions as the e
 
 `- [Title](https://source.example/path) | Source name | 2026-07-16T00:00:00Z`
 
-Keep original links, source names, publication timestamps, topic ids, reading time, related story ids, and related event occurrence ids when known. Use stable descriptive ids and filenames. Record article provenance with `model_provider`, `model_name`, `prompt_version`, and `researched_at`.
+Keep original links, source names, publication timestamps, topic ids, reading time, related story ids, and related event occurrence ids when known. Every story `kind` must be exactly `paper`, `event`, or `technique`. Use stable descriptive ids and filenames. Record article provenance with `model_provider`, `model_name`, `prompt_version`, and `researched_at`.
 
 Create one restrained PNG cover per story in that edition's `assets/` directory. Use the image-generation capability when available. Keep a consistent Verse visual language: abstract pixel universe, quiet spatial forms, warm paper or deep charcoal, one muted accent, generous negative space, no words, no logos, no faces, no literal stock imagery. Store the exact prompt, actual model, dimensions, fallback state, and story id both in story front matter and a matching `.cover.json` sidecar. If image generation is unavailable, do not fabricate provenance; the deterministic validator will create a local fallback.
 

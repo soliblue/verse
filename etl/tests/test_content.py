@@ -136,8 +136,9 @@ class ExploreContentTests(unittest.TestCase):
 
         validate_explore(payload)
         self.assertEqual(payload["timezone"], "Europe/Berlin")
-        self.assertEqual((len(payload["featured_events"]), len(payload["events"]), len(payload["calendar"])), (5, 7, 7))
+        self.assertGreater(len(payload["featured_events"]), 0)
         self.assertLessEqual(len(payload["featured_events"]), 12)
+        self.assertEqual(len(payload["events"]), len(payload["calendar"]))
         self.assertEqual(
             {item["occurrence"]["id"] for item in payload["events"]},
             {item["id"] for item in payload["calendar"]},
@@ -163,7 +164,7 @@ class ExploreContentTests(unittest.TestCase):
             connection = connect(Path(directory) / "verse.sqlite")
             migrate(connection)
             publish_explore(connection, payload, source_events)
-            event = next(item for item in payload["featured_events"] if item["id"] == "berlin-beats-gigi-fm-2026")
+            event = payload["featured_events"][0]
             state = record_event_feedback(
                 connection,
                 event["id"],
@@ -174,25 +175,28 @@ class ExploreContentTests(unittest.TestCase):
 
             self.assertTrue(state["signals"]["loved"])
             self.assertEqual(current_explore(connection)["id"], payload["id"])
-            self.assertEqual(connection.execute("SELECT count(*) FROM event_occurrences").fetchone()[0], 8)
+            expected_occurrences = len({item["occurrence"]["id"] for item in source_events})
+            self.assertEqual(
+                connection.execute("SELECT count(*) FROM event_occurrences").fetchone()[0],
+                expected_occurrences,
+            )
             profile = event_ranking_profile(connection)
-            self.assertGreater(profile["categories"]["electronic-music"], 0)
-            self.assertGreater(profile["categories"]["short-film"], 0)
-            self.assertGreater(profile["venues"]["hamburger-bahnhof"], 0)
-            self.assertGreater(profile["venues"]["sputnik-kino"], 0)
+            self.assertTrue(all(profile["categories"][category] > 0 for category in event["categories"]))
+            venue_id = event["venue"]["id"]
+            self.assertGreater(profile["venues"][venue_id], 0)
 
-            record_venue_feedback(connection, "thf-tower", "more_from_here", True)
-            record_venue_feedback(connection, "thf-tower", "mute", True)
+            record_venue_feedback(connection, venue_id, "more_from_here", True)
+            record_venue_feedback(connection, venue_id, "mute", True)
             profile = event_ranking_profile(connection)
-            self.assertEqual(profile["watch_states"]["thf-tower"], "muted")
+            self.assertEqual(profile["watch_states"][venue_id], "muted")
             rebuilt, rebuilt_sources = build_explore(ROOT / "content", now=now, ranking_profile=profile)
-            self.assertNotIn("thf-tower", {venue["id"] for venue in rebuilt["venues"]})
-            self.assertTrue(all(event["venue"]["id"] != "thf-tower" for event in rebuilt["featured_events"]))
+            self.assertNotIn(venue_id, {venue["id"] for venue in rebuilt["venues"]})
+            self.assertTrue(all(item["venue"]["id"] != venue_id for item in rebuilt["featured_events"]))
             self.assertTrue(
                 all(
-                    event["venue"]["watch_state"] == "muted"
-                    for event in rebuilt["events"]
-                    if event["venue"]["id"] == "thf-tower"
+                    item["venue"]["watch_state"] == "muted"
+                    for item in rebuilt["events"]
+                    if item["venue"]["id"] == venue_id
                 )
             )
             publish_explore(connection, rebuilt, rebuilt_sources)

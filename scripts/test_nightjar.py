@@ -6,15 +6,17 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from scripts.codex_app_thread import agent_environment, sandbox_policy
+from scripts.codex_app_thread import agent_environment, sandbox_policy, should_wait_for_retry
 from scripts.nightjar_workspace import (
     backup_database,
     prepare_workspace,
     publish_workspace,
     restore_database,
     rollback_workspace,
+    stamp_agent_provenance,
     validate_workspace,
 )
+from etl.content import parse_document
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -39,6 +41,34 @@ class NightjarAgentTests(unittest.TestCase):
             sandbox_policy("workspace-write", "/tmp/workspace"),
             {"type": "workspaceWrite", "writableRoots": ["/tmp/workspace"], "networkAccess": True},
         )
+        self.assertTrue(should_wait_for_retry({"willRetry": True}))
+        self.assertFalse(should_wait_for_retry({"willRetry": False}))
+
+    def test_agent_model_identity_is_stamped_from_protocol(self):
+        with tempfile.TemporaryDirectory() as directory:
+            workspace = Path(directory) / "workspace"
+            shutil.copytree(ROOT / "content", workspace / "content")
+            agent_result = Path(directory) / "agent-result.json"
+            agent_result.write_text('{"status":"completed"}\n', encoding="utf-8")
+            protocol_log = Path(directory) / "protocol.jsonl"
+            protocol_log.write_text(
+                '{"payload":{"result":{"model":"gpt-5.6-sol","modelProvider":"openai"}}}\n',
+                encoding="utf-8",
+            )
+
+            result = stamp_agent_provenance(
+                workspace,
+                "2026-07-12",
+                agent_result,
+                protocol_log,
+            )
+            metadata, _ = parse_document(
+                workspace / "content/editions/2026-07-12/01-meta-physics-video-world-models-2026.md"
+            )
+
+            self.assertEqual(result["model"], "gpt-5.6-sol")
+            self.assertEqual(metadata["model_name"], "gpt-5.6-sol")
+            self.assertEqual(metadata["model_provider"], "openai")
 
     def test_staged_first_edition_validates_and_materializes_explore(self):
         with tempfile.TemporaryDirectory() as directory:

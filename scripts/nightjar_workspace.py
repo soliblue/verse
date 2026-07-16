@@ -168,6 +168,54 @@ def ensure_target_covers(content: Path, run_date: str) -> None:
         story_path.write_text(render_document(metadata, body), encoding="utf-8")
 
 
+def resolve_agent_identity(agent_result: Path, protocol_log: Path) -> tuple[str, str]:
+    result = json.loads(agent_result.read_text(encoding="utf-8")) if agent_result.is_file() else {}
+    model = result.get("model")
+    provider = result.get("model_provider")
+    if not isinstance(model, str) or not isinstance(provider, str):
+        with protocol_log.open(encoding="utf-8") as lines:
+            for line in lines:
+                row = json.loads(line)
+                payload = row.get("payload")
+                if not isinstance(payload, dict):
+                    continue
+                response = payload.get("result")
+                if not isinstance(response, dict):
+                    continue
+                candidate_model = response.get("model")
+                candidate_provider = response.get("modelProvider")
+                if isinstance(candidate_model, str) and isinstance(candidate_provider, str):
+                    model = candidate_model
+                    provider = candidate_provider
+                    break
+    if not isinstance(model, str) or not model or not isinstance(provider, str) or not provider:
+        raise ValueError("Nightjar model identity is unavailable")
+    return model, provider
+
+
+def stamp_agent_provenance(
+    workspace: Path,
+    run_date: str,
+    agent_result: Path,
+    protocol_log: Path,
+) -> dict:
+    model, provider = resolve_agent_identity(agent_result, protocol_log)
+    edition_path = workspace / "content" / "editions" / run_date / "edition.md"
+    edition, _ = parse_document(edition_path)
+    filenames = edition.get("stories")
+    if not isinstance(filenames, list):
+        raise ValueError("target edition stories must be a list")
+    for filename in filenames:
+        if not isinstance(filename, str) or Path(filename).name != filename:
+            raise ValueError("target edition contains an unsafe story path")
+        story_path = edition_path.parent / filename
+        metadata, body = parse_document(story_path)
+        metadata["model_provider"] = provider
+        metadata["model_name"] = model
+        story_path.write_text(render_document(metadata, body), encoding="utf-8")
+    return {"model": model, "model_provider": provider, "stories": len(filenames)}
+
+
 def validate_workspace(root: Path, workspace: Path, run_date: str) -> dict:
     unexpected = {path.name for path in workspace.iterdir()} - WORKSPACE_FILES
     if unexpected:
@@ -264,6 +312,11 @@ def parser() -> argparse.ArgumentParser:
     validate.add_argument("--root", type=Path, required=True)
     validate.add_argument("--workspace", type=Path, required=True)
     validate.add_argument("--date", required=True)
+    stamp = commands.add_parser("stamp-provenance")
+    stamp.add_argument("--workspace", type=Path, required=True)
+    stamp.add_argument("--date", required=True)
+    stamp.add_argument("--agent-result", type=Path, required=True)
+    stamp.add_argument("--protocol-log", type=Path, required=True)
     publish = commands.add_parser("publish")
     publish.add_argument("--root", type=Path, required=True)
     publish.add_argument("--workspace", type=Path, required=True)
@@ -289,6 +342,18 @@ def main() -> int:
         prepare_workspace(args.root, args.workspace, args.database)
     elif args.command == "validate":
         print(json.dumps(validate_workspace(args.root, args.workspace, args.date), sort_keys=True))
+    elif args.command == "stamp-provenance":
+        print(
+            json.dumps(
+                stamp_agent_provenance(
+                    args.workspace,
+                    args.date,
+                    args.agent_result,
+                    args.protocol_log,
+                ),
+                sort_keys=True,
+            )
+        )
     elif args.command == "publish":
         publish_workspace(args.root, args.workspace, args.backup)
     elif args.command == "rollback":

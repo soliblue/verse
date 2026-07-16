@@ -68,6 +68,10 @@ def sandbox_policy(mode, cwd):
     }
 
 
+def should_wait_for_retry(params):
+    return bool(params.get("willRetry"))
+
+
 class AppServer:
     def __init__(self, protocol_log, cwd):
         self.protocol_log = protocol_log
@@ -201,6 +205,8 @@ def main():
             )
             thread_id = thread_response["thread"]["id"]
             result["thread_id"] = thread_id
+            result["model"] = thread_response.get("model")
+            result["model_provider"] = thread_response.get("modelProvider")
             server.request("thread/name/set", {"threadId": thread_id, "name": args.name}, deadline)
             turn_response = server.request(
                 "turn/start",
@@ -227,6 +233,8 @@ def main():
                 if method == "item/agentMessage/delta" and params.get("threadId") == thread_id:
                     final_text.append(params.get("delta", ""))
                 if method == "error" and params.get("threadId") == thread_id:
+                    if should_wait_for_retry(params):
+                        continue
                     result["status"] = "failed"
                     result["error"] = params
                     break

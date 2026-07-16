@@ -55,6 +55,13 @@ fi
 printf 'phase=agent\n'
 "${AGENT_ARGS[@]}"
 
+printf 'phase=stamp_provenance\n'
+python3 -m scripts.nightjar_workspace stamp-provenance \
+  --workspace "$WORKSPACE" \
+  --date "$RUN_DATE" \
+  --agent-result "$AGENT_RESULT" \
+  --protocol-log "$PROTOCOL_LOG"
+
 printf 'phase=validate\n'
 python3 -m scripts.nightjar_workspace validate \
   --root "$ROOT" \
