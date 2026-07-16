@@ -10,9 +10,11 @@ final class CalendarRepository {
     }
 
     private static let storageKey = "verse.calendarLinks"
+    private static let sharedEventStore = EKEventStore()
     private let defaults: UserDefaults
     private var links: [String: CachedCalendarLink]
-    lazy var eventStore = EKEventStore()
+
+    var eventStore: EKEventStore { Self.sharedEventStore }
 
     init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
