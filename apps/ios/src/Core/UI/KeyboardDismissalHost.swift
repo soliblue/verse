@@ -86,6 +86,9 @@ struct KeyboardDismissalHost: UIViewRepresentable {
             if gestureRecognizer is UIPanGestureRecognizer {
                 return true
             }
+            if let window, containsEditableText(at: touch.location(in: window), in: window) {
+                return false
+            }
             var touchedView = touch.view
             while let view = touchedView {
                 if view is UITextField || view is UITextView {
@@ -109,6 +112,16 @@ struct KeyboardDismissalHost: UIViewRepresentable {
             shouldRecognizeSimultaneouslyWith otherGestureRecognizer: UIGestureRecognizer
         ) -> Bool {
             true
+        }
+
+        private func containsEditableText(at point: CGPoint, in view: UIView) -> Bool {
+            if (view is UITextField || view is UITextView),
+               !view.isHidden,
+               view.alpha > 0,
+               view.convert(view.bounds, to: window).contains(point) {
+                return true
+            }
+            return view.subviews.contains { containsEditableText(at: point, in: $0) }
         }
 
         private func hasFirstResponder(_ view: UIView) -> Bool {
