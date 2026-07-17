@@ -8,10 +8,6 @@ final class SettingsStore {
     var deviceSecret: String
     private(set) var connectionStatus = ConnectionStatus.idle
     private(set) var saveMessage: String?
-    private(set) var lastRefresh: Date?
-    private(set) var cachedEditionCount = 0
-    private(set) var pendingMutationCount = 0
-    private(set) var failedMutationCount = 0
 
     var canSave: Bool {
         let trimmed = serverURL.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -23,14 +19,6 @@ final class SettingsStore {
     init(configuration: ServerConfiguration) {
         serverURL = configuration.serverURLString
         deviceSecret = configuration.deviceSecret
-    }
-
-    func refreshMetrics(editions: EditionRepository, feedback: FeedbackRepository) {
-        lastRefresh = editions.lastRefreshDate()
-        cachedEditionCount = editions.cachedEditionCount()
-        let counts = feedback.mutationCounts()
-        pendingMutationCount = counts.pending
-        failedMutationCount = counts.failed
     }
 
     @discardableResult
@@ -92,10 +80,4 @@ final class SettingsStore {
         }
     }
 
-    func clearEditions(_ editions: EditionRepository) {
-        editions.clear()
-        lastRefresh = editions.lastRefreshDate()
-        cachedEditionCount = editions.cachedEditionCount()
-        saveMessage = "Downloaded editions cleared. The bundled edition is still available."
-    }
 }

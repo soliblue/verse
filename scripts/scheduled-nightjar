@@ -4,6 +4,11 @@ umask 077
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ROOT="${VERSE_ROOT:-$(cd "$SCRIPT_DIR/.." && pwd)}"
+JOB="${1:-all}"
+if [[ "$JOB" != "all" && "$JOB" != "articles" && "$JOB" != "events" ]]; then
+  printf 'invalid nightjar job: %s\n' "$JOB" >&2
+  exit 2
+fi
 
 if [[ -f "$ROOT/server/.env" ]]; then
   set -a
@@ -30,7 +35,7 @@ cd "$ROOT"
 
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_DATE="${VERSE_RUN_DATE:-$(date -u +%F)}"
-RUN_ID="nightjar-$RUN_DATE"
+RUN_ID="nightjar-$JOB-$RUN_DATE"
 RUN_DIR="$RESULT_ROOT/$STAMP"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
 PIPELINE_LOG="$RUN_DIR/pipeline.log"
@@ -67,7 +72,7 @@ if [[ "$PREFLIGHT_STATUS" -ne 0 ]]; then
 fi
 
 if [[ "$MODE" == "agent" ]]; then
-  ARGS=(bash "$ROOT/scripts/nightjar-agent-run" "$ROOT" "$RUN_DATE" "$RUN_ID" "$RUN_DIR")
+  ARGS=(bash "$ROOT/scripts/nightjar-agent-run" "$ROOT" "$RUN_DATE" "$RUN_ID" "$RUN_DIR" "$JOB")
 else
   ARGS=(
     python3 -m etl nightly

@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct StoryDetailView: View {
-    @Environment(\.dismiss) private var dismiss
     let story: StoryItem
     let feedback: FeedbackRepository
     let explore: ExploreRepository
@@ -26,32 +25,39 @@ struct StoryDetailView: View {
                     .padding(.top, 28)
             }
             .padding(.horizontal, 24)
-            .padding(.top, 84)
+            .padding(.top, 20)
             .padding(.bottom, 64)
         }
         .background(VerseTheme.paper)
-        .toolbar(.hidden, for: .navigationBar)
-        .overlay(alignment: .top) {
-            StoryToolbar(
-                sourceURL: story.sourceURL,
-                isSaved: store.isSaved,
-                preference: store.preference,
-                deepDiveStatus: store.deepDiveStatus,
-                isDisabled: store.isSending,
-                onBack: { dismiss() },
-                onSave: {
+        .toolbar(.visible, for: .navigationBar)
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbar {
+            ToolbarItemGroup(placement: .topBarTrailing) {
+                Button {
                     Task { await store.toggleSaved(story: story, repository: feedback) }
-                },
-                onPreference: { preference in
-                    Task {
-                        await store.setPreference(preference, story: story, repository: feedback)
-                    }
-                },
-                onDeepDive: {
-                    Task { await store.requestDeepDive(story: story, repository: feedback) }
-                },
-                onShowDetails: { showsDetails = true }
-            )
+                } label: {
+                    Image(systemName: store.isSaved ? "bookmark.fill" : "bookmark")
+                }
+                .disabled(store.isSending)
+                .accessibilityLabel(store.isSaved ? "Remove bookmark" : "Save story")
+                .accessibilityIdentifier("story-save")
+
+                StoryActionsMenu(
+                    sourceURL: story.sourceURL,
+                    preference: store.preference,
+                    deepDiveStatus: store.deepDiveStatus,
+                    isDisabled: store.isSending,
+                    onPreference: { preference in
+                        Task {
+                            await store.setPreference(preference, story: story, repository: feedback)
+                        }
+                    },
+                    onDeepDive: {
+                        Task { await store.requestDeepDive(story: story, repository: feedback) }
+                    },
+                    onShowDetails: { showsDetails = true }
+                )
+            }
         }
         .sheet(isPresented: $showsDetails) {
             StoryInfoSheet(story: story, state: store.state)

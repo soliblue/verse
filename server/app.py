@@ -4,6 +4,7 @@ import json
 import mimetypes
 import re
 import sqlite3
+import subprocess
 import threading
 from collections.abc import Callable
 from http import HTTPStatus
@@ -37,6 +38,7 @@ class VerseHTTPServer(ThreadingHTTPServer):
     def __init__(self, address: tuple[str, int], config: ServerConfig):
         self.config = config
         self.preferences_lock = threading.Lock()
+        self.guidance_lock = threading.Lock()
         super().__init__(address, VerseHandler)
 
 
@@ -163,6 +165,44 @@ class VerseHandler(BaseHTTPRequestHandler):
                         write_preferences_markdown(preferences, previous)
                     raise
                 return HTTPStatus.OK, {"markdown": preferences.read_text(encoding="utf-8")}
+        if path.startswith("/v1/guidance/"):
+            self.require_method(method, "GET", "PUT")
+            kind = path.removeprefix("/v1/guidance/")
+            if kind not in {"articles", "events"}:
+                raise APIError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
+            guidance = self.server.config.content_path / "prompts" / f"{kind}.md"
+            with self.server.guidance_lock:
+                if method == "GET":
+                    if not guidance.is_file():
+                        raise LookupError("guidance not found")
+                    return HTTPStatus.OK, {"kind": kind, "markdown": guidance.read_text(encoding="utf-8")}
+                request = self.read_json_object()
+                markdown = request.get("markdown")
+                if not isinstance(markdown, str) or not markdown.strip():
+                    raise ValueError("markdown must be a non-empty string")
+                if len(markdown.encode("utf-8")) > 32_768:
+                    raise ValueError("markdown is too large")
+                guidance.parent.mkdir(parents=True, exist_ok=True)
+                guidance.write_text(markdown.rstrip() + "\n", encoding="utf-8")
+                return HTTPStatus.OK, {"kind": kind, "markdown": guidance.read_text(encoding="utf-8")}
+        if path.startswith("/v1/runs/"):
+            self.require_method(method, "POST")
+            self.read_json_object()
+            kind = path.removeprefix("/v1/runs/")
+            if kind not in {"articles", "events"}:
+                raise APIError(HTTPStatus.NOT_FOUND, "not_found", "route not found")
+            command = self.server.config.nightjar_trigger
+            if command is None:
+                raise APIError(HTTPStatus.SERVICE_UNAVAILABLE, "run_unavailable", "Nightjar runs are not configured")
+            result = subprocess.run(
+                [value.replace("{job}", kind) for value in command],
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            if result.returncode != 0:
+                raise APIError(HTTPStatus.CONFLICT, "run_not_started", "Nightjar is already running or unavailable")
+            return HTTPStatus.ACCEPTED, {"kind": kind, "status": "started"}
         if path == "/v1/explore":
             self.require_method(method, "GET")
             with database(self.server.config.database_path, readonly=True) as connection:

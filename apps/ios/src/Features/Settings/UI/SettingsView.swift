@@ -1,55 +1,31 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @Environment(\.colorScheme) private var colorScheme
     let configuration: ServerConfiguration
     let api: APIClient
-    let editions: EditionRepository
     let feedback: FeedbackRepository
     let topics: TopicsRepository
-    @Binding var appTheme: AppTheme
     @State private var store: SettingsStore
+    @State private var nightjar = NightjarRunStore()
+    @State private var editor: NightjarJob?
     @State private var revealSecret = false
 
     init(
         configuration: ServerConfiguration,
         api: APIClient,
-        editions: EditionRepository,
         feedback: FeedbackRepository,
-        topics: TopicsRepository,
-        appTheme: Binding<AppTheme>
+        topics: TopicsRepository
     ) {
         self.configuration = configuration
         self.api = api
-        self.editions = editions
         self.feedback = feedback
         self.topics = topics
-        _appTheme = appTheme
         _store = State(initialValue: SettingsStore(configuration: configuration))
     }
 
     var body: some View {
         Form {
-            Section {
-                Picker(
-                    "Appearance",
-                    selection: Binding(
-                        get: { appTheme },
-                        set: {
-                            AppTheme.persisted = $0
-                            appTheme = $0
-                        }
-                    )
-                ) {
-                    ForEach(AppTheme.allCases) { theme in
-                        Text(theme.title).tag(theme)
-                    }
-                }
-                .pickerStyle(.menu)
-                .accessibilityIdentifier("appearance-picker")
-            }
-
-            Section {
+            Section("Private VPS") {
                 TextField("https://verse.example.com", text: $store.serverURL)
                     .keyboardType(.URL)
                     .textInputAutocapitalization(.never)
@@ -58,9 +34,9 @@ struct SettingsView: View {
                 HStack {
                     Group {
                         if revealSecret {
-                            TextField("Optional device secret", text: $store.deviceSecret)
+                            TextField("Device secret", text: $store.deviceSecret)
                         } else {
-                            SecureField("Optional device secret", text: $store.deviceSecret)
+                            SecureField("Device secret", text: $store.deviceSecret)
                         }
                     }
                     .textInputAutocapitalization(.never)
@@ -72,13 +48,12 @@ struct SettingsView: View {
                     }
                     .accessibilityLabel(revealSecret ? "Hide secret" : "Show secret")
                 }
-                Button("Save connection", systemImage: "checkmark.circle") {
+                Button("Save connection") {
                     store.save(configuration: configuration)
                     if configuration.isConfigured {
                         Task {
                             await feedback.flushPending()
                             _ = await topics.syncPending()
-                            store.refreshMetrics(editions: editions, feedback: feedback)
                         }
                     }
                 }
@@ -91,11 +66,10 @@ struct SettingsView: View {
                             feedback: feedback,
                             topics: topics
                         )
-                        store.refreshMetrics(editions: editions, feedback: feedback)
                     }
                 } label: {
                     HStack {
-                        Label("Test connection", systemImage: "network")
+                        Text("Test connection")
                         Spacer()
                         if store.connectionStatus == .testing {
                             ProgressView()
@@ -109,52 +83,36 @@ struct SettingsView: View {
                     }
                 }
                 .disabled(store.connectionStatus == .testing || !store.canSave)
-            } header: {
-                Text("Private VPS")
-            } footer: {
-                Text(
-                    "Use HTTPS or a private Tailscale address. "
-                        + "The secret is stored only in this device’s Keychain."
-                )
-            }
-
-            if let message = store.saveMessage {
-                Section {
+                if let message = store.saveMessage {
                     Text(message)
                         .font(.footnote)
                         .foregroundStyle(VerseTheme.secondaryInk)
                 }
             }
 
-            Section("Offline reading") {
-                LabeledContent("Downloaded editions", value: "\(store.cachedEditionCount)")
-                LabeledContent(
-                    "Last edition refresh",
-                    value: store.lastRefresh.map(DateFormatting.dateTime) ?? "Never"
-                )
-                if store.pendingMutationCount > 0 {
-                    LabeledContent("Queued feedback", value: "\(store.pendingMutationCount)")
-                }
-                if store.failedMutationCount > 0 {
-                    LabeledContent("Feedback needing retry", value: "\(store.failedMutationCount)")
-                    Button("Retry feedback uploads") {
-                        Task {
-                            await feedback.retryFailed()
-                            store.refreshMetrics(editions: editions, feedback: feedback)
+            Section("Nightjar") {
+                ForEach(NightjarJob.allCases) { job in
+                    Button {
+                        editor = job
+                    } label: {
+                        HStack {
+                            Text("\(job.title) guidance")
+                            Spacer()
+                            Image(systemName: "chevron.right")
+                                .font(.footnote)
+                                .foregroundStyle(.tertiary)
                         }
                     }
+                    Button("Run \(job.rawValue)") {
+                        Task { await nightjar.run(job, api: api) }
+                    }
+                    .disabled(nightjar.running != nil || !configuration.isConfigured)
                 }
-                Button("Clear downloaded editions", role: .destructive) {
-                    store.clearEditions(editions)
+                if let message = nightjar.message {
+                    Text(message)
+                        .font(.footnote)
+                        .foregroundStyle(VerseTheme.secondaryInk)
                 }
-            }
-
-            Section("About") {
-                LabeledContent("Edition editor", value: "Nightjar")
-                LabeledContent("Verse", value: "v0")
-                Text("A private, finite morning reader. No account, analytics, ads, or public feed.")
-                    .font(.footnote)
-                    .foregroundStyle(VerseTheme.secondaryInk)
             }
         }
         .scrollDismissesKeyboard(.immediately)
@@ -162,15 +120,8 @@ struct SettingsView: View {
         .background(VerseTheme.paper)
         .navigationBarBackButtonHidden(true)
         .accessibilityIdentifier("settings-screen")
-        .overlay(alignment: .topLeading) {
-            #if DEBUG
-            Text(colorScheme == .dark ? "dark" : "light")
-                .font(.system(size: 1))
-                .foregroundStyle(VerseTheme.paper)
-                .frame(width: 1, height: 1)
-                .accessibilityIdentifier("resolved-theme")
-            #endif
+        .sheet(item: $editor) { job in
+            NightjarEditorView(job: job, api: api)
         }
-        .task { store.refreshMetrics(editions: editions, feedback: feedback) }
     }
 }

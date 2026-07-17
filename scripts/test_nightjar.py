@@ -108,7 +108,7 @@ class NightjarAgentTests(unittest.TestCase):
                 metadata, _ = parse_document(path)
                 if metadata.get("kind") == "event":
                     event_paths.append(path)
-            for path in event_paths[2:]:
+            for path in event_paths:
                 self.set_story_kind(path, "technique")
 
             result = validate_workspace(root, workspace, "2026-07-12")
@@ -135,7 +135,7 @@ class NightjarAgentTests(unittest.TestCase):
                 metadata, _ = parse_document(path)
                 if metadata.get("kind") == "event":
                     event_paths.append(path)
-            for path in event_paths[2:]:
+            for path in event_paths:
                 self.set_story_kind(path, "technique")
 
             result = validate_workspace(root, workspace, "2026-07-12")
@@ -143,7 +143,7 @@ class NightjarAgentTests(unittest.TestCase):
             self.assertEqual(result["stories"], 10)
             self.assertFalse((edition / "assets").exists())
 
-    def test_agent_edition_rejects_more_than_two_event_stories(self):
+    def test_agent_edition_rejects_event_stories(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "verse"
             root.mkdir()
@@ -151,10 +151,9 @@ class NightjarAgentTests(unittest.TestCase):
             workspace = Path(directory) / "workspace"
             prepare_workspace(root, workspace, None)
             story_paths = sorted((workspace / "content/editions/2026-07-12").glob("[0-9][0-9]-*.md"))
-            for path in story_paths[:3]:
-                self.set_story_kind(path, "event")
+            self.set_story_kind(story_paths[0], "event")
 
-            with self.assertRaisesRegex(ValueError, "at most two event stories"):
+            with self.assertRaisesRegex(ValueError, "must not contain event stories"):
                 validate_workspace(root, workspace, "2026-07-12")
 
     def test_publish_can_restore_the_previous_content(self):

@@ -37,7 +37,7 @@ final class VerseSmokeUITests: XCTestCase {
         first.tap()
 
         XCTAssertTrue(app.descendants(matching: .any)["story-detail"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["story-back"].exists)
+        XCTAssertTrue(app.navigationBars.buttons.firstMatch.exists)
         XCTAssertTrue(app.buttons["story-save"].exists)
         app.buttons["story-actions"].tap()
         XCTAssertTrue(app.buttons["Story details"].waitForExistence(timeout: 5))
@@ -48,7 +48,7 @@ final class VerseSmokeUITests: XCTestCase {
         )
         app.buttons["Done"].tap()
 
-        app.buttons["story-back"].tap()
+        app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(app.buttons["app-menu"].waitForExistence(timeout: 5))
     }
 
@@ -104,21 +104,6 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["UdK Sound Studies"].waitForExistence(timeout: 5))
     }
 
-    func testAppearanceDefaultsToLightAndSwitchesImmediately() {
-        executionTimeAllowance = 90
-        let app = XCUIApplication()
-        app.launch()
-
-        openTab("Settings", app: app)
-        assertResolvedTheme("light", app: app)
-
-        selectAppearance("Dark", app: app)
-        assertResolvedTheme("dark", app: app)
-
-        selectAppearance("Light", app: app)
-        assertResolvedTheme("light", app: app)
-    }
-
     func testKeyboardDismissesBySwipeAndTapAway() {
         let app = XCUIApplication()
         app.launch()
@@ -147,25 +132,6 @@ final class VerseSmokeUITests: XCTestCase {
         let tab = app.buttons[title]
         XCTAssertTrue(tab.waitForExistence(timeout: 5))
         tab.tap()
-    }
-
-    private func selectAppearance(_ title: String, app: XCUIApplication) {
-        let picker = app.descendants(matching: .any)["appearance-picker"]
-        XCTAssertTrue(picker.waitForExistence(timeout: 5))
-        picker.tap()
-        let option = app.buttons[title]
-        XCTAssertTrue(option.waitForExistence(timeout: 5))
-        option.tap()
-    }
-
-    private func assertResolvedTheme(_ theme: String, app: XCUIApplication) {
-        let marker = app.staticTexts["resolved-theme"]
-        XCTAssertTrue(marker.waitForExistence(timeout: 5))
-        let expectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "label == %@", theme),
-            object: marker
-        )
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
     }
 
     private func assertHittable(_ element: XCUIElement) {

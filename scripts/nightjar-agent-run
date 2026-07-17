@@ -6,6 +6,7 @@ ROOT="$1"
 RUN_DATE="$2"
 RUN_ID="$3"
 RUN_DIR="$4"
+JOB="${5:-all}"
 WORKSPACE="$RUN_DIR/workspace"
 AGENT_RESULT="$RUN_DIR/agent-result.json"
 PROTOCOL_LOG="$RUN_DIR/agent-protocol.jsonl"
@@ -45,21 +46,6 @@ if [[ "$AGENT_RUNTIME" == "container" ]]; then
   AGENT_SANDBOX="danger-full-access"
 fi
 
-AGENT_ARGS=(
-  python3 "$ROOT/scripts/codex_app_thread.py"
-  --cwd "$WORKSPACE"
-  --name "Verse Nightjar $RUN_DATE"
-  --prompt-file "$ROOT/prompts/nightjar-refresh.md"
-  --prompt-file "$ROOT/prompts/nightjar-articles.md"
-  --prompt-file "$ROOT/prompts/nightjar-events.md"
-  --prompt "The run date is $RUN_DATE. Replace every literal RUN_DATE in the instructions with $RUN_DATE."
-  --result-file "$AGENT_RESULT"
-  --protocol-log "$PROTOCOL_LOG"
-  --timeout-seconds "${VERSE_AGENT_TIMEOUT_SECONDS:-10800}"
-  --effort "${VERSE_AGENT_EFFORT:-high}"
-  --sandbox "$AGENT_SANDBOX"
-)
-
 if [[ "$AGENT_RUNTIME" == "container" ]]; then
   CREDENTIAL_ROOT="${XDG_RUNTIME_DIR:-$RUN_DIR}"
   find "$CREDENTIAL_ROOT" -maxdepth 1 -type d -name 'verse-nightjar-codex.*' -exec rm -rf {} +
@@ -68,38 +54,66 @@ if [[ "$AGENT_RUNTIME" == "container" ]]; then
   export VERSE_AGENT_WORKSPACE="$WORKSPACE"
   export VERSE_AGENT_CODEX_HOME="$AGENT_CODEX_HOME"
   export VERSE_AGENT_CONTAINER_IMAGE="${VERSE_AGENT_CONTAINER_IMAGE:-verse-nightjar-codex:0.144.1}"
-  AGENT_ARGS+=(
-    --runtime-cwd /workspace
-    --app-server-executable "$ROOT/scripts/nightjar-codex-container"
-  )
 elif [[ "$AGENT_RUNTIME" != "local" ]]; then
   printf 'invalid_agent_runtime=%s\n' "$AGENT_RUNTIME"
   exit 1
 fi
 
-if [[ -n "${VERSE_AGENT_MODEL:-}" ]]; then
-  AGENT_ARGS+=(--model "$VERSE_AGENT_MODEL")
-fi
+run_agent() {
+  local scope="$1"
+  local result_file="$2"
+  local protocol_file="$3"
+  local args=(
+    python3 "$ROOT/scripts/codex_app_thread.py"
+    --cwd "$WORKSPACE"
+    --name "Verse Nightjar $scope $RUN_DATE"
+    --prompt-file "$ROOT/prompts/nightjar-$scope.md"
+    --prompt "The run date is $RUN_DATE. Replace every literal RUN_DATE in the instructions with $RUN_DATE."
+    --result-file "$result_file"
+    --protocol-log "$protocol_file"
+    --timeout-seconds "${VERSE_AGENT_TIMEOUT_SECONDS:-10800}"
+    --effort "${VERSE_AGENT_EFFORT:-high}"
+    --sandbox "$AGENT_SANDBOX"
+  )
+  if [[ "$AGENT_RUNTIME" == "container" ]]; then
+    args+=(--runtime-cwd /workspace --app-server-executable "$ROOT/scripts/nightjar-codex-container")
+  fi
+  if [[ -n "${VERSE_AGENT_MODEL:-}" ]]; then
+    args+=(--model "$VERSE_AGENT_MODEL")
+  fi
+  printf 'phase=agent scope=%s\n' "$scope"
+  "${args[@]}"
+}
 
-printf 'phase=agent\n'
-"${AGENT_ARGS[@]}"
+if [[ "$JOB" == "articles" || "$JOB" == "all" ]]; then
+  run_agent articles "$AGENT_RESULT" "$PROTOCOL_LOG"
+  printf 'phase=stamp_provenance\n'
+  python3 -m scripts.nightjar_workspace stamp-provenance \
+    --workspace "$WORKSPACE" \
+    --date "$RUN_DATE" \
+    --agent-result "$AGENT_RESULT" \
+    --protocol-log "$PROTOCOL_LOG"
+fi
+if [[ "$JOB" == "events" || "$JOB" == "all" ]]; then
+  EVENT_RESULT="$RUN_DIR/event-agent-result.json"
+  EVENT_PROTOCOL="$RUN_DIR/event-agent-protocol.jsonl"
+  if [[ "$JOB" == "events" ]]; then
+    EVENT_RESULT="$AGENT_RESULT"
+    EVENT_PROTOCOL="$PROTOCOL_LOG"
+  fi
+  run_agent events "$EVENT_RESULT" "$EVENT_PROTOCOL"
+fi
 if [[ -n "$AGENT_CODEX_HOME" ]]; then
   rm -rf "$AGENT_CODEX_HOME"
   AGENT_CODEX_HOME=""
 fi
 
-printf 'phase=stamp_provenance\n'
-python3 -m scripts.nightjar_workspace stamp-provenance \
-  --workspace "$WORKSPACE" \
-  --date "$RUN_DATE" \
-  --agent-result "$AGENT_RESULT" \
-  --protocol-log "$PROTOCOL_LOG"
-
 printf 'phase=validate\n'
 python3 -m scripts.nightjar_workspace validate \
   --root "$ROOT" \
   --workspace "$WORKSPACE" \
-  --date "$RUN_DATE"
+  --date "$RUN_DATE" \
+  --scope "$JOB"
 
 printf 'phase=backup_database\n'
 python3 -m scripts.nightjar_workspace backup-database --database "$DATABASE" --backup "$DATABASE_BACKUP"

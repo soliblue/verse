@@ -7,7 +7,7 @@ UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 
 mkdir -p "$UNIT_DIR"
 
-for UNIT in verse-server.service verse-nightjar.service verse-nightjar.timer; do
+for UNIT in verse-server.service verse-nightjar.service verse-nightjar.timer 'verse-nightjar@.service'; do
   sed "s#__ROOT__#$ROOT#g" "$ROOT/scripts/systemd/$UNIT.in" > "$UNIT_DIR/$UNIT"
 done
 

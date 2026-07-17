@@ -100,6 +100,8 @@ def file_hashes(root: Path) -> dict[str, str]:
 def protect_existing_content(root: Path, candidate: Path, run_date: str) -> None:
     if (root / "preferences.md").read_bytes() != (candidate / "preferences.md").read_bytes():
         raise ValueError("Nightjar must not edit preferences.md")
+    if file_hashes(root / "prompts") != file_hashes(candidate / "prompts"):
+        raise ValueError("Nightjar must not edit prompt guidance")
     existing = file_hashes(root / "editions")
     proposed = file_hashes(candidate / "editions")
     protected = {path: digest for path, digest in existing.items() if not path.startswith(f"{run_date}/")}
@@ -156,42 +158,67 @@ def stamp_agent_provenance(
     return {"model": model, "model_provider": provider, "stories": len(filenames)}
 
 
-def validate_workspace(root: Path, workspace: Path, run_date: str) -> dict:
+def changed_content_paths(root: Path, candidate: Path) -> set[str]:
+    existing = file_hashes(root)
+    proposed = file_hashes(candidate)
+    return {path for path in existing.keys() | proposed.keys() if existing.get(path) != proposed.get(path)}
+
+
+def validate_workspace(root: Path, workspace: Path, run_date: str, scope: str = "all") -> dict:
     unexpected = {path.name for path in workspace.iterdir()} - WORKSPACE_FILES
     if unexpected:
         raise ValueError("unexpected workspace output: " + ", ".join(sorted(unexpected)))
     content = workspace / "content"
     protect_existing_content(root / "content", content, run_date)
     parse_preferences(content / "preferences.md")
-    target = content / "editions" / run_date / "edition.md"
-    if not target.is_file():
-        raise ValueError(f"Nightjar did not prepare edition {run_date}")
-    editions = []
-    for path in sorted((content / "editions").glob("*/edition.md")):
-        payload, _ = load_edition(path)
-        editions.append(payload)
-    payload = next((value for value in editions if value["date"] == run_date), None)
-    if payload is None or payload["id"] != f"edition-{run_date}":
-        raise ValueError("target edition identity does not match its run date")
-    if not 8 <= len(payload["items"]) <= 12:
-        raise ValueError("target edition must contain 8 to 12 stories")
-    if sum(item["kind"] == "event" for item in payload["items"]) > 2:
-        raise ValueError("target edition must contain at most two event stories")
-    for item in payload["items"]:
-        urls = [item["source_url"], *(citation["url"] for citation in item["citations"])]
-        if any(not value.startswith("https://") for value in urls):
-            raise ValueError(f"story {item['id']} contains a non-HTTPS source")
+    allowed = {
+        "articles": (f"editions/{run_date}/", "deep-dives/ready/"),
+        "events": ("events/", "places.md"),
+        "all": (f"editions/{run_date}/", "deep-dives/ready/", "events/", "places.md"),
+    }
+    if scope not in allowed:
+        raise ValueError("Nightjar scope is invalid")
+    changed = changed_content_paths(root / "content", content)
+    unexpected_changes = sorted(
+        path for path in changed if not any(path == prefix or path.startswith(prefix) for prefix in allowed[scope])
+    )
+    if unexpected_changes:
+        raise ValueError("Nightjar changed files outside its scope: " + ", ".join(unexpected_changes))
+
+    payload = None
+    if scope in {"articles", "all"}:
+        target = content / "editions" / run_date / "edition.md"
+        if not target.is_file():
+            raise ValueError(f"Nightjar did not prepare edition {run_date}")
+        editions = []
+        for path in sorted((content / "editions").glob("*/edition.md")):
+            value, _ = load_edition(path)
+            editions.append(value)
+        payload = next((value for value in editions if value["date"] == run_date), None)
+        if payload is None or payload["id"] != f"edition-{run_date}":
+            raise ValueError("target edition identity does not match its run date")
+        if not 8 <= len(payload["items"]) <= 12:
+            raise ValueError("target edition must contain 8 to 12 stories")
+        if any(item["kind"] == "event" for item in payload["items"]):
+            raise ValueError("target edition must not contain event stories")
+        for item in payload["items"]:
+            urls = [item["source_url"], *(citation["url"] for citation in item["citations"])]
+            if any(not value.startswith("https://") for value in urls):
+                raise ValueError(f"story {item['id']} contains a non-HTTPS source")
     for path in sorted((content / "deep-dives" / "ready").glob("*.md")):
         load_deep_dive(path)
-    berlin_now = datetime.fromisoformat(run_date).replace(hour=8, tzinfo=ZoneInfo("Europe/Berlin"))
-    explore, _ = build_explore(content, now=berlin_now)
-    write_explore(content, explore)
+    explore = None
+    if scope in {"events", "all"}:
+        berlin_now = datetime.fromisoformat(run_date).replace(hour=8, tzinfo=ZoneInfo("Europe/Berlin"))
+        explore, _ = build_explore(content, now=berlin_now)
+        write_explore(content, explore)
     return {
         "date": run_date,
-        "stories": len(payload["items"]),
-        "citations": sum(len(item["citations"]) for item in payload["items"]),
-        "featured_events": len(explore["featured_events"]),
-        "calendar_occurrences": len(explore["calendar"]),
+        "scope": scope,
+        "stories": len(payload["items"]) if payload else 0,
+        "citations": sum(len(item["citations"]) for item in payload["items"]) if payload else 0,
+        "featured_events": len(explore["featured_events"]) if explore else 0,
+        "calendar_occurrences": len(explore["calendar"]) if explore else 0,
     }
 
 
@@ -253,6 +280,7 @@ def parser() -> argparse.ArgumentParser:
     validate.add_argument("--root", type=Path, required=True)
     validate.add_argument("--workspace", type=Path, required=True)
     validate.add_argument("--date", required=True)
+    validate.add_argument("--scope", choices=("all", "articles", "events"), default="all")
     stamp = commands.add_parser("stamp-provenance")
     stamp.add_argument("--workspace", type=Path, required=True)
     stamp.add_argument("--date", required=True)
@@ -282,7 +310,7 @@ def main() -> int:
     if args.command == "prepare":
         prepare_workspace(args.root, args.workspace, args.database)
     elif args.command == "validate":
-        print(json.dumps(validate_workspace(args.root, args.workspace, args.date), sort_keys=True))
+        print(json.dumps(validate_workspace(args.root, args.workspace, args.date, args.scope), sort_keys=True))
     elif args.command == "stamp-provenance":
         print(
             json.dumps(

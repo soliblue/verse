@@ -52,6 +52,15 @@ class ConfigurationTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "http or https origin"):
                 ServerConfig.environment()
 
+    def test_nightjar_trigger_requires_job_placeholder(self):
+        values = {
+            "VERSE_DEVICE_SECRET": "a-valid-device-secret-with-length",
+            "VERSE_NIGHTJAR_TRIGGER": "systemctl --user start verse-nightjar.service",
+        }
+        with patch.dict(os.environ, values, clear=True):
+            with self.assertRaisesRegex(ValueError, "contain .job."):
+                ServerConfig.environment()
+
     def test_environment_file_is_loaded_without_overwriting_process_values(self):
         with tempfile.TemporaryDirectory() as directory:
             path = Path(directory) / ".env"

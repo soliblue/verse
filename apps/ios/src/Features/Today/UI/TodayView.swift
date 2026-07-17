@@ -14,7 +14,9 @@ struct TodayView: View {
     var body: some View {
         Group {
             if let edition = store.edition {
-                let stories = edition.items.sorted { $0.position < $1.position }
+                let stories = edition.items
+                    .filter { $0.kind != "event" }
+                    .sorted { $0.position < $1.position }
 
                 ScrollView(.vertical) {
                     LazyVStack(spacing: 0) {
@@ -134,7 +136,9 @@ struct TodayView: View {
 
     private var focusedStory: StoryItem? {
         guard let edition = store.edition else { return nil }
-        let stories = edition.items.sorted { $0.position < $1.position }
+        let stories = edition.items
+            .filter { $0.kind != "event" }
+            .sorted { $0.position < $1.position }
         return stories.first { $0.id == focusedStoryID } ?? stories.first
     }
 

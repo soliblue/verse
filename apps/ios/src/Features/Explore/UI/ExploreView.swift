@@ -29,7 +29,6 @@ struct ExploreView: View {
         }
         .background(VerseTheme.paper)
         .accessibilityIdentifier(mode.accessibilityIdentifier)
-        .refreshable { await store.refresh(repository: repository) }
         .onAppear {
             if store.payload != nil, configuration.isConfigured {
                 Task { await store.refresh(repository: repository) }

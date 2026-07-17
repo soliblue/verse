@@ -11,4 +11,6 @@ enum APIEndpoint {
     static let health = "health"
 
     static func edition(_ id: String) -> String { "v1/editions/\(id)" }
+    static func guidance(_ job: NightjarJob) -> String { "v1/guidance/\(job.rawValue)" }
+    static func run(_ job: NightjarJob) -> String { "v1/runs/\(job.rawValue)" }
 }

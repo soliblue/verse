@@ -27,7 +27,10 @@ class APITests(unittest.TestCase):
         replace_topics(connection, topic_payload)
         write_preferences(self.content / "preferences.md", topic_payload)
         publish_edition(connection, json.loads((ROOT / "etl/seeds/first-edition.json").read_text(encoding="utf-8")))
-        publish_explore(connection, json.loads((ROOT / "content/explore/current.json").read_text(encoding="utf-8")))
+        publish_explore(
+            connection,
+            json.loads((ROOT / "apps/ios/src/Resources/first-explore.json").read_text(encoding="utf-8")),
+        )
         connection.close()
         self.server = create_server(
             ServerConfig(
@@ -140,6 +143,23 @@ class APITests(unittest.TestCase):
         self.assertEqual((self.content / "preferences.md").read_text(encoding="utf-8"), before_file)
         _, after_topics, _ = self.request("GET", "/v1/topics")
         self.assertEqual(after_topics, before_topics)
+
+    def test_nightjar_guidance_round_trips(self):
+        prompts = self.content / "prompts"
+        prompts.mkdir()
+        (prompts / "articles.md").write_text("# Articles\n\nOld.\n", encoding="utf-8")
+
+        status, document, _ = self.request("GET", "/v1/guidance/articles")
+        self.assertEqual(status, 200)
+        self.assertEqual(document["markdown"], "# Articles\n\nOld.\n")
+
+        status, document, _ = self.request(
+            "PUT",
+            "/v1/guidance/articles",
+            {"kind": "articles", "markdown": "# Articles\n\nNew."},
+        )
+        self.assertEqual(status, 200)
+        self.assertEqual(document["markdown"], "# Articles\n\nNew.\n")
 
     def test_feedback_persists_into_edition_payload(self):
         story_id = "meta-physics-video-world-models-2026"

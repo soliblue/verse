@@ -33,7 +33,8 @@ struct ExploreCalendarView: View {
                 .padding(.horizontal, 20)
             }
             .scrollIndicators(.hidden)
-            .padding(.vertical, 8)
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .frame(height: 78)
 
             List {
                 if selectedOccurrences.isEmpty {

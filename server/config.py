@@ -1,4 +1,5 @@
 import os
+import shlex
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
@@ -16,6 +17,7 @@ class ServerConfig:
     content_path: Path = Path("content")
     public_base_url: str | None = None
     maximum_asset_bytes: int = 10_485_760
+    nightjar_trigger: tuple[str, ...] | None = None
 
     @classmethod
     def environment(cls) -> "ServerConfig":
@@ -25,6 +27,8 @@ class ServerConfig:
         maximum = int(os.environ.get("VERSE_MAX_REQUEST_BYTES", "65536"))
         maximum_asset = int(os.environ.get("VERSE_MAX_ASSET_BYTES", "10485760"))
         public_base_url = os.environ.get("VERSE_PUBLIC_BASE_URL") or None
+        trigger_value = os.environ.get("VERSE_NIGHTJAR_TRIGGER") or None
+        nightjar_trigger = tuple(shlex.split(trigger_value)) if trigger_value else None
         if maximum < 1:
             raise ValueError("VERSE_MAX_REQUEST_BYTES must be positive")
         if secret is None and not allow_unauthenticated:
@@ -48,6 +52,10 @@ class ServerConfig:
             ):
                 raise ValueError("VERSE_PUBLIC_BASE_URL must be an http or https origin")
             public_base_url = public_base_url.rstrip("/")
+        if nightjar_trigger is not None and (
+            not nightjar_trigger or not any("{job}" in value for value in nightjar_trigger)
+        ):
+            raise ValueError("VERSE_NIGHTJAR_TRIGGER must contain {job}")
         return cls(
             default_database_path(),
             secret,
@@ -57,6 +65,7 @@ class ServerConfig:
             Path(os.environ.get("VERSE_CONTENT_DIR", "content")),
             public_base_url,
             maximum_asset,
+            nightjar_trigger,
         )
 
 

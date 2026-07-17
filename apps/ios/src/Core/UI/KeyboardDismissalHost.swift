@@ -37,7 +37,6 @@ struct KeyboardDismissalHost: UIViewRepresentable {
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         private weak var window: UIWindow?
         private var tapRecognizer: UITapGestureRecognizer?
-        private var panRecognizer: UIPanGestureRecognizer?
 
         func install(in nextWindow: UIWindow?) {
             guard window !== nextWindow else { return }
@@ -50,28 +49,16 @@ struct KeyboardDismissalHost: UIViewRepresentable {
             )
             tapRecognizer.cancelsTouchesInView = false
             tapRecognizer.delegate = self
-            let panRecognizer = UIPanGestureRecognizer(
-                target: self,
-                action: #selector(dismissKeyboard)
-            )
-            panRecognizer.cancelsTouchesInView = false
-            panRecognizer.delegate = self
             nextWindow.addGestureRecognizer(tapRecognizer)
-            nextWindow.addGestureRecognizer(panRecognizer)
             window = nextWindow
             self.tapRecognizer = tapRecognizer
-            self.panRecognizer = panRecognizer
         }
 
         func uninstall() {
             if let tapRecognizer {
                 window?.removeGestureRecognizer(tapRecognizer)
             }
-            if let panRecognizer {
-                window?.removeGestureRecognizer(panRecognizer)
-            }
             tapRecognizer = nil
-            panRecognizer = nil
             window = nil
         }
 
@@ -83,9 +70,6 @@ struct KeyboardDismissalHost: UIViewRepresentable {
             _ gestureRecognizer: UIGestureRecognizer,
             shouldReceive touch: UITouch
         ) -> Bool {
-            if gestureRecognizer is UIPanGestureRecognizer {
-                return true
-            }
             var touchedView = touch.view
             while let view = touchedView {
                 if view is UITextField || view is UITextView {

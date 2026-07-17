@@ -45,9 +45,10 @@ MODE="${VERSE_NIGHTJAR_MODE:-agent}"
 printf 'mode=%s\n' "$MODE"
 if [[ "$MODE" == "agent" ]]; then
   command -v codex
-  test -f "$ROOT/prompts/nightjar-refresh.md"
   test -f "$ROOT/prompts/nightjar-articles.md"
   test -f "$ROOT/prompts/nightjar-events.md"
+  test -f "$ROOT/content/prompts/articles.md"
+  test -f "$ROOT/content/prompts/events.md"
   test -f "$ROOT/scripts/codex_app_thread.py"
   AGENT_RUNTIME="${VERSE_AGENT_RUNTIME:-container}"
   printf 'agent_runtime=%s\n' "$AGENT_RUNTIME"
