@@ -114,17 +114,18 @@ final class VerseSmokeUITests: XCTestCase {
         app.buttons["Topics"].tap()
         let editor = app.textViews["topics-markdown-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
+        let editorState = app.staticTexts["topics-editor-state"]
+        XCTAssertTrue(editorState.waitForExistence(timeout: 5))
 
         editor.tap()
-        let keyboard = app.keyboards.firstMatch
-        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        assertValue("focused", for: editorState)
         editor.swipeDown()
-        assertDisappears(keyboard)
+        assertValue("unfocused", for: editorState)
 
         editor.tap()
-        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
-        app.staticTexts["This exact Markdown guides the next Nightjar edition."].tap()
-        assertDisappears(keyboard)
+        assertValue("focused", for: editorState)
+        editorState.tap()
+        assertValue("unfocused", for: editorState)
     }
 
     private func openTab(_ title: String, app: XCUIApplication) {
@@ -147,6 +148,14 @@ final class VerseSmokeUITests: XCTestCase {
     private func assertDisappears(_ element: XCUIElement) {
         let expectation = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == false"),
+            object: element
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
+    }
+
+    private func assertValue(_ value: String, for element: XCUIElement) {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "value == %@", value),
             object: element
         )
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)

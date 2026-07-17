@@ -38,6 +38,8 @@ struct TopicsView: View {
                     Text("This exact Markdown guides the next Nightjar edition.")
                         .font(.footnote)
                         .foregroundStyle(VerseTheme.secondaryInk)
+                        .accessibilityIdentifier("topics-editor-state")
+                        .accessibilityValue(editorFocused ? "focused" : "unfocused")
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .padding(.horizontal, 20)
                         .padding(.vertical, 12)
