@@ -1,5 +1,4 @@
 import json
-import os
 import shutil
 import tempfile
 import unittest
@@ -7,7 +6,6 @@ from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from zoneinfo import ZoneInfo
-from unittest.mock import patch
 
 from db.connection import connect
 from db.content import index_edition, related_stories, sync_content
@@ -29,7 +27,6 @@ from etl.content import (
     write_preferences,
     write_preferences_markdown,
 )
-from etl.covers import cover_environment
 from etl.explore import build_explore, distance_band, materialize_explore, validate_explore
 
 
@@ -46,23 +43,29 @@ class MarkdownContentTests(unittest.TestCase):
     def tearDown(self):
         self.temporary.cleanup()
 
-    def test_markdown_round_trip_preserves_transport_contract_and_builds_covers(self):
+    def test_markdown_round_trip_preserves_transport_contract_without_covers(self):
         payload, index = write_edition(self.edition, self.root, public_base_url="https://verse.example")
 
         self.assertEqual(payload["id"], self.edition["id"])
         self.assertEqual(len(payload["items"]), 10)
         self.assertEqual(payload["items"][0]["body"], self.edition["items"][0]["body"])
         self.assertEqual(payload["items"][0]["citations"], self.edition["items"][0]["citations"])
+        self.assertIsNone(payload["items"][0]["image_url"])
+        self.assertEqual(len(index["stories"]), 10)
+        self.assertFalse((self.root / "editions/2026-07-12/assets").exists())
+        story_metadata, _ = load_edition(self.root / "editions/2026-07-12/edition.md")
+        self.assertTrue(all(item["image_url"] is None for item in story_metadata["items"]))
+
+    def test_historical_covers_remain_readable(self):
+        payload, _ = load_edition(
+            ROOT / "content/editions/2026-07-12/edition.md",
+            public_base_url="https://verse.example",
+        )
+
         self.assertEqual(
             payload["items"][0]["image_url"],
             "https://verse.example/v1/assets/2026-07-12/assets/meta-physics-video-world-models-2026.png",
         )
-        self.assertEqual(len(index["stories"]), 10)
-        cover = self.root / "editions/2026-07-12/assets/meta-physics-video-world-models-2026.png"
-        self.assertEqual(cover.read_bytes()[:8], b"\x89PNG\r\n\x1a\n")
-        metadata = json.loads(cover.with_suffix(".cover.json").read_text(encoding="utf-8"))
-        self.assertEqual(metadata["story_id"], self.edition["items"][0]["id"])
-        self.assertTrue(metadata["is_fallback"])
 
     def test_preferences_round_trip_is_human_editable(self):
         path = self.root / "preferences.md"
@@ -137,16 +140,6 @@ class MarkdownContentTests(unittest.TestCase):
         path.write_text(text, encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "unsafe"):
             load_edition(path)
-
-    def test_cover_process_does_not_inherit_the_device_secret(self):
-        with patch.dict(
-            os.environ,
-            {"HOME": "/tmp/home", "PATH": "/usr/bin", "VERSE_DEVICE_SECRET": "private", "OPENAI_API_KEY": "cover"},
-            clear=True,
-        ):
-            environment = cover_environment()
-        self.assertEqual(environment, {"HOME": "/tmp/home", "PATH": "/usr/bin", "OPENAI_API_KEY": "cover"})
-
 
 class ExploreContentTests(unittest.TestCase):
     def test_materialized_fixture_is_finite_deduplicated_and_berlin_local(self):

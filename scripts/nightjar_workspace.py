@@ -9,7 +9,6 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from etl.content import load_deep_dive, load_edition, parse_document, parse_preferences, render_document
-from etl.covers import prepare_cover
 from etl.explore import build_explore, write_explore
 
 
@@ -109,65 +108,6 @@ def protect_existing_content(root: Path, candidate: Path, run_date: str) -> None
             raise ValueError(f"Nightjar changed an earlier edition: {path}")
 
 
-def valid_cover(path: Path, metadata: dict, story_id: str) -> bool:
-    if not path.is_file() or path.read_bytes()[:8] != b"\x89PNG\r\n\x1a\n":
-        return False
-    sidecar = path.with_suffix(".cover.json")
-    if not sidecar.is_file():
-        return False
-    try:
-        provenance = json.loads(sidecar.read_text(encoding="utf-8"))
-    except json.JSONDecodeError:
-        return False
-    return (
-        provenance.get("story_id") == story_id
-        and provenance.get("prompt") == metadata.get("cover_prompt")
-        and provenance.get("model") == metadata.get("cover_model")
-        and provenance.get("width") == metadata.get("cover_width")
-        and provenance.get("height") == metadata.get("cover_height")
-        and provenance.get("is_fallback") == bool(metadata.get("cover_fallback"))
-    )
-
-
-def ensure_target_covers(content: Path, run_date: str) -> None:
-    edition_path = content / "editions" / run_date / "edition.md"
-    edition_metadata, _ = parse_document(edition_path)
-    filenames = edition_metadata.get("stories")
-    if not isinstance(filenames, list):
-        raise ValueError("target edition stories must be a list")
-    for filename in filenames:
-        story_path = edition_path.parent / filename
-        metadata, body = parse_document(story_path)
-        story_id = metadata.get("id")
-        lines = body.splitlines()
-        if not isinstance(story_id, str) or not lines or not lines[0].startswith("# "):
-            raise ValueError(f"invalid story document: {filename}")
-        cover_value = metadata.get("cover")
-        cover_path = story_path.parent / cover_value if isinstance(cover_value, str) else Path()
-        if isinstance(cover_value, str) and valid_cover(cover_path, metadata, story_id):
-            continue
-        cover = prepare_cover(
-            story_path.parent / "assets",
-            {
-                "id": story_id,
-                "title": lines[0][2:].strip(),
-                "kind": metadata.get("kind") or "story",
-                "topic_ids": metadata.get("topic_ids") or [],
-            },
-        )
-        metadata.update(
-            {
-                "cover": f"assets/{cover['path'].name}",
-                "cover_prompt": cover["prompt"],
-                "cover_model": cover["model"],
-                "cover_width": cover["width"],
-                "cover_height": cover["height"],
-                "cover_fallback": cover["is_fallback"],
-            }
-        )
-        story_path.write_text(render_document(metadata, body), encoding="utf-8")
-
-
 def resolve_agent_identity(agent_result: Path, protocol_log: Path) -> tuple[str, str]:
     result = json.loads(agent_result.read_text(encoding="utf-8")) if agent_result.is_file() else {}
     model = result.get("model")
@@ -226,7 +166,6 @@ def validate_workspace(root: Path, workspace: Path, run_date: str) -> dict:
     target = content / "editions" / run_date / "edition.md"
     if not target.is_file():
         raise ValueError(f"Nightjar did not prepare edition {run_date}")
-    ensure_target_covers(content, run_date)
     editions = []
     for path in sorted((content / "editions").glob("*/edition.md")):
         payload, _ = load_edition(path)

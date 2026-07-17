@@ -15,9 +15,21 @@ enum VerseTheme {
     static let secondaryInk = secondary
     static let amber = accent
     static let blue = accent
-    static let mediaInk = Color.white
-    static let mediaSecondaryInk = Color.white.opacity(0.84)
-    static let mediaScrim = Color.black
+    static func storyBackground(for identifier: String) -> Color {
+        let palette: [(UInt32, UInt32)] = [
+            (0xF1D8CB, 0x3A2B26),
+            (0xDED8F0, 0x302D41),
+            (0xD4E5D9, 0x28382E),
+            (0xD5E2ED, 0x293641),
+            (0xEFE2B9, 0x3B3525),
+            (0xE9D4DD, 0x3B2C34),
+        ]
+        let hash = identifier.utf8.reduce(UInt64(1_469_598_103_934_665_603)) {
+            ($0 ^ UInt64($1)) &* 1_099_511_628_211
+        }
+        let colors = palette[Int(hash % UInt64(palette.count))]
+        return adaptive(light: colors.0, dark: colors.1)
+    }
 
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
         Color(

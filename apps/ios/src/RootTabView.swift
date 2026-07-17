@@ -10,7 +10,6 @@ struct RootTabView: View {
     let eventFeedback: EventFeedbackRepository
     let venueFeedback: VenueFeedbackRepository
     let calendar: CalendarRepository
-    let covers: CoverRepository
     @Binding var appTheme: AppTheme
     @State private var selectedTab = AppTab.articles
     @State private var articlesPath = NavigationPath()
@@ -28,7 +27,6 @@ struct RootTabView: View {
                     feedback: feedback,
                     topics: topics,
                     configuration: configuration,
-                    covers: covers,
                     selectedTab: $selectedTab
                 )
                 .navigationDestination(for: StoryItem.self) { story in
@@ -47,7 +45,6 @@ struct RootTabView: View {
                     mode: .calendar,
                     repository: explore,
                     feedback: eventFeedback,
-                    calendar: calendar,
                     configuration: configuration
                 )
                 .navigationDestination(for: EventItem.self) { event in
@@ -71,7 +68,6 @@ struct RootTabView: View {
                     mode: .places,
                     repository: explore,
                     feedback: eventFeedback,
-                    calendar: calendar,
                     configuration: configuration
                 )
                 .navigationDestination(for: EventItem.self) { event in
@@ -150,6 +146,9 @@ struct RootTabView: View {
         .toolbarBackground(.hidden, for: .navigationBar)
         .tint(VerseTheme.accent)
         .sensoryFeedback(.selection, trigger: selectedTab)
+        .onChange(of: selectedTab) { _, tab in
+            resetPath(for: tab)
+        }
         .task {
             await eventFeedback.flushPending()
             await venueFeedback.flushPending()
@@ -160,17 +159,13 @@ struct RootTabView: View {
         StoryDetailView(
             story: story,
             feedback: feedback,
-            explore: explore,
-            eventFeedback: eventFeedback,
-            calendar: calendar,
-            covers: covers
+            explore: explore
         )
     }
 
     private func eventDetail(_ event: EventItem) -> some View {
         EventDetailView(
             event: event,
-            explore: explore,
             feedback: eventFeedback,
             calendar: calendar
         )
@@ -181,5 +176,16 @@ struct RootTabView: View {
             venue: venue,
             feedback: venueFeedback
         )
+    }
+
+    private func resetPath(for tab: AppTab) {
+        switch tab {
+        case .articles: articlesPath = NavigationPath()
+        case .calendar: calendarPath = NavigationPath()
+        case .places: placesPath = NavigationPath()
+        case .library: libraryPath = NavigationPath()
+        case .topics: topicsPath = NavigationPath()
+        case .settings: settingsPath = NavigationPath()
+        }
     }
 }

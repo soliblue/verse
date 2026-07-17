@@ -13,7 +13,6 @@ struct StoryItem: Codable, Hashable, Identifiable {
     let sourceURL: URL
     let publishedAt: String
     let readingMinutes: Int
-    let imageURL: URL?
     let relatedEventIDs: [String]?
     let citations: [Citation]
     let feedback: FeedbackState?
@@ -35,7 +34,6 @@ struct StoryItem: Codable, Hashable, Identifiable {
         case sourceURL = "source_url"
         case publishedAt = "published_at"
         case readingMinutes = "reading_minutes"
-        case imageURL = "image_url"
         case relatedEventIDs = "related_event_ids"
         case citations
         case feedback

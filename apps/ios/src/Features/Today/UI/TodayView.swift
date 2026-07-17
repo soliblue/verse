@@ -2,12 +2,10 @@ import SwiftUI
 
 struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
-    @AppStorage("verse.textOnly") private var textOnly = false
     let editions: EditionRepository
     let feedback: FeedbackRepository
     let topics: TopicsRepository
     let configuration: ServerConfiguration
-    let covers: CoverRepository
     @Binding var selectedTab: AppTab
     @State private var store = TodayStore()
     @State private var toolbarStore = StoryDetailStore()
@@ -24,8 +22,7 @@ struct TodayView: View {
                             TodayStoryPage(
                                 story: story,
                                 number: index + 1,
-                                total: stories.count,
-                                covers: covers
+                                total: stories.count
                             )
                             .id(story.id)
                             .containerRelativeFrame(.vertical)
@@ -42,11 +39,7 @@ struct TodayView: View {
                     if let message = store.statusMessage {
                         Text(message)
                             .font(.footnote)
-                            .foregroundStyle(
-                                pageUsesCover
-                                    ? VerseTheme.mediaSecondaryInk
-                                    : VerseTheme.secondaryInk
-                            )
+                            .foregroundStyle(VerseTheme.secondaryInk)
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                             .padding(.bottom, 20)
@@ -69,7 +62,7 @@ struct TodayView: View {
                 )
             }
         }
-        .background(VerseTheme.paper.ignoresSafeArea())
+        .background(pageBackground.ignoresSafeArea())
         .overlay(alignment: .top) {
             if let story = focusedStory {
                 StoryPageToolbar(
@@ -79,9 +72,7 @@ struct TodayView: View {
                     preference: toolbarStore.preference,
                     deepDiveStatus: toolbarStore.deepDiveStatus,
                     isDisabled: toolbarStore.isSending,
-                    foregroundColor: pageUsesCover
-                        ? VerseTheme.mediaInk
-                        : VerseTheme.ink,
+                    foregroundColor: VerseTheme.ink,
                     onSave: {
                         Task {
                             await toolbarStore.toggleSaved(story: story, repository: feedback)
@@ -146,7 +137,9 @@ struct TodayView: View {
         return stories.first { $0.id == focusedStoryID } ?? stories.first
     }
 
-    private var pageUsesCover: Bool {
-        focusedStory?.imageURL != nil && !textOnly
+    private var pageBackground: Color {
+        guard let focusedStory else { return VerseTheme.paper }
+        return VerseTheme.storyBackground(for: focusedStory.id)
     }
+
 }

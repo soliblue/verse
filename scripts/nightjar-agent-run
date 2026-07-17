@@ -50,6 +50,8 @@ AGENT_ARGS=(
   --cwd "$WORKSPACE"
   --name "Verse Nightjar $RUN_DATE"
   --prompt-file "$ROOT/prompts/nightjar-refresh.md"
+  --prompt-file "$ROOT/prompts/nightjar-articles.md"
+  --prompt-file "$ROOT/prompts/nightjar-events.md"
   --prompt "The run date is $RUN_DATE. Replace every literal RUN_DATE in the instructions with $RUN_DATE."
   --result-file "$AGENT_RESULT"
   --protocol-log "$PROTOCOL_LOG"

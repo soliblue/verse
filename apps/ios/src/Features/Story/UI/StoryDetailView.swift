@@ -2,32 +2,21 @@ import SwiftUI
 
 struct StoryDetailView: View {
     @Environment(\.dismiss) private var dismiss
-    @AppStorage("verse.textOnly") private var textOnly = false
     let story: StoryItem
     let feedback: FeedbackRepository
     let explore: ExploreRepository
-    let eventFeedback: EventFeedbackRepository
-    let calendar: CalendarRepository
-    let covers: CoverRepository
     @State private var store = StoryDetailStore()
     @State private var showsDetails = false
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
-                if !textOnly, let imageURL = story.imageURL {
-                    StoryCoverImage(url: imageURL, title: story.title, covers: covers)
-                        .frame(height: 260)
-                        .padding(.bottom, 32)
-                }
                 Text(story.title)
                     .font(.display(38))
                     .foregroundStyle(VerseTheme.ink)
                     .accessibilityIdentifier("story-detail")
                 StoryRelatedEventsView(
-                    events: explore.events(ids: story.relatedEventIDs ?? []),
-                    feedback: eventFeedback,
-                    calendar: calendar
+                    events: explore.events(ids: story.relatedEventIDs ?? [])
                 )
                 Text(story.body)
                     .font(.reading(18))

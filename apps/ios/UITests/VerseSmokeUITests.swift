@@ -70,7 +70,7 @@ final class VerseSmokeUITests: XCTestCase {
         openTab("Settings", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["settings-screen"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["Server URL"].exists)
-        XCTAssertTrue(app.switches["text-only-toggle"].exists)
+        XCTAssertFalse(app.buttons["Back"].exists)
 
         openTab("Articles", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
@@ -83,16 +83,21 @@ final class VerseSmokeUITests: XCTestCase {
 
         openTab("Calendar", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["calendar-screen"].waitForExistence(timeout: 5))
-        let july16 = app.staticTexts["16"].firstMatch
-        if !july16.waitForExistence(timeout: 2) {
-            app.buttons["Previous week"].tap()
-        }
+        XCTAssertFalse(app.buttons["Previous week"].exists)
+        XCTAssertFalse(app.buttons["Next week"].exists)
+
+        let july16 = app.buttons["calendar-day-2026-07-16"]
         XCTAssertTrue(july16.waitForExistence(timeout: 5))
         july16.tap()
         XCTAssertTrue(app.staticTexts["Berlin Beats: GiGi FM"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["Add to Calendar"].exists)
 
-        app.staticTexts["18"].firstMatch.tap()
+        app.buttons["calendar-day-2026-07-18"].tap()
         XCTAssertTrue(app.staticTexts["DayDreamLab by Transmission"].waitForExistence(timeout: 5))
+        app.staticTexts["DayDreamLab by Transmission"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["event-detail"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["event-actions"].exists)
+        app.navigationBars.buttons.firstMatch.tap()
 
         openTab("Places", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["places-screen"].waitForExistence(timeout: 5))

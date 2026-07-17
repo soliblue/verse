@@ -23,7 +23,6 @@ enum PreviewFixtures {
         sourceURL: URL(string: "https://example.com/paper")!,
         publishedAt: "2026-07-03T00:00:00Z",
         readingMinutes: 4,
-        imageURL: nil,
         relatedEventIDs: nil,
         citations: [citation],
         feedback: .empty,

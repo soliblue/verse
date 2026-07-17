@@ -2,55 +2,38 @@ import SwiftUI
 
 struct ExploreCalendarView: View {
     let payload: ExplorePayload
-    let calendarRepository: CalendarRepository
     @State private var selectedDate = Date()
 
     var body: some View {
         VStack(spacing: 0) {
-            HStack {
-                Button("Previous week", systemImage: "chevron.left") {
-                    moveWeek(-1)
-                }
-                .labelStyle(.iconOnly)
-                .disabled(!canMoveWeek(-1))
-                Spacer()
-                Text(weekTitle)
-                    .font(.utility(13))
-                Spacer()
-                Button("Next week", systemImage: "chevron.right") {
-                    moveWeek(1)
-                }
-                .labelStyle(.iconOnly)
-                .disabled(!canMoveWeek(1))
-            }
-            .padding(.horizontal, 24)
-            .padding(.vertical, 14)
-
-            HStack(spacing: 0) {
-                ForEach(weekDates, id: \.self) { date in
-                    Button {
-                        selectedDate = date
-                    } label: {
-                        VStack(spacing: 6) {
-                            Text(weekday(date))
-                                .font(.utility(10))
-                            Text(dayNumber(date))
-                                .font(.utility(15))
-                            Circle()
-                                .frame(width: 4, height: 4)
-                                .opacity(hasEvents(date) ? 1 : 0)
+            ScrollView(.horizontal) {
+                HStack(spacing: 4) {
+                    ForEach(horizonDates, id: \.self) { date in
+                        Button {
+                            selectedDate = date
+                        } label: {
+                            VStack(spacing: 6) {
+                                Text(weekday(date))
+                                    .font(.utility(10))
+                                Text(dayNumber(date))
+                                    .font(.utility(15))
+                                Circle()
+                                    .frame(width: 4, height: 4)
+                                    .opacity(hasEvents(date) ? 1 : 0)
+                            }
+                            .foregroundStyle(isSelected(date) ? VerseTheme.paper : VerseTheme.ink)
+                            .frame(width: 54)
+                            .padding(.vertical, 9)
+                            .background(isSelected(date) ? VerseTheme.ink : Color.clear)
                         }
-                        .foregroundStyle(isSelected(date) ? VerseTheme.paper : VerseTheme.ink)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 9)
-                        .background(isSelected(date) ? VerseTheme.ink : Color.clear)
+                        .buttonStyle(.plain)
+                        .accessibilityIdentifier("calendar-day-\(EventDateFormatting.dayKey(date))")
                     }
-                    .buttonStyle(.plain)
-                    .disabled(!isWithinHorizon(date))
-                    .opacity(isWithinHorizon(date) ? 1 : 0.3)
                 }
+                .padding(.horizontal, 20)
             }
-            .padding(.horizontal, 12)
+            .scrollIndicators(.hidden)
+            .padding(.vertical, 8)
 
             List {
                 if selectedOccurrences.isEmpty {
@@ -61,7 +44,7 @@ struct ExploreCalendarView: View {
                 }
                 ForEach(selectedOccurrences) { occurrence in
                     if let event = event(for: occurrence) {
-                        EventRowView(event: event, calendar: calendarRepository)
+                        EventRowView(event: event)
                             .listRowBackground(VerseTheme.paper)
                     } else {
                         VStack(alignment: .leading, spacing: 6) {
@@ -88,19 +71,13 @@ struct ExploreCalendarView: View {
         }
     }
 
-    private var weekDates: [Date] {
+    private var horizonDates: [Date] {
         let calendar = EventDateFormatting.calendar
-        let start = calendar.dateInterval(of: .weekOfYear, for: selectedDate)?.start ?? selectedDate
-        return (0..<7).compactMap { calendar.date(byAdding: .day, value: $0, to: start) }
-    }
-
-    private var weekTitle: String {
-        guard let first = weekDates.first, let last = weekDates.last else { return "" }
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "en_US")
-        formatter.timeZone = EventDateFormatting.berlin
-        formatter.dateFormat = "MMM d"
-        return "\(formatter.string(from: first)) – \(formatter.string(from: last))"
+        guard let start = horizonStart, let end = horizonEnd else { return [selectedDate] }
+        let count = calendar.dateComponents([.day], from: start, to: end).day ?? 0
+        return (0...max(count, 0)).compactMap {
+            calendar.date(byAdding: .day, value: $0, to: start)
+        }
     }
 
     private var selectedOccurrences: [EventOccurrence] {
@@ -145,32 +122,6 @@ struct ExploreCalendarView: View {
 
     private func dayNumber(_ date: Date) -> String {
         EventDateFormatting.calendar.component(.day, from: date).formatted()
-    }
-
-    private func moveWeek(_ value: Int) {
-        let date = EventDateFormatting.calendar.date(
-            byAdding: .weekOfYear,
-            value: value,
-            to: selectedDate
-        ) ?? selectedDate
-        selectedDate = clamped(date)
-    }
-
-    private func canMoveWeek(_ value: Int) -> Bool {
-        guard let first = weekDates.first, let last = weekDates.last else { return false }
-        if value < 0 {
-            guard let start = horizonStart else { return true }
-            return start < first
-        }
-        guard let end = horizonEnd else { return true }
-        return end > last
-    }
-
-    private func isWithinHorizon(_ date: Date) -> Bool {
-        let day = EventDateFormatting.calendar.startOfDay(for: date)
-        if let start = horizonStart, day < start { return false }
-        if let end = horizonEnd, day > end { return false }
-        return true
     }
 
     private func clamped(_ date: Date) -> Date {

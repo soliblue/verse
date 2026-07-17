@@ -117,6 +117,32 @@ class NightjarAgentTests(unittest.TestCase):
             self.assertGreater(result["citations"], 10)
             self.assertTrue((workspace / "content/explore/current.json").is_file())
 
+    def test_agent_edition_does_not_require_covers(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "verse"
+            root.mkdir()
+            shutil.copytree(ROOT / "content", root / "content")
+            workspace = Path(directory) / "workspace"
+            prepare_workspace(root, workspace, None)
+            edition = workspace / "content/editions/2026-07-12"
+            shutil.rmtree(edition / "assets")
+            for path in edition.glob("[0-9][0-9]-*.md"):
+                metadata, body = parse_document(path)
+                metadata = {key: value for key, value in metadata.items() if not key.startswith("cover")}
+                path.write_text(render_document(metadata, body), encoding="utf-8")
+            event_paths = []
+            for path in sorted(edition.glob("[0-9][0-9]-*.md")):
+                metadata, _ = parse_document(path)
+                if metadata.get("kind") == "event":
+                    event_paths.append(path)
+            for path in event_paths[2:]:
+                self.set_story_kind(path, "technique")
+
+            result = validate_workspace(root, workspace, "2026-07-12")
+
+            self.assertEqual(result["stories"], 10)
+            self.assertFalse((edition / "assets").exists())
+
     def test_agent_edition_rejects_more_than_two_event_stories(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "verse"

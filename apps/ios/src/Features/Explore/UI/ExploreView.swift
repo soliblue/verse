@@ -4,7 +4,6 @@ struct ExploreView: View {
     let mode: ExploreMode
     let repository: ExploreRepository
     let feedback: EventFeedbackRepository
-    let calendar: CalendarRepository
     let configuration: ServerConfiguration
     @State private var store = ExploreStore()
 
@@ -13,7 +12,7 @@ struct ExploreView: View {
             if let payload = store.payload {
                 switch mode {
                 case .calendar:
-                    ExploreCalendarView(payload: payload, calendarRepository: calendar)
+                    ExploreCalendarView(payload: payload)
                 case .places:
                     ExplorePlacesView(payload: payload)
                 }

@@ -15,7 +15,6 @@ struct VerseApp: App {
     private let eventFeedback: EventFeedbackRepository
     private let venueFeedback: VenueFeedbackRepository
     private let calendar: CalendarRepository
-    private let covers: CoverRepository
 
     init() {
         FontRegistrar.registerBundledFonts()
@@ -42,7 +41,6 @@ struct VerseApp: App {
         eventFeedback = EventFeedbackRepository(context: container.mainContext, api: api)
         venueFeedback = VenueFeedbackRepository(context: container.mainContext, api: api)
         calendar = CalendarRepository()
-        covers = CoverRepository(context: container.mainContext, api: api)
     }
 
     var body: some Scene {
@@ -57,7 +55,6 @@ struct VerseApp: App {
                 eventFeedback: eventFeedback,
                 venueFeedback: venueFeedback,
                 calendar: calendar,
-                covers: covers,
                 appTheme: $appTheme
             )
             .preferredColorScheme(appTheme.colorScheme)

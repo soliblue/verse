@@ -11,10 +11,10 @@ The repository already includes a source-verified first edition with 10 stories,
 - Configurable VPS URL and a device secret stored in the iOS Keychain
 - SQLite migrations and a repeatable first-edition seed
 - Private HTTP API for editions, lossless Markdown preferences, feedback, and deep dives
-- Fresh, isolated Nightjar app-server thread with web research and image generation
+- Fresh, isolated Nightjar app-server thread with web research
 - Deterministic validation, materialization, and an ETL-only fallback
 - Live collectors for arXiv, Ars Electronica, Google DeepMind, and Berlin.de events
-- Stored research, cover, prompt, model, result, and protocol provenance
+- Stored research, prompt, model, result, and protocol provenance
 - Locked, bounded systemd scheduling with preflight and inspectable run artifacts
 - GitHub Actions checks for the Python stack and signing-free iOS build, tests, smoke launch, and screenshots
 
@@ -24,16 +24,16 @@ The repository already includes a source-verified first edition with 10 stories,
 live sources
     |
     v
-Nightjar agent: preferences + feedback -> web research -> Markdown + covers
-                                                        |
-                                                        v
-                                         deterministic validation
-                                                        |
-                                                        v
-                                      SQLite relations and prepared JSON
-                                                        |
-                                                        v
-                                             SwiftData offline app
+Nightjar agent: preferences + feedback -> web research -> Markdown
+                                                       |
+                                                       v
+                                        deterministic validation
+                                                       |
+                                                       v
+                                     SQLite relations and prepared JSON
+                                                       |
+                                                       v
+                                            SwiftData offline app
 ```
 
 Markdown owns editable content. SQLite owns relations, feedback, deduplication, and job state. The read path never invokes a model, and a failed Nightjar run restores the previous good content.
@@ -104,7 +104,7 @@ For an explicit deterministic fallback with no model or web research:
 VERSE_NIGHTJAR_MODE=etl scripts/scheduled-nightjar
 ```
 
-The default `VERSE_NIGHTJAR_MODE=agent` starts a fresh Codex app-server thread in a disposable copy of `content/` with a stripped environment. Run `scripts/install-nightjar-container` once on the VPS. The agent container mounts only that disposable workspace and a temporary Codex login copy, never the live repository, database, server environment, tunnel configuration, or publication path. The container is read-only outside the workspace and temporary directories, drops Linux capabilities, and is the filesystem boundary on hosts where unprivileged namespaces are disabled. Verse validates the Markdown, citations, edition size, events, and cover provenance, creates deterministic cover fallbacks when needed, atomically swaps content, and then materializes SQLite and transport JSON. The temporary login copy is deleted immediately after the agent exits. Prompt, result, assistant, and protocol artifacts stay under the ignored `runs/_nightjar` directory. `VERSE_AGENT_RUNTIME=local` is an explicit trusted-host fallback that uses `VERSE_AGENT_SANDBOX=workspace-write` but does not provide the same read boundary. Set `VERSE_AGENT_MODEL` only when a specific installed model is required.
+The default `VERSE_NIGHTJAR_MODE=agent` starts a fresh Codex app-server thread in a disposable copy of `content/` with a stripped environment. Run `scripts/install-nightjar-container` once on the VPS. The agent container mounts only that disposable workspace and a temporary Codex login copy, never the live repository, database, server environment, tunnel configuration, or publication path. The container is read-only outside the workspace and temporary directories, drops Linux capabilities, and is the filesystem boundary on hosts where unprivileged namespaces are disabled. Verse validates the Markdown, citations, edition size, and events, atomically swaps content, and then materializes SQLite and transport JSON. New editions are text-only; historical cover metadata and assets remain readable. The temporary login copy is deleted immediately after the agent exits. Prompt, result, assistant, and protocol artifacts stay under the ignored `runs/_nightjar` directory. `VERSE_AGENT_RUNTIME=local` is an explicit trusted-host fallback that uses `VERSE_AGENT_SANDBOX=workspace-write` but does not provide the same read boundary. Set `VERSE_AGENT_MODEL` only when a specific installed model is required.
 
 ## Run the iOS app
 

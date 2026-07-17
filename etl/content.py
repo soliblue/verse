@@ -7,7 +7,6 @@ from copy import deepcopy
 from pathlib import Path
 from urllib.parse import quote
 
-from etl.covers import prepare_cover
 from etl.validation import complete_edition, validate_citations, validate_edition, validate_topics
 
 
@@ -208,7 +207,7 @@ def load_edition(path: Path, public_base_url: str | None = None) -> tuple[dict, 
     }
 
 
-def story_markdown(item: dict, cover: dict, provenance: dict) -> str:
+def story_markdown(item: dict, provenance: dict) -> str:
     metadata = {
         "id": item["id"],
         "kind": item["kind"],
@@ -219,12 +218,6 @@ def story_markdown(item: dict, cover: dict, provenance: dict) -> str:
         "reading_minutes": item["reading_minutes"],
         "related_story_ids": item.get("related_story_ids", []),
         "related_event_ids": item.get("related_event_ids", []),
-        "cover": f"assets/{cover['path'].name}",
-        "cover_prompt": cover["prompt"],
-        "cover_model": cover["model"],
-        "cover_width": cover["width"],
-        "cover_height": cover["height"],
-        "cover_fallback": cover["is_fallback"],
         "model_provider": provenance.get("provider"),
         "model_name": provenance.get("model"),
         "prompt_version": provenance.get("prompt_version") or provenance.get("prompt_versions"),
@@ -264,15 +257,12 @@ def write_edition(
     editions.mkdir(parents=True, exist_ok=True)
     staging = editions / f".{completed['date']}.{uuid.uuid4().hex}.tmp"
     staging.mkdir()
-    assets = staging / "assets"
-    assets.mkdir()
     filenames = []
     for item in completed["items"]:
-        cover = prepare_cover(assets, item)
         filename = f"{item['position']:02d}-{item['id']}.md"
         filenames.append(filename)
         (staging / filename).write_text(
-            story_markdown(item, cover, provenance.get(item["id"], {})),
+            story_markdown(item, provenance.get(item["id"], {})),
             encoding="utf-8",
         )
     (staging / "edition.md").write_text(edition_markdown(completed, filenames), encoding="utf-8")
