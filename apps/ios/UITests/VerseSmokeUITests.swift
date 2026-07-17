@@ -116,14 +116,15 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
 
         editor.tap()
-        XCTAssertTrue(editor.wait(for: \.hasFocus, toEqual: true, timeout: 5))
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
         editor.swipeDown()
-        XCTAssertTrue(editor.wait(for: \.hasFocus, toEqual: false, timeout: 5))
+        assertDisappears(keyboard)
 
         editor.tap()
-        XCTAssertTrue(editor.wait(for: \.hasFocus, toEqual: true, timeout: 5))
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
         app.staticTexts["This exact Markdown guides the next Nightjar edition."].tap()
-        XCTAssertTrue(editor.wait(for: \.hasFocus, toEqual: false, timeout: 5))
+        assertDisappears(keyboard)
     }
 
     private func openTab(_ title: String, app: XCUIApplication) {
