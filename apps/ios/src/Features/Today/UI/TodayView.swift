@@ -32,6 +32,7 @@ struct TodayView: View {
                 }
                 .scrollTargetBehavior(.paging)
                 .scrollIndicators(.hidden)
+                .ignoresSafeArea(.container, edges: .bottom)
                 .scrollPosition(id: $focusedStoryID)
                 .refreshable { await refresh() }
                 .accessibilityIdentifier("verse-reader")

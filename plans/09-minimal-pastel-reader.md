@@ -30,3 +30,4 @@ Release in progress.
 - 2026-07-17: Reduced event detail to title, time, route-linked venue, description, and one actions menu.
 - 2026-07-17: Reset tab navigation paths on section changes so Settings always opens at its root.
 - 2026-07-17: Fast Python, contract, shell, compile, and diff checks passed. Native iOS CI is deferred until release.
+- 2026-07-17: Simulator screenshots exposed the next card beneath the bottom safe area; extended the reader viewport before TestFlight.
