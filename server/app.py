@@ -4,6 +4,7 @@ import json
 import mimetypes
 import re
 import sqlite3
+import threading
 from collections.abc import Callable
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -25,7 +26,7 @@ from db.repository import (
     topics,
     watched_venues,
 )
-from etl.content import write_preferences
+from etl.content import write_preferences, write_preferences_markdown
 from server.config import APIError, ServerConfig
 
 
@@ -35,6 +36,7 @@ class VerseHTTPServer(ThreadingHTTPServer):
 
     def __init__(self, address: tuple[str, int], config: ServerConfig):
         self.config = config
+        self.preferences_lock = threading.Lock()
         super().__init__(address, VerseHandler)
 
 
@@ -140,6 +142,27 @@ class VerseHandler(BaseHTTPRequestHandler):
                 with database(self.server.config.database_path) as connection:
                     return HTTPStatus.OK, replace_topics(connection, request)
             self.require_method(method, "GET", "PUT")
+        if path == "/v1/preferences":
+            self.require_method(method, "GET", "PUT")
+            preferences = self.server.config.content_path / "preferences.md"
+            with self.server.preferences_lock:
+                if method == "GET":
+                    if not preferences.is_file():
+                        raise LookupError("preferences not found")
+                    return HTTPStatus.OK, {"markdown": preferences.read_text(encoding="utf-8")}
+                request = self.read_json_object()
+                previous = preferences.read_text(encoding="utf-8") if preferences.is_file() else None
+                payload = write_preferences_markdown(preferences, request.get("markdown"))
+                try:
+                    with database(self.server.config.database_path) as connection:
+                        replace_topics(connection, payload)
+                except Exception:
+                    if previous is None:
+                        preferences.unlink(missing_ok=True)
+                    else:
+                        write_preferences_markdown(preferences, previous)
+                    raise
+                return HTTPStatus.OK, {"markdown": preferences.read_text(encoding="utf-8")}
         if path == "/v1/explore":
             self.require_method(method, "GET")
             with database(self.server.config.database_path, readonly=True) as connection:

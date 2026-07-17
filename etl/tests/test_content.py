@@ -21,7 +21,14 @@ from db.explore import (
 from db.migrations import migrate
 from db.repository import edition, publish_edition, record_feedback
 from db.state import deep_dive_state
-from etl.content import load_edition, parse_preferences, write_deep_dive, write_edition, write_preferences
+from etl.content import (
+    load_edition,
+    parse_preferences,
+    write_deep_dive,
+    write_edition,
+    write_preferences,
+    write_preferences_markdown,
+)
 from etl.covers import cover_environment
 from etl.explore import build_explore, distance_band, materialize_explore, validate_explore
 
@@ -62,6 +69,17 @@ class MarkdownContentTests(unittest.TestCase):
         write_preferences(path, self.topics)
 
         self.assertEqual(parse_preferences(path), self.topics)
+
+    def test_preferences_markdown_is_preserved_exactly(self):
+        path = self.root / "preferences.md"
+        write_preferences(path, self.topics)
+        markdown = path.read_text(encoding="utf-8").replace(
+            "Methods for composing, synchronizing, rendering, and presenting sound and moving image.",
+            "Methods for composing, synchronizing, rendering, and presenting sound and moving image.\n\n<!-- personal note -->",
+        )
+        parsed = write_preferences_markdown(path, markdown)
+        self.assertEqual(path.read_text(encoding="utf-8"), markdown)
+        self.assertIn("personal note", parsed["topics"][0]["description"])
         text = path.read_text(encoding="utf-8")
         self.assertIn("## Audiovisual techniques", text)
         self.assertIn("- kind: \"interest\"", text)

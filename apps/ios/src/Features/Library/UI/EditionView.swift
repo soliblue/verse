@@ -47,7 +47,6 @@ struct EditionView: View {
             }
         }
         .background(VerseTheme.paper)
-        .navigationTitle(summary.title)
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await store.load(id: summary.id, repository: editions, configuration: configuration)

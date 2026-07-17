@@ -43,6 +43,11 @@ final class APIClient {
         return try? decoder.decode(type, from: data)
     }
 
+    func putResult<Body: Encodable>(_ path: String, body: Body) async -> HTTPResult {
+        guard let payload = try? encoder.encode(body) else { return .transportFailure }
+        return await sendResult(path: path, method: "PUT", payload: payload)
+    }
+
     func send(path: String, method: String, payload: Data? = nil) async -> Data? {
         switch await sendResult(path: path, method: method, payload: payload) {
         case .success(let data): return data

@@ -30,7 +30,7 @@ struct AppNavigationMenu: View {
 
 #if DEBUG
 #Preview("Navigation menu") {
-    AppNavigationMenu(selection: .constant(.today))
+    AppNavigationMenu(selection: .constant(.articles))
         .padding()
         .background(VerseTheme.paper)
 }

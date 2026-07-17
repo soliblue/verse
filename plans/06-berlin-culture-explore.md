@@ -11,8 +11,8 @@ Implemented for v0. Dedicated venue adapters and a map remain optional follow-up
 ## Product outcome
 
 - Today may include at most one or two urgent Berlin picks when they genuinely deserve space in the edition.
-- Explore is a separate finite view for Tonight, Tomorrow, Weekend, and Later.
-- Places shows watched venues and their next worthwhile event.
+- Calendar is a direct screen for verified upcoming events.
+- Places is a direct screen for watched venues and their next worthwhile event.
 - Past events remain available only as attended history and ranking evidence.
 - Exact home location is private configuration and is never checked into the repository or emitted in logs.
 - Proximity is calculated from a private local anchor. Positive fixtures describe qualities such as nearby, free, social, independent, and culturally surprising without recording personal location history.
@@ -66,7 +66,7 @@ The first positive regression fixture is a nearby independent screening marked a
 
 ### Entry point
 
-Add `Explore` to the existing pixel navigation menu and keep the hidden `TabView` plus one `NavigationStack` per tab. Do not add persistent navigation chrome.
+Use direct `Articles`, `Calendar`, and `Places` destinations in the pixel navigation menu. Keep the hidden `TabView` plus one `NavigationStack` per destination. Do not add persistent navigation chrome.
 
 ### Main view
 
@@ -90,7 +90,7 @@ Default ordering:
 
 ### Places view
 
-Explore includes a Places switch rather than a separate permanent tab. Each place shows:
+Places is a direct navigation destination. Each place shows:
 
 - Why it is watched.
 - Distance band.
@@ -103,7 +103,7 @@ Start with a list, not a map. Add a map only after the list proves that spatial 
 
 ### Calendar view
 
-Explore includes a Calendar switch alongside List and Places.
+Calendar is a direct navigation destination.
 
 - Default to a compact week view centered on today.
 - Mark dates containing events and show that day's finite event list below the calendar.
@@ -426,6 +426,8 @@ Human-editable event and venue files remain authoritative; `current.json` is gen
 - 2026-07-16: Recorded the initial public event and venue inventory while keeping personal history in private configuration.
 - 2026-07-16: Added an in-app week calendar and explicit Apple Calendar export from both events and event-related articles.
 - 2026-07-16: Implemented Markdown events and places, the finite Explore payload, SQLite relations and feedback, offline iOS caching, List, Calendar, Places, EventKit export, and Today's two-event cap.
+- 2026-07-17: Replaced the combined Explore switcher with direct Articles, Calendar, and Places destinations.
+- 2026-07-17: Removed screen-title headers and next-event previews from Places.
 - 2026-07-16: Materialized 8 featured choices, 10 calendar occurrences, watched places, and bounded attended history from durable feedback.
 - 2026-07-16: Enforced cross-night occurrence and series suppression with exceptions for meaningful updates and final chances.
 - 2026-07-16: Completed explicit EventKit handling for new, changed, cancelled, and ended occurrences without silently writing or deleting phone events.

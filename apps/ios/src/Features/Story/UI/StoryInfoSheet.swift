@@ -86,8 +86,9 @@ struct StoryInfoSheet: View {
                 .padding(24)
             }
             .background(VerseTheme.paper)
-            .navigationTitle("Story details")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .accessibilityIdentifier("story-info")
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
                     Button("Done") { dismiss() }

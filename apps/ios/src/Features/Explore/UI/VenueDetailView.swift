@@ -3,9 +3,7 @@ import SwiftUI
 struct VenueDetailView: View {
     @Environment(\.dismiss) private var dismiss
     let venue: Venue
-    let explore: ExploreRepository
     let feedback: VenueFeedbackRepository
-    let calendar: CalendarRepository
 
     var body: some View {
         ScrollView {
@@ -28,20 +26,6 @@ struct VenueDetailView: View {
                     Label("Official calendar", systemImage: "arrow.up.right")
                 }
 
-                if let nextEvent {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("Next")
-                            .font(.utility(12))
-                            .tracking(0.9)
-                            .textCase(.uppercase)
-                        NavigationLink(value: nextEvent) {
-                            Text(nextEvent.title)
-                                .font(.display(22))
-                        }
-                        EventCalendarButton(event: nextEvent, calendar: calendar)
-                    }
-                }
-
                 Button("More from here", systemImage: "plus") {
                     update(.moreFromHere)
                 }
@@ -53,11 +37,6 @@ struct VenueDetailView: View {
         }
         .background(VerseTheme.paper)
         .navigationBarTitleDisplayMode(.inline)
-    }
-
-    private var nextEvent: EventItem? {
-        let events = explore.local()?.allEvents ?? []
-        return events.first { $0.occurrence.id == venue.nextEventID }
     }
 
     private func update(_ kind: VenueFeedbackKind) {

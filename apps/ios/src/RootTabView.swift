@@ -12,16 +12,17 @@ struct RootTabView: View {
     let calendar: CalendarRepository
     let covers: CoverRepository
     @Binding var appTheme: AppTheme
-    @State private var selectedTab = AppTab.today
-    @State private var todayPath = NavigationPath()
-    @State private var explorePath = NavigationPath()
+    @State private var selectedTab = AppTab.articles
+    @State private var articlesPath = NavigationPath()
+    @State private var calendarPath = NavigationPath()
+    @State private var placesPath = NavigationPath()
     @State private var libraryPath = NavigationPath()
     @State private var topicsPath = NavigationPath()
     @State private var settingsPath = NavigationPath()
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            NavigationStack(path: $todayPath) {
+            NavigationStack(path: $articlesPath) {
                 TodayView(
                     editions: editions,
                     feedback: feedback,
@@ -38,11 +39,12 @@ struct RootTabView: View {
                 }
             }
             .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Today", systemImage: "square.stack.3d.up") }
-            .tag(AppTab.today)
+            .tabItem { Label("Articles", systemImage: "doc.text.image") }
+            .tag(AppTab.articles)
 
-            NavigationStack(path: $explorePath) {
+            NavigationStack(path: $calendarPath) {
                 ExploreView(
+                    mode: .calendar,
                     repository: explore,
                     feedback: eventFeedback,
                     calendar: calendar,
@@ -52,12 +54,7 @@ struct RootTabView: View {
                     eventDetail(event)
                 }
                 .navigationDestination(for: Venue.self) { venue in
-                    VenueDetailView(
-                        venue: venue,
-                        explore: explore,
-                        feedback: venueFeedback,
-                        calendar: calendar
-                    )
+                    venueDetail(venue)
                 }
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
@@ -66,8 +63,32 @@ struct RootTabView: View {
                 }
             }
             .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Explore", systemImage: "sparkles") }
-            .tag(AppTab.explore)
+            .tabItem { Label("Calendar", systemImage: "calendar") }
+            .tag(AppTab.calendar)
+
+            NavigationStack(path: $placesPath) {
+                ExploreView(
+                    mode: .places,
+                    repository: explore,
+                    feedback: eventFeedback,
+                    calendar: calendar,
+                    configuration: configuration
+                )
+                .navigationDestination(for: EventItem.self) { event in
+                    eventDetail(event)
+                }
+                .navigationDestination(for: Venue.self) { venue in
+                    venueDetail(venue)
+                }
+                .toolbar {
+                    ToolbarItem(placement: .topBarLeading) {
+                        AppNavigationMenu(selection: $selectedTab)
+                    }
+                }
+            }
+            .toolbar(.hidden, for: .tabBar)
+            .tabItem { Label("Places", systemImage: "mappin.and.ellipse") }
+            .tag(AppTab.places)
 
             NavigationStack(path: $libraryPath) {
                 LibraryView(editions: editions, feedback: feedback)
@@ -125,6 +146,8 @@ struct RootTabView: View {
             .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
             .tag(AppTab.settings)
         }
+        .background(KeyboardDismissalHost())
+        .toolbarBackground(.hidden, for: .navigationBar)
         .tint(VerseTheme.accent)
         .sensoryFeedback(.selection, trigger: selectedTab)
         .task {
@@ -150,6 +173,13 @@ struct RootTabView: View {
             explore: explore,
             feedback: eventFeedback,
             calendar: calendar
+        )
+    }
+
+    private func venueDetail(_ venue: Venue) -> some View {
+        VenueDetailView(
+            venue: venue,
+            feedback: venueFeedback
         )
     }
 }

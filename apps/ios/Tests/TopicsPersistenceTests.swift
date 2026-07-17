@@ -14,23 +14,20 @@ final class TopicsPersistenceTests: XCTestCase {
             context: container.mainContext,
             api: APIClient(configuration: server)
         )
-        let topic = Topic(
-            id: "spatial-audio",
-            name: "Spatial audio",
-            kind: .interest,
-            description: "Listen for practical spatial techniques.",
-            isEnabled: true,
-            position: 1
+        let document = PreferencesDocument(
+            markdown: "# Preferences\n\n## Spatial audio\n\nListen for practical spatial techniques.\n"
         )
 
-        let didSync = await repository.save(TopicList(topics: [topic]))
+        let result = await repository.save(document)
 
-        XCTAssertFalse(didSync)
+        guard case .pending = result else {
+            return XCTFail("An offline save must remain pending")
+        }
         let reopened = TopicsRepository(
             context: ModelContext(container),
             api: APIClient(configuration: server)
         )
         let reloaded = await reopened.load()
-        XCTAssertEqual(reloaded?.topics, [topic])
+        XCTAssertEqual(reloaded, document)
     }
 }

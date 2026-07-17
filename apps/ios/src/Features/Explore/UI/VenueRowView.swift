@@ -2,7 +2,6 @@ import SwiftUI
 
 struct VenueRowView: View {
     let venue: Venue
-    let nextEvent: EventItem?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -20,11 +19,6 @@ struct VenueRowView: View {
                 .font(.reading(15))
                 .foregroundStyle(VerseTheme.secondaryInk)
                 .lineLimit(2)
-            if let nextEvent {
-                Text("Next · \(nextEvent.title)")
-                    .font(.utility(12))
-                    .foregroundStyle(VerseTheme.ink)
-            }
         }
         .padding(.vertical, 9)
     }

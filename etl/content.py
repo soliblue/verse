@@ -349,11 +349,24 @@ def preferences_markdown(payload: dict) -> str:
 
 
 def write_preferences(path: Path, payload: dict) -> None:
+    write_preferences_markdown(path, preferences_markdown(payload))
+
+
+def write_preferences_markdown(path: Path, markdown: object) -> dict:
+    if not isinstance(markdown, str) or not markdown.strip():
+        raise ValueError("preferences markdown must be a non-empty string")
+    if "\x00" in markdown:
+        raise ValueError("preferences markdown must not contain null bytes")
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_suffix(".md.tmp")
-    temporary.write_text(preferences_markdown(payload), encoding="utf-8")
-    parse_preferences(temporary)
-    temporary.replace(path)
+    temporary = path.with_name(f".{path.name}.{uuid.uuid4().hex}.tmp")
+    try:
+        temporary.write_text(markdown, encoding="utf-8")
+        temporary.chmod(0o600)
+        payload = parse_preferences(temporary)
+        temporary.replace(path)
+        return payload
+    finally:
+        temporary.unlink(missing_ok=True)
 
 
 def deep_dive_markdown(story_id: str, payload: dict, provenance: dict) -> str:

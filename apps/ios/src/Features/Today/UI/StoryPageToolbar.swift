@@ -7,6 +7,7 @@ struct StoryPageToolbar: View {
     let preference: FeedbackPreference?
     let deepDiveStatus: DeepDiveStatus
     let isDisabled: Bool
+    let foregroundColor: Color
     let onSave: () -> Void
     let onPreference: (FeedbackPreference) -> Void
     let onDeepDive: () -> Void
@@ -35,7 +36,7 @@ struct StoryPageToolbar: View {
             )
         }
         .font(.system(size: VerseTokens.Icon.m, weight: .medium))
-        .foregroundStyle(VerseTheme.ink)
+        .foregroundStyle(foregroundColor)
         .buttonStyle(.plain)
         .padding(.horizontal, 12)
         .padding(.top, 4)

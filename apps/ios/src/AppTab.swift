@@ -1,14 +1,16 @@
 enum AppTab: CaseIterable, Hashable {
-    case today
-    case explore
+    case articles
+    case calendar
+    case places
     case library
     case topics
     case settings
 
     var title: String {
         switch self {
-        case .today: "Today"
-        case .explore: "Explore"
+        case .articles: "Articles"
+        case .calendar: "Calendar"
+        case .places: "Places"
         case .library: "Library"
         case .topics: "Topics"
         case .settings: "Settings"
@@ -17,8 +19,9 @@ enum AppTab: CaseIterable, Hashable {
 
     var systemImage: String {
         switch self {
-        case .today: "square.stack.3d.up"
-        case .explore: "sparkles"
+        case .articles: "doc.text.image"
+        case .calendar: "calendar"
+        case .places: "mappin.and.ellipse"
         case .library: "bookmark"
         case .topics: "scope"
         case .settings: "slider.horizontal.3"

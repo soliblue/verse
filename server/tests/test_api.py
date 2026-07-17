@@ -9,6 +9,7 @@ from db.connection import connect
 from db.explore import publish_explore
 from db.migrations import migrate
 from db.repository import publish_edition, replace_topics
+from etl.content import write_preferences
 from server.app import ServerConfig, create_server
 
 
@@ -22,7 +23,9 @@ class APITests(unittest.TestCase):
         self.content = Path(self.temporary.name) / "content"
         connection = connect(self.path)
         migrate(connection)
-        replace_topics(connection, json.loads((ROOT / "etl/seeds/default-topics.json").read_text(encoding="utf-8")))
+        topic_payload = json.loads((ROOT / "etl/seeds/default-topics.json").read_text(encoding="utf-8"))
+        replace_topics(connection, topic_payload)
+        write_preferences(self.content / "preferences.md", topic_payload)
         publish_edition(connection, json.loads((ROOT / "etl/seeds/first-edition.json").read_text(encoding="utf-8")))
         publish_explore(connection, json.loads((ROOT / "content/explore/current.json").read_text(encoding="utf-8")))
         connection.close()
@@ -102,6 +105,42 @@ class APITests(unittest.TestCase):
         self.assertEqual(saved, updated)
         self.assertTrue((self.content / "preferences.md").is_file())
 
+    def test_preferences_markdown_round_trip_is_lossless(self):
+        status, current, _ = self.request("GET", "/v1/preferences")
+        self.assertEqual(status, 200)
+        self.assertIn("# Preferences", current["markdown"])
+        markdown = (
+            "---\nversion: 1\n---\n\n# Preferences\n\n"
+            "## Spatial sound\n"
+            "- id: spatial-sound\n"
+            "- kind: interest\n"
+            "- enabled: true\n"
+            "- position: 1\n\n"
+            "Room-scale listening.\n\n"
+            "<!-- keep this note exactly -->\n"
+        )
+        status, saved, _ = self.request("PUT", "/v1/preferences", {"markdown": markdown})
+        self.assertEqual(status, 200)
+        self.assertEqual(saved, {"markdown": markdown})
+        self.assertEqual((self.content / "preferences.md").read_text(encoding="utf-8"), markdown)
+        status, topics, _ = self.request("GET", "/v1/topics")
+        self.assertEqual(status, 200)
+        self.assertIn("keep this note exactly", topics["topics"][0]["description"])
+
+    def test_invalid_preferences_preserve_file_and_database(self):
+        before_file = (self.content / "preferences.md").read_text(encoding="utf-8")
+        _, before_topics, _ = self.request("GET", "/v1/topics")
+        status, payload, _ = self.request(
+            "PUT",
+            "/v1/preferences",
+            {"markdown": "# Anything at all\n"},
+        )
+        self.assertEqual(status, 400)
+        self.assertEqual(payload["error"]["code"], "invalid_request")
+        self.assertEqual((self.content / "preferences.md").read_text(encoding="utf-8"), before_file)
+        _, after_topics, _ = self.request("GET", "/v1/topics")
+        self.assertEqual(after_topics, before_topics)
+
     def test_feedback_persists_into_edition_payload(self):
         story_id = "meta-physics-video-world-models-2026"
         status, response, _ = self.request("POST", "/v1/feedback", {"story_id": story_id, "kind": "saved", "value": True})
@@ -140,7 +179,10 @@ class APITests(unittest.TestCase):
         status, explore, _ = self.request("GET", "/v1/explore")
         self.assertEqual(status, 200)
         self.assertLessEqual(len(explore["featured_events"]), 12)
-        self.assertEqual(explore["attended_events"], [])
+        self.assertLessEqual(len(explore["attended_events"]), 12)
+        self.assertTrue(
+            all(event["occurrence"]["state"] == "ended" for event in explore["attended_events"])
+        )
         self.assertEqual(len(explore["events"]), len(explore["calendar"]))
         self.assertEqual(
             {event["occurrence"]["id"] for event in explore["events"]},

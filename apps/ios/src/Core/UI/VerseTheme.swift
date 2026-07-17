@@ -15,6 +15,9 @@ enum VerseTheme {
     static let secondaryInk = secondary
     static let amber = accent
     static let blue = accent
+    static let mediaInk = Color.white
+    static let mediaSecondaryInk = Color.white.opacity(0.84)
+    static let mediaScrim = Color.black
 
     private static func adaptive(light: UInt32, dark: UInt32) -> Color {
         Color(

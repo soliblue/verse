@@ -48,7 +48,7 @@ struct LibraryView: View {
             }
         }
         .background(VerseTheme.paper)
-        .navigationTitle("Library")
+        .accessibilityIdentifier("library-screen")
         .onAppear { store.reloadLocal(editions: editions, feedback: feedback) }
         .task { await store.load(editions: editions, feedback: feedback) }
     }

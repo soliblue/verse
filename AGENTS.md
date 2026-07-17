@@ -14,10 +14,10 @@ Verse is a private, single-user iOS reader. It gathers material matching the ope
 
 ## v0
 
-- Native SwiftUI app with Today, Library, Topics, and minimal Settings surfaces.
-- Today shows the current edition. Story detail shows the summary, citations, source links, selection reason, feedback, and deep-dive state.
+- Native SwiftUI app with Articles, Calendar, Places, Library, Topics, and minimal Settings surfaces.
+- Articles shows the current edition. Story detail shows the summary, citations, source links, selection reason, feedback, and deep-dive state.
 - Library contains saved items and previous editions.
-- Topics is an editable set of interests, labs, artists, sources, venues, and exclusions.
+- Topics is one editable Markdown preferences document covering interests, labs, artists, sources, venues, and exclusions.
 - The app fetches prepared data from the VPS and remains readable offline through a local cache.
 - No registration, login UI, user table, multi-tenancy, analytics, ads, social features, SEO, or public publishing work.
 - No push notifications in v0. Refresh when the app opens and on manual request.

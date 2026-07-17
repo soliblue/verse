@@ -15,7 +15,7 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertFalse(app.descendants(matching: .any)["verse-mark"].exists)
         app.buttons["app-menu"].tap()
         XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
-        app.buttons["Today"].tap()
+        app.buttons["Articles"].tap()
 
         let first = app.descendants(matching: .any)["reader-story-1"]
         XCTAssertTrue(first.waitForExistence(timeout: 5))
@@ -42,7 +42,7 @@ final class VerseSmokeUITests: XCTestCase {
         app.buttons["story-actions"].tap()
         XCTAssertTrue(app.buttons["Story details"].waitForExistence(timeout: 5))
         app.buttons["Story details"].tap()
-        XCTAssertTrue(app.navigationBars["Story details"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["story-info"].waitForExistence(timeout: 5))
         XCTAssertTrue(
             app.descendants(matching: .any)["story-original"].waitForExistence(timeout: 5)
         )
@@ -58,37 +58,31 @@ final class VerseSmokeUITests: XCTestCase {
         app.launch()
 
         openTab("Library", app: app)
-        XCTAssertTrue(app.navigationBars["Library"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["library-screen"].waitForExistence(timeout: 5))
 
         openTab("Topics", app: app)
-        XCTAssertTrue(app.navigationBars["Topics"].waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            app.descendants(matching: .any)["topics-markdown-editor"]
+                .waitForExistence(timeout: 5)
+        )
+        XCTAssertTrue(app.buttons["topics-save"].exists)
 
         openTab("Settings", app: app)
-        XCTAssertTrue(app.navigationBars["Settings"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.descendants(matching: .any)["settings-screen"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["Server URL"].exists)
         XCTAssertTrue(app.switches["text-only-toggle"].exists)
 
-        openTab("Today", app: app)
+        openTab("Articles", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
     }
 
-    func testExploreIsFiniteAndKeepsCalendarAndPlacesTogether() {
+    func testCalendarAndPlacesAreDirectDestinations() {
         executionTimeAllowance = 90
         let app = XCUIApplication()
         app.launch()
 
-        openTab("Explore", app: app)
-        XCTAssertTrue(app.navigationBars["Explore"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.descendants(matching: .any)["explore-mode"].exists)
-
-        let event = app.staticTexts["SoundS Rundgang: Slack"].firstMatch
-        XCTAssertTrue(event.waitForExistence(timeout: 5))
-        event.tap()
-        XCTAssertTrue(app.descendants(matching: .any)["event-detail"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["Add to Calendar"].waitForExistence(timeout: 5))
-        app.navigationBars.buttons["Explore"].tap()
-
-        app.buttons["Calendar"].tap()
+        openTab("Calendar", app: app)
+        XCTAssertTrue(app.descendants(matching: .any)["calendar-screen"].waitForExistence(timeout: 5))
         let july16 = app.staticTexts["16"].firstMatch
         if !july16.waitForExistence(timeout: 2) {
             app.buttons["Previous week"].tap()
@@ -100,7 +94,8 @@ final class VerseSmokeUITests: XCTestCase {
         app.staticTexts["18"].firstMatch.tap()
         XCTAssertTrue(app.staticTexts["DayDreamLab by Transmission"].waitForExistence(timeout: 5))
 
-        app.buttons["Places"].tap()
+        openTab("Places", app: app)
+        XCTAssertTrue(app.descendants(matching: .any)["places-screen"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.staticTexts["UdK Sound Studies"].waitForExistence(timeout: 5))
     }
 
@@ -117,6 +112,27 @@ final class VerseSmokeUITests: XCTestCase {
 
         selectAppearance("Light", app: app)
         assertResolvedTheme("light", app: app)
+    }
+
+    func testKeyboardDismissesBySwipeAndTapAway() {
+        let app = XCUIApplication()
+        app.launch()
+
+        openTab("Topics", app: app)
+        let editor = app.descendants(matching: .any)["topics-markdown-editor"]
+        XCTAssertTrue(editor.waitForExistence(timeout: 5))
+
+        editor.tap()
+        let keyboard = app.keyboards.firstMatch
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        editor.swipeDown()
+        assertDisappears(keyboard)
+
+        editor.tap()
+        XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
+        app.buttons["app-menu"].tap()
+        assertDisappears(keyboard)
+        XCTAssertTrue(app.buttons["Articles"].waitForExistence(timeout: 5))
     }
 
     private func openTab(_ title: String, app: XCUIApplication) {
@@ -150,6 +166,14 @@ final class VerseSmokeUITests: XCTestCase {
     private func assertHittable(_ element: XCUIElement) {
         let expectation = XCTNSPredicateExpectation(
             predicate: NSPredicate(format: "exists == true AND hittable == true"),
+            object: element
+        )
+        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
+    }
+
+    private func assertDisappears(_ element: XCUIElement) {
+        let expectation = XCTNSPredicateExpectation(
+            predicate: NSPredicate(format: "exists == false"),
             object: element
         )
         XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)

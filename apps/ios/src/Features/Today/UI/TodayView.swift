@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @AppStorage("verse.textOnly") private var textOnly = false
     let editions: EditionRepository
     let feedback: FeedbackRepository
     let topics: TopicsRepository
@@ -41,7 +42,11 @@ struct TodayView: View {
                     if let message = store.statusMessage {
                         Text(message)
                             .font(.footnote)
-                            .foregroundStyle(VerseTheme.secondaryInk)
+                            .foregroundStyle(
+                                pageUsesCover
+                                    ? VerseTheme.mediaSecondaryInk
+                                    : VerseTheme.secondaryInk
+                            )
                             .multilineTextAlignment(.center)
                             .padding(.horizontal, 24)
                             .padding(.bottom, 20)
@@ -74,6 +79,9 @@ struct TodayView: View {
                     preference: toolbarStore.preference,
                     deepDiveStatus: toolbarStore.deepDiveStatus,
                     isDisabled: toolbarStore.isSending,
+                    foregroundColor: pageUsesCover
+                        ? VerseTheme.mediaInk
+                        : VerseTheme.ink,
                     onSave: {
                         Task {
                             await toolbarStore.toggleSaved(story: story, repository: feedback)
@@ -136,5 +144,9 @@ struct TodayView: View {
         guard let edition = store.edition else { return nil }
         let stories = edition.items.sorted { $0.position < $1.position }
         return stories.first { $0.id == focusedStoryID } ?? stories.first
+    }
+
+    private var pageUsesCover: Bool {
+        focusedStory?.imageURL != nil && !textOnly
     }
 }

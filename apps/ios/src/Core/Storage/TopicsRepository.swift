@@ -15,7 +15,7 @@ final class TopicsRepository {
         self.api = api
     }
 
-    func load() async -> TopicList? {
+    func load() async -> PreferencesDocument? {
         if entry()?.needsSync == true {
             _ = await syncPending()
             return local() ?? bundled()
@@ -25,7 +25,7 @@ final class TopicsRepository {
         isFetching = true
         defer { isFetching = false }
         let revision = entry()?.revision ?? 0
-        if let remote = await api.get(APIEndpoint.topics, as: TopicList.self) {
+        if let remote = await api.get(APIEndpoint.preferences, as: PreferencesDocument.self) {
             if let current = entry(), current.revision == revision, !current.needsSync {
                 storeRemote(remote, revision: revision)
                 return remote
@@ -38,26 +38,40 @@ final class TopicsRepository {
         return self.local() ?? local ?? bundled()
     }
 
-    func save(_ list: TopicList) async -> Bool {
-        markDirty(list)
-        return await syncPending()
+    func save(_ document: PreferencesDocument) async -> TopicsSaveResult {
+        markDirty(document)
+        return await syncPendingResult()
     }
 
     func syncPending() async -> Bool {
-        guard !isSyncing else { return false }
+        await syncPendingResult() == .synced
+    }
+
+    private func syncPendingResult() async -> TopicsSaveResult {
+        guard !isSyncing else { return .pending }
         isSyncing = true
         defer { isSyncing = false }
         while let cached = entry(), cached.needsSync {
             let revision = cached.revision
-            guard
-                let list = try? decoder.decode(TopicList.self, from: cached.payload),
-                let response = await api.put(APIEndpoint.topics, body: list, as: TopicList.self)
-            else { return false }
+            guard let document = document(from: cached.payload) else { return .pending }
+            let result = await api.putResult(APIEndpoint.preferences, body: document)
+            let response: PreferencesDocument
+            switch result {
+            case .success(let data):
+                guard let decoded = try? decoder.decode(PreferencesDocument.self, from: data) else {
+                    return .pending
+                }
+                response = decoded
+            case .httpFailure(let status) where [400, 413, 415, 422].contains(status):
+                return .rejected
+            case .httpFailure, .transportFailure:
+                return .pending
+            }
             if let current = entry(), current.revision == revision {
                 storeRemote(response, revision: current.revision)
             }
         }
-        return true
+        return .synced
     }
 
     private func entry() -> CachedTopics? {
@@ -66,22 +80,23 @@ final class TopicsRepository {
         return (try? context.fetch(descriptor))?.first
     }
 
-    private func local() -> TopicList? {
-        entry().flatMap { try? decoder.decode(TopicList.self, from: $0.payload) }
+    private func local() -> PreferencesDocument? {
+        entry().flatMap { document(from: $0.payload) }
     }
 
-    private func bundled() -> TopicList? {
+    private func bundled() -> PreferencesDocument? {
         guard
             let url = Bundle.main.url(forResource: "default-topics", withExtension: "json"),
             let data = try? Data(contentsOf: url),
             let list = try? decoder.decode(TopicList.self, from: data)
         else { return nil }
-        storeRemote(list, revision: 0)
-        return list
+        let document = PreferencesDocument(topics: list.topics)
+        storeRemote(document, revision: 0)
+        return document
     }
 
-    private func markDirty(_ list: TopicList) {
-        guard let data = try? encoder.encode(list) else { return }
+    private func markDirty(_ document: PreferencesDocument) {
+        guard let data = try? encoder.encode(document) else { return }
         if let cached = entry() {
             cached.payload = data
             cached.fetchedAt = Date()
@@ -95,8 +110,8 @@ final class TopicsRepository {
         try? context.save()
     }
 
-    private func storeRemote(_ list: TopicList, revision: Int) {
-        guard let data = try? encoder.encode(list) else { return }
+    private func storeRemote(_ document: PreferencesDocument, revision: Int) {
+        guard let data = try? encoder.encode(document) else { return }
         if let cached = entry() {
             cached.payload = data
             cached.fetchedAt = Date()
@@ -108,5 +123,13 @@ final class TopicsRepository {
             )
         }
         try? context.save()
+    }
+
+    private func document(from data: Data) -> PreferencesDocument? {
+        if let document = try? decoder.decode(PreferencesDocument.self, from: data) {
+            return document
+        }
+        guard let legacy = try? decoder.decode(TopicList.self, from: data) else { return nil }
+        return PreferencesDocument(topics: legacy.topics)
     }
 }

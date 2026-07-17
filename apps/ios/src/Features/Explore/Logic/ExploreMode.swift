@@ -1,7 +1,18 @@
-enum ExploreMode: String, CaseIterable, Identifiable {
-    case list = "List"
+enum ExploreMode: String {
     case calendar = "Calendar"
     case places = "Places"
 
-    var id: String { rawValue }
+    var systemImage: String {
+        switch self {
+        case .calendar: "calendar"
+        case .places: "mappin.and.ellipse"
+        }
+    }
+
+    var accessibilityIdentifier: String {
+        switch self {
+        case .calendar: "calendar-screen"
+        case .places: "places-screen"
+        }
+    }
 }

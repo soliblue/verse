@@ -160,9 +160,10 @@ struct SettingsView: View {
                     .foregroundStyle(VerseTheme.secondaryInk)
             }
         }
+        .scrollDismissesKeyboard(.immediately)
         .scrollContentBackground(.hidden)
         .background(VerseTheme.paper)
-        .navigationTitle("Settings")
+        .accessibilityIdentifier("settings-screen")
         .overlay(alignment: .topLeading) {
             #if DEBUG
             Text(colorScheme == .dark ? "dark" : "light")

@@ -3,77 +3,60 @@ import SwiftUI
 struct TopicsView: View {
     let repository: TopicsRepository
     @State private var store = TopicsStore()
-    @State private var editor: TopicEditorDraft?
+    @FocusState private var editorFocused: Bool
 
     var body: some View {
+        @Bindable var store = store
+
         Group {
-            if store.isLoading && store.topics.isEmpty {
-                ProgressView("Loading topics")
+            if store.isLoading && store.markdown.isEmpty {
+                ProgressView("Loading preferences")
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else if store.topics.isEmpty {
-                ContentUnavailableView(
-                    "No topics",
-                    systemImage: "scope",
-                    description: Text("Add an interest to guide Nightjar’s next edition.")
-                )
             } else {
-                List {
+                VStack(spacing: 0) {
                     if let message = store.statusMessage {
-                        StatusBanner(message: message, systemImage: "arrow.triangle.2.circlepath")
-                            .listRowBackground(VerseTheme.paper)
+                        Text(message)
+                            .font(.footnote)
+                            .foregroundStyle(VerseTheme.secondaryInk)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
                     }
-                    Section {
-                        ForEach(store.topics) { topic in
-                            TopicRow(
-                                topic: topic,
-                                isDisabled: store.isBusy,
-                                onToggle: {
-                                    Task { await store.toggle(topic.id, repository: repository) }
-                                },
-                                onEdit: {
-                                    editor = TopicEditorDraft(topic: topic)
-                                }
-                            )
-                        }
-                        .onDelete { offsets in
-                            Task { await store.delete(at: offsets, repository: repository) }
-                        }
-                        .onMove { offsets, destination in
-                            Task {
-                                await store.move(
-                                    from: offsets,
-                                    to: destination,
-                                    repository: repository
-                                )
-                            }
-                        }
-                    } footer: {
-                        Text("Enabled topics guide ranking. Exclusions tell Nightjar what to leave out.")
-                    }
+
+                    TextEditor(text: $store.markdown)
+                        .font(.system(.body, design: .monospaced))
+                        .foregroundStyle(VerseTheme.ink)
+                        .scrollContentBackground(.hidden)
+                        .padding(.horizontal, 14)
+                        .focused($editorFocused)
+                        .scrollDismissesKeyboard(.immediately)
+                        .autocorrectionDisabled()
+                        .accessibilityLabel("Preferences Markdown")
+                        .accessibilityIdentifier("topics-markdown-editor")
+
+                    Text("This exact Markdown guides the next Nightjar edition.")
+                        .font(.footnote)
+                        .foregroundStyle(VerseTheme.secondaryInk)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(.horizontal, 20)
+                        .padding(.vertical, 12)
                 }
-                .listStyle(.insetGrouped)
-                .scrollContentBackground(.hidden)
-                .refreshable { await store.load(repository: repository) }
             }
         }
         .background(VerseTheme.paper)
-        .navigationTitle("Topics")
+        .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            ToolbarItemGroup(placement: .topBarTrailing) {
-                EditButton()
-                    .disabled(store.isBusy)
-                Button {
-                    editor = TopicEditorDraft()
-                } label: {
-                    Image(systemName: "plus")
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Save") {
+                    editorFocused = false
+                    Task { await store.save(repository: repository) }
                 }
-                .disabled(store.isBusy)
-                .accessibilityLabel("Add topic")
+                .disabled(!store.canSave || store.isBusy)
+                .accessibilityIdentifier("topics-save")
             }
-        }
-        .sheet(item: $editor) { draft in
-            TopicEditorSheet(draft: draft) { saved in
-                Task { await store.upsert(saved, repository: repository) }
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") { editorFocused = false }
             }
         }
         .task { await store.load(repository: repository) }

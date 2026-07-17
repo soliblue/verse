@@ -6,11 +6,11 @@ The repository already includes a source-verified first edition with 10 stories,
 
 ## What is included
 
-- Native SwiftUI app with Today, Explore, Library, Topics, and Settings
-- Offline SwiftData cache for editions, saved state, feedback, topics, and queued writes
+- Native SwiftUI app with Articles, Calendar, Places, Library, Topics, and Settings
+- Offline SwiftData cache for editions, saved state, feedback, Markdown preferences, and queued writes
 - Configurable VPS URL and a device secret stored in the iOS Keychain
 - SQLite migrations and a repeatable first-edition seed
-- Private HTTP API for editions, topics, feedback, and deep dives
+- Private HTTP API for editions, lossless Markdown preferences, feedback, and deep dives
 - Fresh, isolated Nightjar app-server thread with web research and image generation
 - Deterministic validation, materialization, and an ETL-only fallback
 - Live collectors for arXiv, Ars Electronica, Google DeepMind, and Berlin.de events
@@ -37,6 +37,8 @@ Nightjar agent: preferences + feedback -> web research -> Markdown + covers
 ```
 
 Markdown owns editable content. SQLite owns relations, feedback, deduplication, and job state. The read path never invokes a model, and a failed Nightjar run restores the previous good content.
+
+The Topics screen edits `content/preferences.md` directly. The app preserves that document exactly, saves offline first, and asks the VPS to validate it before SQLite rebuilds its derived ranking index.
 
 ## Start the VPS service
 
