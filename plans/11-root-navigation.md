@@ -6,7 +6,7 @@ Make every pixel-menu destination a true root screen without an automatic More o
 
 ## Status
 
-In progress.
+Complete.
 
 ## Decision
 
@@ -21,3 +21,5 @@ The pixel menu switches directly between one `NavigationStack` per destination. 
 ## Log
 
 - 2026-07-17: Replaced the six-item hidden `TabView` with direct root switching and added UI regression checks.
+- 2026-07-17: CI run `29566986460` passed backend checks, native build, unit tests, UI tests, smoke launch, and screenshot capture.
+- 2026-07-17: TestFlight run `29567913981` uploaded build 9, which Apple validated and made available to the Internal group.
