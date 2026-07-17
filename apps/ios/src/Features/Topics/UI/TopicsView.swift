@@ -29,6 +29,7 @@ struct TopicsView: View {
                         .scrollContentBackground(.hidden)
                         .padding(.horizontal, 14)
                         .focused($editorFocused)
+                        .simultaneousGesture(TapGesture().onEnded { editorFocused = true })
                         .scrollDismissesKeyboard(.immediately)
                         .autocorrectionDisabled()
                         .accessibilityLabel("Preferences Markdown")

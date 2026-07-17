@@ -46,7 +46,7 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(
             app.descendants(matching: .any)["story-original"].waitForExistence(timeout: 5)
         )
-        app.buttons["topics-close"].tap()
+        app.buttons["Done"].tap()
 
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(app.buttons["app-menu"].waitForExistence(timeout: 5))
@@ -72,7 +72,7 @@ final class VerseSmokeUITests: XCTestCase {
                 .waitForExistence(timeout: 5)
         )
         XCTAssertTrue(app.buttons["topics-save"].exists)
-        app.buttons["Done"].tap()
+        app.buttons["topics-close"].tap()
 
         openTab("Articles", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
