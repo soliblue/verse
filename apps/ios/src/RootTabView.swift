@@ -19,7 +19,24 @@ struct RootTabView: View {
     @State private var settingsPath = NavigationPath()
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        selectedRoot
+            .background(KeyboardDismissalHost())
+            .toolbarBackground(.hidden, for: .navigationBar)
+            .tint(VerseTheme.accent)
+            .sensoryFeedback(.selection, trigger: selectedTab)
+            .onChange(of: selectedTab) { _, _ in
+                resetPaths()
+            }
+            .task {
+                await eventFeedback.flushPending()
+                await venueFeedback.flushPending()
+            }
+    }
+
+    @ViewBuilder
+    private var selectedRoot: some View {
+        switch selectedTab {
+        case .articles:
             NavigationStack(path: $articlesPath) {
                 TodayView(
                     editions: editions,
@@ -35,10 +52,8 @@ struct RootTabView: View {
                     eventDetail(event)
                 }
             }
-            .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Articles", systemImage: "doc.text.image") }
-            .tag(AppTab.articles)
 
+        case .calendar:
             NavigationStack(path: $calendarPath) {
                 ExploreView(
                     mode: .calendar,
@@ -58,10 +73,8 @@ struct RootTabView: View {
                     }
                 }
             }
-            .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Calendar", systemImage: "calendar") }
-            .tag(AppTab.calendar)
 
+        case .places:
             NavigationStack(path: $placesPath) {
                 ExploreView(
                     mode: .places,
@@ -81,10 +94,8 @@ struct RootTabView: View {
                     }
                 }
             }
-            .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Places", systemImage: "mappin.and.ellipse") }
-            .tag(AppTab.places)
 
+        case .library:
             NavigationStack(path: $libraryPath) {
                 LibraryView(editions: editions, feedback: feedback)
                     .navigationDestination(for: StoryItem.self) { story in
@@ -106,10 +117,8 @@ struct RootTabView: View {
                         }
                     }
             }
-            .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Library", systemImage: "bookmark") }
-            .tag(AppTab.library)
 
+        case .topics:
             NavigationStack(path: $topicsPath) {
                 TopicsView(repository: topics)
                     .toolbar {
@@ -118,10 +127,8 @@ struct RootTabView: View {
                         }
                     }
             }
-            .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Topics", systemImage: "scope") }
-            .tag(AppTab.topics)
 
+        case .settings:
             NavigationStack(path: $settingsPath) {
                 SettingsView(
                     configuration: configuration,
@@ -135,20 +142,6 @@ struct RootTabView: View {
                     }
                 }
             }
-            .toolbar(.hidden, for: .tabBar)
-            .tabItem { Label("Settings", systemImage: "slider.horizontal.3") }
-            .tag(AppTab.settings)
-        }
-        .background(KeyboardDismissalHost())
-        .toolbarBackground(.hidden, for: .navigationBar)
-        .tint(VerseTheme.accent)
-        .sensoryFeedback(.selection, trigger: selectedTab)
-        .onChange(of: selectedTab) { _, _ in
-            resetPaths()
-        }
-        .task {
-            await eventFeedback.flushPending()
-            await venueFeedback.flushPending()
         }
     }
 

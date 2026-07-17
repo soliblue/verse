@@ -66,11 +66,14 @@ final class VerseSmokeUITests: XCTestCase {
                 .waitForExistence(timeout: 5)
         )
         XCTAssertTrue(app.buttons["topics-save"].exists)
+        XCTAssertFalse(app.buttons["Back"].exists)
+        XCTAssertFalse(app.buttons["More"].exists)
 
         openTab("Settings", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["settings-screen"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.textFields["Server URL"].exists)
         XCTAssertFalse(app.buttons["Back"].exists)
+        XCTAssertFalse(app.buttons["More"].exists)
 
         openTab("Articles", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
