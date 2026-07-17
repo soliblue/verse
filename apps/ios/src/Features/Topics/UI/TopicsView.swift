@@ -23,17 +23,25 @@ struct TopicsView: View {
                             .padding(.vertical, 10)
                     }
 
-                    TextEditor(text: $store.markdown)
-                        .font(.system(.body, design: .monospaced))
-                        .foregroundStyle(VerseTheme.ink)
-                        .scrollContentBackground(.hidden)
-                        .padding(.horizontal, 14)
-                        .focused($editorFocused)
-                        .simultaneousGesture(TapGesture().onEnded { editorFocused = true })
-                        .scrollDismissesKeyboard(.immediately)
-                        .autocorrectionDisabled()
-                        .accessibilityLabel("Preferences Markdown")
-                        .accessibilityIdentifier("topics-markdown-editor")
+                    ZStack {
+                        TextEditor(text: $store.markdown)
+                            .font(.system(.body, design: .monospaced))
+                            .foregroundStyle(VerseTheme.ink)
+                            .scrollContentBackground(.hidden)
+                            .padding(.horizontal, 14)
+                            .focused($editorFocused)
+                            .scrollDismissesKeyboard(.immediately)
+                            .autocorrectionDisabled()
+                            .accessibilityLabel("Preferences Markdown")
+                            .accessibilityIdentifier("topics-markdown-editor")
+
+                        if !editorFocused {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture { editorFocused = true }
+                                .accessibilityHidden(true)
+                        }
+                    }
 
                     Text("This exact Markdown guides the next Nightjar edition.")
                         .font(.footnote)
