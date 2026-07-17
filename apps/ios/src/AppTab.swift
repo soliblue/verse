@@ -3,7 +3,6 @@ enum AppTab: CaseIterable, Hashable {
     case calendar
     case places
     case library
-    case topics
     case settings
 
     var title: String {
@@ -12,7 +11,6 @@ enum AppTab: CaseIterable, Hashable {
         case .calendar: "Calendar"
         case .places: "Places"
         case .library: "Library"
-        case .topics: "Topics"
         case .settings: "Settings"
         }
     }
@@ -23,7 +21,6 @@ enum AppTab: CaseIterable, Hashable {
         case .calendar: "calendar"
         case .places: "mappin.and.ellipse"
         case .library: "bookmark"
-        case .topics: "scope"
         case .settings: "slider.horizontal.3"
         }
     }

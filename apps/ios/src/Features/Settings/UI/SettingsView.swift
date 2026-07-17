@@ -7,7 +7,7 @@ struct SettingsView: View {
     let topics: TopicsRepository
     @State private var store: SettingsStore
     @State private var nightjar = NightjarRunStore()
-    @State private var editor: NightjarJob?
+    @State private var prompt: SettingsPrompt?
     @State private var revealSecret = false
 
     init(
@@ -90,20 +90,25 @@ struct SettingsView: View {
                 }
             }
 
-            Section("Nightjar") {
-                ForEach(NightjarJob.allCases) { job in
+            Section("Prompts") {
+                ForEach(SettingsPrompt.allCases) { item in
                     Button {
-                        editor = job
+                        prompt = item
                     } label: {
                         HStack {
-                            Text("\(job.title) guidance")
+                            Text(item.title)
                             Spacer()
                             Image(systemName: "chevron.right")
                                 .font(.footnote)
                                 .foregroundStyle(.tertiary)
                         }
                     }
-                    Button("Run \(job.rawValue)") {
+                }
+            }
+
+            Section("Nightjar") {
+                ForEach(NightjarJob.allCases) { job in
+                    Button("Run \(job.title)") {
                         Task { await nightjar.run(job, api: api) }
                     }
                     .disabled(nightjar.running != nil || !configuration.isConfigured)
@@ -120,8 +125,15 @@ struct SettingsView: View {
         .background(VerseTheme.paper)
         .navigationBarBackButtonHidden(true)
         .accessibilityIdentifier("settings-screen")
-        .sheet(item: $editor) { job in
-            NightjarEditorView(job: job, api: api)
+        .sheet(item: $prompt) { item in
+            switch item {
+            case .topics:
+                TopicsEditorView(repository: topics)
+            case .articles:
+                NightjarEditorView(job: .articles, api: api)
+            case .events:
+                NightjarEditorView(job: .events, api: api)
+            }
         }
     }
 }

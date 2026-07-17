@@ -23,7 +23,7 @@ outdoor: true
 weather_dependent: true
 official_url: "https://www.thf-berlin.de/aktuelles/veranstaltungen/veranstaltung/american-movie-nights"
 source_name: "Tempelhof Projekt"
-checked_at: "2026-07-16T06:30:00Z"
+checked_at: "2026-07-17T18:27:11Z"
 first_reported_at: "2026-07-16T06:30:00Z"
 last_meaningful_update_at: "2026-07-16T06:30:00Z"
 evidence: "The official page lists Elvis on 21 July at 19:00, outdoors, free, without registration, in English with German subtitles."

@@ -23,7 +23,7 @@ outdoor: true
 weather_dependent: true
 official_url: "https://www.thf-berlin.de/aktuelles/veranstaltungen/veranstaltung/sky-sounds-kafanar"
 source_name: "Tempelhof Projekt"
-checked_at: "2026-07-16T06:30:00Z"
+checked_at: "2026-07-17T18:27:11Z"
 first_reported_at: "2026-07-16T06:30:00Z"
 last_meaningful_update_at: "2026-07-16T06:30:00Z"
 evidence: "The official page gives 17 July 2026, 18:00 to 22:00, EUR 3 entry, with Kaval, Duduk, Çağlama, Anatolian vocals, modern loops, and a LEFEU DJ set."

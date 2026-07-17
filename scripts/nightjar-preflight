@@ -52,6 +52,7 @@ if [[ "$MODE" == "agent" ]]; then
   test -f "$ROOT/scripts/codex_app_thread.py"
   AGENT_RUNTIME="${VERSE_AGENT_RUNTIME:-container}"
   printf 'agent_runtime=%s\n' "$AGENT_RUNTIME"
+  printf 'agent_sandbox=%s\n' "${VERSE_AGENT_SANDBOX:-workspace-write}"
   if [[ "$AGENT_RUNTIME" == "container" ]]; then
     command -v docker
     sudo -n docker image inspect "${VERSE_AGENT_CONTAINER_IMAGE:-verse-nightjar-codex:0.144.1}" >/dev/null

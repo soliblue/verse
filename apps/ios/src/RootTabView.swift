@@ -15,7 +15,6 @@ struct RootTabView: View {
     @State private var calendarPath = NavigationPath()
     @State private var placesPath = NavigationPath()
     @State private var libraryPath = NavigationPath()
-    @State private var topicsPath = NavigationPath()
     @State private var settingsPath = NavigationPath()
 
     var body: some View {
@@ -118,16 +117,6 @@ struct RootTabView: View {
                     }
             }
 
-        case .topics:
-            NavigationStack(path: $topicsPath) {
-                TopicsView(repository: topics)
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            AppNavigationMenu(selection: $selectedTab)
-                        }
-                    }
-            }
-
         case .settings:
             NavigationStack(path: $settingsPath) {
                 SettingsView(
@@ -173,7 +162,6 @@ struct RootTabView: View {
         calendarPath = NavigationPath()
         placesPath = NavigationPath()
         libraryPath = NavigationPath()
-        topicsPath = NavigationPath()
         settingsPath = NavigationPath()
     }
 }

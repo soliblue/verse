@@ -14,7 +14,7 @@ final class NightjarRunStore {
             body: [String: String](),
             as: NightjarRunResponse.self
         )
-        message = response == nil ? "Could not start (job.rawValue)." : "(job.title) started."
+        message = response == nil ? "Could not start \(job.title)." : "\(job.title) started."
         running = nil
     }
 }

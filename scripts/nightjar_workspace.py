@@ -9,7 +9,8 @@ from pathlib import Path
 from zoneinfo import ZoneInfo
 
 from etl.content import load_deep_dive, load_edition, parse_document, parse_preferences, render_document
-from etl.explore import build_explore, write_explore
+from etl.explore import build_explore, parse_places, write_explore
+from etl.validation import require_timestamp
 
 
 WORKSPACE_FILES = {"AGENTS.md", "content", "nightjar-input.json"}
@@ -209,6 +210,24 @@ def validate_workspace(root: Path, workspace: Path, run_date: str, scope: str = 
         load_deep_dive(path)
     explore = None
     if scope in {"events", "all"}:
+        research_path = content / "events" / "research.md"
+        if not research_path.is_file() or "events/research.md" not in changed:
+            raise ValueError("Nightjar did not refresh the event research audit")
+        research, _ = parse_document(research_path)
+        if research.get("date") != run_date:
+            raise ValueError("event research date does not match the run date")
+        checked_at = research.get("checked_at")
+        require_timestamp(checked_at, "event research.checked_at")
+        if datetime.fromisoformat(checked_at.replace("Z", "+00:00")).astimezone(ZoneInfo("Europe/Berlin")).date().isoformat() != run_date:
+            raise ValueError("event research timestamp does not match the run date")
+        expected_places = {
+            venue["id"]
+            for venue in parse_places(content / "places.md")
+            if venue["watch_state"] in {"favorite", "watch"}
+        }
+        checked_places = research.get("checked_places")
+        if not isinstance(checked_places, list) or set(checked_places) != expected_places:
+            raise ValueError("event research must check every watched place")
         berlin_now = datetime.fromisoformat(run_date).replace(hour=8, tzinfo=ZoneInfo("Europe/Berlin"))
         explore, _ = build_explore(content, now=berlin_now)
         write_explore(content, explore)

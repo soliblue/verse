@@ -23,12 +23,13 @@ outdoor: false
 weather_dependent: false
 official_url: "https://www.udk-berlin.de/studium/sound-studies-and-sonic-arts-master-of-arts/news-events/17-19-july-2026-sounds-rundgang/"
 source_name: "Universität der Künste Berlin"
-checked_at: "2026-07-16T06:30:00Z"
+checked_at: "2026-07-17T18:27:11Z"
 first_reported_at: "2026-07-16T06:30:00Z"
 last_meaningful_update_at: "2026-07-16T06:30:00Z"
 evidence: "The official Sound Studies page lists free audiovisual and interactive installations and performances from 16:00 to 22:00 Friday, 11:00 to 22:00 Saturday, and 10:00 to 19:00 Sunday."
 rank_score: 10
 verified: true
+related_story_ids: ["udk-sounds-rundgang-2026"]
 ---
 
 # SoundS Rundgang: Slack

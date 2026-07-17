@@ -22,12 +22,29 @@ from scripts.nightjar_workspace import (
     validate_workspace,
 )
 from etl.content import parse_document, render_document
+from etl.explore import parse_places
 
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 class NightjarAgentTests(unittest.TestCase):
+    def write_event_research(self, workspace: Path, run_date: str) -> None:
+        venues = parse_places(workspace / "content/places.md")
+        (workspace / "content/events/research.md").write_text(
+            render_document(
+                {
+                    "date": run_date,
+                    "checked_at": f"{run_date}T08:00:00+02:00",
+                    "checked_places": [
+                        venue["id"] for venue in venues if venue["watch_state"] in {"favorite", "watch"}
+                    ],
+                },
+                "# Event research\n\nAll watched calendars checked.",
+            ),
+            encoding="utf-8",
+        )
+
     def set_story_kind(self, path: Path, kind: str) -> None:
         metadata, body = parse_document(path)
         metadata["kind"] = kind
@@ -110,6 +127,7 @@ class NightjarAgentTests(unittest.TestCase):
                     event_paths.append(path)
             for path in event_paths:
                 self.set_story_kind(path, "technique")
+            self.write_event_research(workspace, "2026-07-12")
 
             result = validate_workspace(root, workspace, "2026-07-12")
 
@@ -137,6 +155,7 @@ class NightjarAgentTests(unittest.TestCase):
                     event_paths.append(path)
             for path in event_paths:
                 self.set_story_kind(path, "technique")
+            self.write_event_research(workspace, "2026-07-12")
 
             result = validate_workspace(root, workspace, "2026-07-12")
 
@@ -155,6 +174,22 @@ class NightjarAgentTests(unittest.TestCase):
 
             with self.assertRaisesRegex(ValueError, "must not contain event stories"):
                 validate_workspace(root, workspace, "2026-07-12")
+
+    def test_event_run_requires_a_fresh_complete_research_audit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "verse"
+            root.mkdir()
+            shutil.copytree(ROOT / "content", root / "content")
+            workspace = Path(directory) / "workspace"
+            prepare_workspace(root, workspace, None)
+
+            with self.assertRaisesRegex(ValueError, "did not refresh the event research audit"):
+                validate_workspace(root, workspace, "2026-07-17", scope="events")
+
+            self.write_event_research(workspace, "2026-07-17")
+            result = validate_workspace(root, workspace, "2026-07-17", scope="events")
+
+            self.assertEqual(result["scope"], "events")
 
     def test_publish_can_restore_the_previous_content(self):
         with tempfile.TemporaryDirectory() as directory:

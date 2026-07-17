@@ -60,20 +60,19 @@ final class VerseSmokeUITests: XCTestCase {
         openTab("Library", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["library-screen"].waitForExistence(timeout: 5))
 
-        openTab("Topics", app: app)
+        openTab("Settings", app: app)
+        XCTAssertTrue(app.descendants(matching: .any)["settings-screen"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.textFields["Server URL"].exists)
+        XCTAssertTrue(app.staticTexts["Prompts"].exists)
+        XCTAssertFalse(app.buttons["Back"].exists)
+        XCTAssertFalse(app.buttons["More"].exists)
+        app.buttons["Topics"].tap()
         XCTAssertTrue(
             app.descendants(matching: .any)["topics-markdown-editor"]
                 .waitForExistence(timeout: 5)
         )
         XCTAssertTrue(app.buttons["topics-save"].exists)
-        XCTAssertFalse(app.buttons["Back"].exists)
-        XCTAssertFalse(app.buttons["More"].exists)
-
-        openTab("Settings", app: app)
-        XCTAssertTrue(app.descendants(matching: .any)["settings-screen"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["Server URL"].exists)
-        XCTAssertFalse(app.buttons["Back"].exists)
-        XCTAssertFalse(app.buttons["More"].exists)
+        app.buttons["Done"].tap()
 
         openTab("Articles", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
@@ -111,7 +110,8 @@ final class VerseSmokeUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        openTab("Topics", app: app)
+        openTab("Settings", app: app)
+        app.buttons["Topics"].tap()
         let editor = app.descendants(matching: .any)["topics-markdown-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
 
@@ -123,9 +123,8 @@ final class VerseSmokeUITests: XCTestCase {
 
         editor.tap()
         XCTAssertTrue(keyboard.waitForExistence(timeout: 5))
-        app.buttons["app-menu"].tap()
+        app.staticTexts["This exact Markdown guides the next Nightjar edition."].tap()
         assertDisappears(keyboard)
-        XCTAssertTrue(app.buttons["Articles"].waitForExistence(timeout: 5))
     }
 
     private func openTab(_ title: String, app: XCUIApplication) {

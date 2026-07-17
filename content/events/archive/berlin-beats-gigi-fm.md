@@ -8,7 +8,7 @@ organizer: "Hamburger Bahnhof"
 start_at: "2026-07-16T19:00:00+02:00"
 end_at: "2026-07-16T22:00:00+02:00"
 doors_at: null
-state: "upcoming"
+state: "ended"
 novelty: "new"
 price_eur: 0
 reduced_price_eur: 0
@@ -23,7 +23,7 @@ outdoor: true
 weather_dependent: true
 official_url: "https://www.smb.museum/museen-einrichtungen/hamburger-bahnhof/veranstaltungen/detail/berlin-beats-gigi-fm-2026-07-16-190000-160229/"
 source_name: "Hamburger Bahnhof"
-checked_at: "2026-07-16T06:30:00Z"
+checked_at: "2026-07-17T18:27:11Z"
 first_reported_at: "2026-07-16T06:30:00Z"
 last_meaningful_update_at: "2026-07-16T06:30:00Z"
 evidence: "The official listing gives 16 July 2026, 19:00 to 22:00, in the Hamburger Bahnhof garden with free admission."

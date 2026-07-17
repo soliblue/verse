@@ -22,7 +22,7 @@ final class NightjarEditorStore {
             savedMarkdown = document.markdown
             message = nil
         } else {
-            message = "Could not load guidance."
+            message = "Could not load prompt."
         }
         isLoading = false
     }
@@ -37,7 +37,7 @@ final class NightjarEditorStore {
             savedMarkdown = response.markdown
             message = "Saved."
         } else {
-            message = "Could not save guidance."
+            message = "Could not save prompt."
         }
         isSaving = false
         return response != nil
