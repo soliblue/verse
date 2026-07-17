@@ -36,29 +36,42 @@ struct KeyboardDismissalHost: UIViewRepresentable {
 
     final class Coordinator: NSObject, UIGestureRecognizerDelegate {
         private weak var window: UIWindow?
-        private var recognizer: UITapGestureRecognizer?
+        private var tapRecognizer: UITapGestureRecognizer?
+        private var panRecognizer: UIPanGestureRecognizer?
 
         func install(in nextWindow: UIWindow?) {
             guard window !== nextWindow else { return }
             uninstall()
             guard let nextWindow else { return }
 
-            let recognizer = UITapGestureRecognizer(
+            let tapRecognizer = UITapGestureRecognizer(
                 target: self,
                 action: #selector(dismissKeyboard)
             )
-            recognizer.cancelsTouchesInView = false
-            recognizer.delegate = self
-            nextWindow.addGestureRecognizer(recognizer)
+            tapRecognizer.cancelsTouchesInView = false
+            tapRecognizer.delegate = self
+            let panRecognizer = UIPanGestureRecognizer(
+                target: self,
+                action: #selector(dismissKeyboard)
+            )
+            panRecognizer.cancelsTouchesInView = false
+            panRecognizer.delegate = self
+            nextWindow.addGestureRecognizer(tapRecognizer)
+            nextWindow.addGestureRecognizer(panRecognizer)
             window = nextWindow
-            self.recognizer = recognizer
+            self.tapRecognizer = tapRecognizer
+            self.panRecognizer = panRecognizer
         }
 
         func uninstall() {
-            if let recognizer {
-                window?.removeGestureRecognizer(recognizer)
+            if let tapRecognizer {
+                window?.removeGestureRecognizer(tapRecognizer)
             }
-            recognizer = nil
+            if let panRecognizer {
+                window?.removeGestureRecognizer(panRecognizer)
+            }
+            tapRecognizer = nil
+            panRecognizer = nil
             window = nil
         }
 
@@ -70,6 +83,9 @@ struct KeyboardDismissalHost: UIViewRepresentable {
             _ gestureRecognizer: UIGestureRecognizer,
             shouldReceive touch: UITouch
         ) -> Bool {
+            if gestureRecognizer is UIPanGestureRecognizer {
+                return true
+            }
             var touchedView = touch.view
             while let view = touchedView {
                 if view is UITextField || view is UITextView {
