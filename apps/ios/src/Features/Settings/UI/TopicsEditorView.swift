@@ -11,6 +11,7 @@ struct TopicsEditorView: View {
                 .toolbar {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Done") { dismiss() }
+                            .accessibilityIdentifier("topics-close")
                     }
                 }
         }

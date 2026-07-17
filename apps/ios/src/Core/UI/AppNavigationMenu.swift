@@ -14,6 +14,7 @@ struct AppNavigationMenu: View {
                         systemImage: selection == tab ? "checkmark" : tab.systemImage
                     )
                 }
+                .accessibilityIdentifier("app-menu-\(tab.title)")
             }
         } label: {
             VerseGlyph(size: 19)

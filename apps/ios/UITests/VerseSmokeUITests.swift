@@ -46,7 +46,7 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(
             app.descendants(matching: .any)["story-original"].waitForExistence(timeout: 5)
         )
-        app.buttons["Done"].tap()
+        app.buttons["topics-close"].tap()
 
         app.navigationBars.buttons.firstMatch.tap()
         XCTAssertTrue(app.buttons["app-menu"].waitForExistence(timeout: 5))
@@ -112,7 +112,7 @@ final class VerseSmokeUITests: XCTestCase {
 
         openTab("Settings", app: app)
         app.buttons["Topics"].tap()
-        let editor = app.descendants(matching: .any)["topics-markdown-editor"]
+        let editor = app.textViews["topics-markdown-editor"]
         XCTAssertTrue(editor.waitForExistence(timeout: 5))
 
         editor.tap()
@@ -131,7 +131,7 @@ final class VerseSmokeUITests: XCTestCase {
         let menu = app.buttons["app-menu"]
         XCTAssertTrue(menu.waitForExistence(timeout: 5))
         menu.tap()
-        let tab = app.buttons[title]
+        let tab = app.buttons["app-menu-\(title)"]
         XCTAssertTrue(tab.waitForExistence(timeout: 5))
         tab.tap()
     }
