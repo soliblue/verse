@@ -21,7 +21,9 @@ from db.repository import edition, publish_edition, record_feedback
 from db.state import deep_dive_state
 from etl.content import (
     load_edition,
+    parse_document,
     parse_preferences,
+    render_document,
     write_deep_dive,
     write_edition,
     write_preferences,
@@ -168,6 +170,48 @@ class ExploreContentTests(unittest.TestCase):
         venue = {"latitude": 52.5005, "longitude": 13.4005}
         self.assertEqual(distance_band(venue, None), "unknown")
         self.assertEqual(distance_band(venue, (52.5, 13.4)), "walkable")
+
+    def test_event_can_carry_a_non_watched_venue(self):
+        now = datetime(2026, 7, 16, 8, 30, tzinfo=ZoneInfo("Europe/Berlin"))
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "content"
+            shutil.copytree(ROOT / "content", root)
+            baseline = build_explore(root, now=now)[0]
+            featured = baseline["featured_events"][0]
+            path = next(
+                path
+                for path in (root / "events" / "upcoming").glob("*.md")
+                if f'occurrence_id: "{featured["occurrence"]["id"]}"' in path.read_text(encoding="utf-8")
+            )
+            metadata, body = parse_document(path)
+            metadata.update(
+                {
+                    "venue_id": "discovered-venue",
+                    "venue_name": "Discovered Venue",
+                    "venue_address": "Example Street 1, 10115 Berlin",
+                    "venue_neighborhood": "Mitte",
+                    "venue_official_url": "https://example.com/venue",
+                    "venue_calendar_url": None,
+                    "venue_latitude": None,
+                    "venue_longitude": None,
+                }
+            )
+            path.write_text(render_document(metadata, body), encoding="utf-8")
+
+            payload = build_explore(root, now=now)[0]
+            event = next(item for item in payload["events"] if item["id"] == featured["id"])
+            self.assertEqual(event["venue"]["name"], "Discovered Venue")
+            self.assertNotIn("discovered-venue", {venue["id"] for venue in payload["venues"]})
+            self.assertIn("discovered-venue", {item["venue"]["id"] for item in payload["featured_events"]})
+
+            muted = build_explore(
+                root,
+                now=now,
+                ranking_profile={"categories": {}, "venues": {}, "watch_states": {"discovered-venue": "muted"}},
+            )[0]
+            self.assertNotIn("discovered-venue", {item["venue"]["id"] for item in muted["featured_events"]})
+            muted_event = next(item for item in muted["events"] if item["id"] == featured["id"])
+            self.assertEqual(muted_event["venue"]["watch_state"], "muted")
 
     def test_explore_repository_keeps_feedback_and_ranking_profile(self):
         now = datetime(2026, 7, 16, 8, 30, tzinfo=ZoneInfo("Europe/Berlin"))

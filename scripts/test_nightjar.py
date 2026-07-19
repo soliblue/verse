@@ -1,6 +1,7 @@
 import os
 import shutil
 import sqlite3
+import subprocess
 import tempfile
 import unittest
 from pathlib import Path
@@ -87,6 +88,50 @@ class NightjarAgentTests(unittest.TestCase):
             )
         )
 
+    def test_daily_run_keeps_articles_independent_from_events(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "verse"
+            scripts = root / "scripts"
+            scripts.mkdir(parents=True)
+            preflight = scripts / "nightjar-preflight"
+            preflight.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+            agent = scripts / "nightjar-agent-run"
+            agent.write_text(
+                '#!/usr/bin/env bash\nprintf "%s\\n" "$5" >> "$1/jobs.log"\n[[ "$5" != "events" ]]\n',
+                encoding="utf-8",
+            )
+            result = scripts / "nightjar_result.py"
+            result.write_text(
+                "from pathlib import Path\n"
+                "import sys\n"
+                "path = Path(sys.argv[sys.argv.index('--path') + 1])\n"
+                "path.write_text('{}\\n', encoding='utf-8')\n",
+                encoding="utf-8",
+            )
+            preflight.chmod(0o755)
+            agent.chmod(0o755)
+            environment = {
+                **os.environ,
+                "VERSE_ROOT": str(root),
+                "VERSE_RUNS_DIR": str(root / "runs"),
+                "VERSE_NIGHTJAR_MODE": "agent",
+                "VERSE_RUN_DATE": "2026-07-19",
+            }
+
+            completed = subprocess.run(
+                [str(ROOT / "scripts/scheduled-nightjar")],
+                env=environment,
+                capture_output=True,
+                text=True,
+                check=False,
+            )
+
+            self.assertEqual(completed.returncode, 1)
+            self.assertEqual((root / "jobs.log").read_text(encoding="utf-8").splitlines(), ["articles", "events"])
+            run_directories = sorted(path.name for path in (root / "runs/_nightjar").iterdir() if path.is_dir())
+            self.assertTrue(any(name.endswith("-articles") for name in run_directories))
+            self.assertTrue(any(name.endswith("-events") for name in run_directories))
+
     def test_agent_model_identity_is_stamped_from_protocol(self):
         with tempfile.TemporaryDirectory() as directory:
             workspace = Path(directory) / "workspace"
@@ -113,7 +158,7 @@ class NightjarAgentTests(unittest.TestCase):
             self.assertEqual(metadata["model_name"], "gpt-5.6-sol")
             self.assertEqual(metadata["model_provider"], "openai")
 
-    def test_staged_first_edition_validates_and_materializes_explore(self):
+    def test_staged_first_edition_validates(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "verse"
             root.mkdir()
@@ -127,13 +172,10 @@ class NightjarAgentTests(unittest.TestCase):
                     event_paths.append(path)
             for path in event_paths:
                 self.set_story_kind(path, "technique")
-            self.write_event_research(workspace, "2026-07-12")
-
-            result = validate_workspace(root, workspace, "2026-07-12")
+            result = validate_workspace(root, workspace, "2026-07-12", scope="articles")
 
             self.assertEqual(result["stories"], 10)
             self.assertGreater(result["citations"], 10)
-            self.assertTrue((workspace / "content/explore/current.json").is_file())
 
     def test_agent_edition_does_not_require_covers(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -155,9 +197,7 @@ class NightjarAgentTests(unittest.TestCase):
                     event_paths.append(path)
             for path in event_paths:
                 self.set_story_kind(path, "technique")
-            self.write_event_research(workspace, "2026-07-12")
-
-            result = validate_workspace(root, workspace, "2026-07-12")
+            result = validate_workspace(root, workspace, "2026-07-12", scope="articles")
 
             self.assertEqual(result["stories"], 10)
             self.assertFalse((edition / "assets").exists())
@@ -173,7 +213,20 @@ class NightjarAgentTests(unittest.TestCase):
             self.set_story_kind(story_paths[0], "event")
 
             with self.assertRaisesRegex(ValueError, "must not contain event stories"):
-                validate_workspace(root, workspace, "2026-07-12")
+                validate_workspace(root, workspace, "2026-07-12", scope="articles")
+
+    def test_event_run_cannot_edit_places(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "verse"
+            root.mkdir()
+            shutil.copytree(ROOT / "content", root / "content")
+            workspace = Path(directory) / "workspace"
+            prepare_workspace(root, workspace, None)
+            places = workspace / "content/places.md"
+            places.write_text(places.read_text(encoding="utf-8") + "\n", encoding="utf-8")
+
+            with self.assertRaisesRegex(ValueError, "outside its scope: places.md"):
+                validate_workspace(root, workspace, "2026-07-17", scope="events")
 
     def test_event_run_requires_a_fresh_complete_research_audit(self):
         with tempfile.TemporaryDirectory() as directory:

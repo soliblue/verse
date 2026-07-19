@@ -165,7 +165,7 @@ def changed_content_paths(root: Path, candidate: Path) -> set[str]:
     return {path for path in existing.keys() | proposed.keys() if existing.get(path) != proposed.get(path)}
 
 
-def validate_workspace(root: Path, workspace: Path, run_date: str, scope: str = "all") -> dict:
+def validate_workspace(root: Path, workspace: Path, run_date: str, scope: str) -> dict:
     unexpected = {path.name for path in workspace.iterdir()} - WORKSPACE_FILES
     if unexpected:
         raise ValueError("unexpected workspace output: " + ", ".join(sorted(unexpected)))
@@ -174,8 +174,7 @@ def validate_workspace(root: Path, workspace: Path, run_date: str, scope: str = 
     parse_preferences(content / "preferences.md")
     allowed = {
         "articles": (f"editions/{run_date}/", "deep-dives/ready/"),
-        "events": ("events/", "places.md"),
-        "all": (f"editions/{run_date}/", "deep-dives/ready/", "events/", "places.md"),
+        "events": ("events/",),
     }
     if scope not in allowed:
         raise ValueError("Nightjar scope is invalid")
@@ -187,7 +186,7 @@ def validate_workspace(root: Path, workspace: Path, run_date: str, scope: str = 
         raise ValueError("Nightjar changed files outside its scope: " + ", ".join(unexpected_changes))
 
     payload = None
-    if scope in {"articles", "all"}:
+    if scope == "articles":
         target = content / "editions" / run_date / "edition.md"
         if not target.is_file():
             raise ValueError(f"Nightjar did not prepare edition {run_date}")
@@ -209,7 +208,7 @@ def validate_workspace(root: Path, workspace: Path, run_date: str, scope: str = 
     for path in sorted((content / "deep-dives" / "ready").glob("*.md")):
         load_deep_dive(path)
     explore = None
-    if scope in {"events", "all"}:
+    if scope == "events":
         research_path = content / "events" / "research.md"
         if not research_path.is_file() or "events/research.md" not in changed:
             raise ValueError("Nightjar did not refresh the event research audit")
@@ -299,7 +298,7 @@ def parser() -> argparse.ArgumentParser:
     validate.add_argument("--root", type=Path, required=True)
     validate.add_argument("--workspace", type=Path, required=True)
     validate.add_argument("--date", required=True)
-    validate.add_argument("--scope", choices=("all", "articles", "events"), default="all")
+    validate.add_argument("--scope", choices=("articles", "events"), required=True)
     stamp = commands.add_parser("stamp-provenance")
     stamp.add_argument("--workspace", type=Path, required=True)
     stamp.add_argument("--date", required=True)

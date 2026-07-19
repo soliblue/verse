@@ -132,8 +132,22 @@ def parse_event(path: Path, venues: dict[str, dict]) -> dict:
     metadata, body = parse_document(path)
     title, description, why_selected = event_sections(body, path)
     venue_id = metadata.get("venue_id")
-    if venue_id not in venues:
-        raise ValueError(f"{path}.venue_id is unknown")
+    venue = venues.get(venue_id)
+    if venue is None:
+        venue = {
+            "id": venue_id,
+            "name": metadata.get("venue_name"),
+            "address": metadata.get("venue_address"),
+            "latitude": metadata.get("venue_latitude"),
+            "longitude": metadata.get("venue_longitude"),
+            "neighborhood": metadata.get("venue_neighborhood"),
+            "official_url": metadata.get("venue_official_url") or metadata.get("official_url"),
+            "calendar_url": metadata.get("venue_calendar_url"),
+            "why_watched": "Discovered through event research.",
+            "distance_band": "unknown",
+            "watch_state": "watch",
+            "next_event_id": None,
+        }
     occurrence = {
         "id": metadata.get("occurrence_id"),
         "event_id": metadata.get("id"),
@@ -167,7 +181,7 @@ def parse_event(path: Path, venues: dict[str, dict]) -> dict:
         "why_selected": why_selected,
         "organizer": metadata.get("organizer"),
         "occurrence": occurrence,
-        "venue": venues[venue_id].copy(),
+        "venue": venue.copy(),
         "booking_url": metadata.get("booking_url"),
         "official_url": metadata.get("official_url"),
         "source_name": metadata.get("source_name"),
@@ -370,6 +384,11 @@ def build_explore(
     venue_map = {venue["id"]: venue for venue in venue_values}
     items = [parse_event(path, venue_map) for path in sorted((root / "events" / "upcoming").glob("*.md"))]
     archived = [parse_event(path, venue_map) for path in sorted((root / "events" / "archive").glob("*.md"))]
+    for item in items + archived:
+        item["venue"]["distance_band"] = distance_band(item["venue"], anchor)
+        item["venue"]["watch_state"] = ranking_profile.get("watch_states", {}).get(
+            item["venue"]["id"], item["venue"]["watch_state"]
+        )
     for item in items:
         item["rank_score"] += sum(ranking_profile.get("categories", {}).get(value, 0) for value in item["categories"])
         item["rank_score"] += ranking_profile.get("venues", {}).get(item["venue"]["id"], 0)

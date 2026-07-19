@@ -7,6 +7,10 @@ RUN_DATE="$2"
 RUN_ID="$3"
 RUN_DIR="$4"
 JOB="${5:-all}"
+if [[ "$JOB" != "articles" && "$JOB" != "events" ]]; then
+  printf 'invalid nightjar job: %s\n' "$JOB" >&2
+  exit 2
+fi
 WORKSPACE="$RUN_DIR/workspace"
 AGENT_RESULT="$RUN_DIR/agent-result.json"
 PROTOCOL_LOG="$RUN_DIR/agent-protocol.jsonl"
@@ -85,7 +89,7 @@ run_agent() {
   "${args[@]}"
 }
 
-if [[ "$JOB" == "articles" || "$JOB" == "all" ]]; then
+if [[ "$JOB" == "articles" ]]; then
   run_agent articles "$AGENT_RESULT" "$PROTOCOL_LOG"
   printf 'phase=stamp_provenance\n'
   python3 -m scripts.nightjar_workspace stamp-provenance \
@@ -93,15 +97,8 @@ if [[ "$JOB" == "articles" || "$JOB" == "all" ]]; then
     --date "$RUN_DATE" \
     --agent-result "$AGENT_RESULT" \
     --protocol-log "$PROTOCOL_LOG"
-fi
-if [[ "$JOB" == "events" || "$JOB" == "all" ]]; then
-  EVENT_RESULT="$RUN_DIR/event-agent-result.json"
-  EVENT_PROTOCOL="$RUN_DIR/event-agent-protocol.jsonl"
-  if [[ "$JOB" == "events" ]]; then
-    EVENT_RESULT="$AGENT_RESULT"
-    EVENT_PROTOCOL="$PROTOCOL_LOG"
-  fi
-  run_agent events "$EVENT_RESULT" "$EVENT_PROTOCOL"
+else
+  run_agent events "$AGENT_RESULT" "$PROTOCOL_LOG"
 fi
 if [[ -n "$AGENT_CODEX_HOME" ]]; then
   rm -rf "$AGENT_CODEX_HOME"

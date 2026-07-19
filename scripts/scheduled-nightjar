@@ -16,13 +16,40 @@ if [[ -f "$ROOT/server/.env" ]]; then
   set +a
 fi
 
+MODE="${VERSE_NIGHTJAR_MODE:-agent}"
+if [[ "$MODE" != "agent" && "$MODE" != "etl" ]]; then
+  printf 'invalid nightjar mode: %s\n' "$MODE" >&2
+  exit 2
+fi
+
+if [[ "$JOB" == "all" ]]; then
+  if [[ "$MODE" == "etl" ]]; then
+    exec "$0" articles
+  fi
+  export VERSE_RUN_DATE="${VERSE_RUN_DATE:-$(date -u +%F)}"
+  set +e
+  "$0" articles
+  ARTICLES_STATUS=$?
+  "$0" events
+  EVENTS_STATUS=$?
+  set -e
+  printf 'articles_status=%s events_status=%s\n' "$ARTICLES_STATUS" "$EVENTS_STATUS"
+  if [[ "$ARTICLES_STATUS" -ne 0 ]]; then
+    exit "$ARTICLES_STATUS"
+  fi
+  exit "$EVENTS_STATUS"
+fi
+if [[ "$JOB" == "events" && "$MODE" != "agent" ]]; then
+  printf 'events require agent mode\n' >&2
+  exit 2
+fi
+
 RUNS_ROOT="${VERSE_RUNS_DIR:-runs}"
 if [[ "$RUNS_ROOT" != /* ]]; then
   RUNS_ROOT="$ROOT/$RUNS_ROOT"
 fi
 RESULT_ROOT="$RUNS_ROOT/_nightjar"
 TIMEOUT_SECONDS="${VERSE_NIGHTJAR_TIMEOUT_SECONDS:-14400}"
-MODE="${VERSE_NIGHTJAR_MODE:-agent}"
 mkdir -p "$RESULT_ROOT"
 
 exec 9>"$RESULT_ROOT/nightjar.lock"
@@ -36,7 +63,7 @@ cd "$ROOT"
 STAMP="$(date -u +%Y%m%dT%H%M%SZ)"
 RUN_DATE="${VERSE_RUN_DATE:-$(date -u +%F)}"
 RUN_ID="nightjar-$JOB-$RUN_DATE"
-RUN_DIR="$RESULT_ROOT/$STAMP"
+RUN_DIR="$RESULT_ROOT/$STAMP-$JOB"
 PREFLIGHT_LOG="$RUN_DIR/preflight.log"
 PIPELINE_LOG="$RUN_DIR/pipeline.log"
 RESULT_FILE="$RUN_DIR/result.json"
