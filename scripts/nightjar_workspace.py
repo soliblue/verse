@@ -17,21 +17,66 @@ WORKSPACE_FILES = {"AGENTS.md", "content", "nightjar-input.json"}
 
 
 def input_snapshot(database: Path | None) -> dict:
-    empty = {"story_feedback": [], "event_feedback": [], "venue_feedback": [], "queued_deep_dives": []}
+    empty = {
+        "liked_articles": [],
+        "shown_articles": [],
+        "event_feedback": [],
+        "venue_feedback": [],
+        "queued_deep_dives": [],
+    }
     if database is None or not database.is_file():
         return empty
     connection = sqlite3.connect(f"file:{database}?mode=ro", uri=True)
     connection.row_factory = sqlite3.Row
     tables = {row[0] for row in connection.execute("SELECT name FROM sqlite_master WHERE type = 'table'")}
     result = dict(empty)
-    if "feedback_state" in tables:
-        result["story_feedback"] = [
-            dict(row)
+    if {"stories", "editions", "edition_items"}.issubset(tables):
+        payloads = [
+            json.loads(row["payload_json"])
             for row in connection.execute(
-                "SELECT story_id, saved, seen, preference FROM feedback_state "
-                "WHERE saved = 1 OR seen = 1 OR preference IS NOT NULL ORDER BY updated_at DESC"
+                "SELECT payload_json FROM editions ORDER BY edition_date DESC, generated_at DESC"
             )
         ]
+        stories = {
+            item["id"]: item
+            for payload in payloads
+            for item in payload["items"]
+        }
+        result["shown_articles"] = [
+            {
+                "id": row["id"],
+                "title": next(
+                    (item["title"] for item in stories.values() if item["id"] == row["id"]),
+                    row["id"],
+                ),
+                "source_url": row["source_url"],
+                "published_at": row["published_at"],
+            }
+            for row in connection.execute(
+                "SELECT id, source_url, published_at FROM stories ORDER BY created_at"
+            )
+        ]
+        if "feedback_state" in tables:
+            liked_ids = {
+                row["story_id"]
+                for row in connection.execute(
+                    "SELECT story_id FROM feedback_state WHERE preference = 'more_like_this'"
+                )
+            }
+            result["liked_articles"] = [
+                {
+                    "id": item["id"],
+                    "title": item["title"],
+                    "summary": item["summary"],
+                    "body": item["body"],
+                    "why_selected": item["why_selected"],
+                    "source_name": item["source_name"],
+                    "source_url": item["source_url"],
+                    "published_at": item["published_at"],
+                }
+                for item in stories.values()
+                if item["id"] in liked_ids
+            ]
     if "event_feedback_state" in tables:
         result["event_feedback"] = [
             {
@@ -66,7 +111,8 @@ def workspace_instructions() -> str:
 
 This isolated workspace contains only Verse editorial content and a feedback snapshot.
 
-- Read `content/preferences.md`, `nightjar-input.json`, recent editions, events, and places.
+- Article work reads `content/prompts/articles.md`, `content/article-examples.md`, and `nightjar-input.json`.
+- Event work reads preferences, event guidance, events, and places.
 - Write only below `content/`.
 - Never read or write outside this workspace.
 - Do not use Git, deploy, install packages, access credentials, or edit application or server source code.
@@ -201,6 +247,14 @@ def validate_workspace(root: Path, workspace: Path, run_date: str, scope: str) -
             raise ValueError("target edition must contain 8 to 12 stories")
         if any(item["kind"] == "event" for item in payload["items"]):
             raise ValueError("target edition must not contain event stories")
+        snapshot = json.loads((workspace / "nightjar-input.json").read_text(encoding="utf-8"))
+        shown_urls = {item["source_url"].rstrip("/") for item in snapshot["shown_articles"]}
+        shown_titles = {" ".join(item["title"].casefold().split()) for item in snapshot["shown_articles"]}
+        for item in payload["items"]:
+            if item["source_url"].rstrip("/") in shown_urls:
+                raise ValueError(f"story {item['id']} repeats a shown source URL")
+            if " ".join(item["title"].casefold().split()) in shown_titles:
+                raise ValueError(f"story {item['id']} repeats a shown title")
         for item in payload["items"]:
             urls = [item["source_url"], *(citation["url"] for citation in item["citations"])]
             if any(not value.startswith("https://") for value in urls):

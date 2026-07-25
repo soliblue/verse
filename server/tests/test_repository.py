@@ -49,7 +49,10 @@ class RepositoryTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(current_edition(self.connection), first)
         self.assertEqual(len(edition_summaries(self.connection)["editions"]), 1)
-        self.assertEqual(self.connection.execute("SELECT count(*) FROM edition_items").fetchone()[0], 10)
+        self.assertEqual(
+            self.connection.execute("SELECT count(*) FROM edition_items").fetchone()[0],
+            len(self.edition["items"]),
+        )
         stored_evidence = json.loads(
             self.connection.execute(
                 "SELECT evidence_json FROM edition_items ORDER BY position LIMIT 1"

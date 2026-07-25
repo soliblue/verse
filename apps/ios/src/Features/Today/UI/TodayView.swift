@@ -3,6 +3,7 @@ import SwiftUI
 struct TodayView: View {
     @Environment(\.scenePhase) private var scenePhase
     let editions: EditionRepository
+    let api: APIClient
     let feedback: FeedbackRepository
     let topics: TopicsRepository
     let configuration: ServerConfiguration
@@ -24,7 +25,8 @@ struct TodayView: View {
                             TodayStoryPage(
                                 story: story,
                                 number: index + 1,
-                                total: stories.count
+                                total: stories.count,
+                                api: api
                             )
                             .id(story.id)
                             .containerRelativeFrame(.vertical)

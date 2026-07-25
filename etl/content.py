@@ -132,7 +132,7 @@ def load_story(path: Path, edition_name: str, public_base_url: str | None = None
     metadata, body = parse_document(path)
     title, summary, article_body, why_selected, citations = story_sections(body, path)
     story_id = require_identifier(metadata.get("id"), f"{path}.id")
-    cover = metadata.get("cover")
+    cover = metadata.get("image", metadata.get("cover"))
     if cover is not None and not isinstance(cover, str):
         raise ValueError(f"{path}.cover must be a string")
     if cover is not None and not (path.parent / cover).is_file():
@@ -150,6 +150,7 @@ def load_story(path: Path, edition_name: str, public_base_url: str | None = None
         "published_at": metadata.get("published_at"),
         "reading_minutes": metadata.get("reading_minutes"),
         "image_url": cover_url(public_base_url, edition_name, cover),
+        "image_alt": metadata.get("image_alt"),
         "citations": citations,
         "related_story_ids": metadata.get("related_story_ids", []),
         "related_event_ids": metadata.get("related_event_ids", []),

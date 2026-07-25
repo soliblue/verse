@@ -127,8 +127,6 @@ struct SettingsView: View {
         .accessibilityIdentifier("settings-screen")
         .sheet(item: $prompt) { item in
             switch item {
-            case .topics:
-                TopicsEditorView(repository: topics)
             case .articles:
                 NightjarEditorView(job: .articles, api: api)
             case .events:

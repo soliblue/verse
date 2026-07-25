@@ -5,6 +5,7 @@ struct StoryPageView: View {
     let story: StoryItem
     let number: Int
     let total: Int
+    let api: APIClient
 
     var body: some View {
         GeometryReader { geometry in
@@ -22,6 +23,15 @@ struct StoryPageView: View {
     private func page(compact: Bool) -> some View {
         VStack(alignment: .leading, spacing: compact ? 18 : 24) {
             Spacer(minLength: compact ? 54 : 80)
+
+            if let imageURL = story.imageURL {
+                StoryImageView(
+                    url: imageURL,
+                    alt: story.imageAlt,
+                    api: api,
+                    height: compact ? 180 : 240
+                )
+            }
 
             Text(story.title)
                 .font(.display(compact ? 34 : 40))
@@ -48,6 +58,11 @@ struct StoryPageView: View {
 
 #if DEBUG
 #Preview("Story page") {
-    StoryPageView(story: PreviewFixtures.story, number: 1, total: 10)
+    StoryPageView(
+        story: PreviewFixtures.story,
+        number: 1,
+        total: 10,
+        api: APIClient(configuration: ServerConfiguration())
+    )
 }
 #endif

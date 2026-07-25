@@ -25,6 +25,17 @@ struct StoryPageToolbar: View {
             .accessibilityLabel(isSaved ? "Remove bookmark" : "Save story")
             .accessibilityIdentifier("reader-save")
 
+            Button {
+                onPreference(.moreLikeThis)
+            } label: {
+                Image(systemName: preference == .moreLikeThis ? "heart.fill" : "heart")
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .disabled(isDisabled)
+            .accessibilityLabel(preference == .moreLikeThis ? "Unlike story" : "Like story")
+            .accessibilityIdentifier("reader-like")
+
             StoryActionsMenu(
                 sourceURL: sourceURL,
                 preference: preference,

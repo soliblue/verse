@@ -1,7 +1,6 @@
 import Foundation
 
 enum SettingsPrompt: String, CaseIterable, Identifiable {
-    case topics
     case articles
     case events
 

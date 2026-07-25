@@ -2,6 +2,7 @@ import SwiftUI
 
 struct StoryDetailView: View {
     let story: StoryItem
+    let api: APIClient
     let feedback: FeedbackRepository
     let explore: ExploreRepository
     @State private var store = StoryDetailStore()
@@ -10,6 +11,10 @@ struct StoryDetailView: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
+                if let imageURL = story.imageURL {
+                    StoryImageView(url: imageURL, alt: story.imageAlt, api: api, height: nil)
+                    .padding(.bottom, 28)
+                }
                 Text(story.title)
                     .font(.display(38))
                     .foregroundStyle(VerseTheme.ink)

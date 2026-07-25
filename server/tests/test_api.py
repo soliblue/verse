@@ -72,7 +72,7 @@ class APITests(unittest.TestCase):
         status, payload, _ = self.request("GET", "/health", authorized=False)
         self.assertEqual(status, 200)
         self.assertEqual(payload["status"], "ok")
-        self.assertEqual(payload["current_edition_id"], "edition-2026-07-12")
+        self.assertEqual(payload["current_edition_id"], "edition-2026-07-25")
 
     def test_private_routes_require_bearer_secret(self):
         status, payload, headers = self.request("GET", "/v1/edition/today", authorized=False)
@@ -84,17 +84,17 @@ class APITests(unittest.TestCase):
         self.server.config = ServerConfig(self.path, None, (), 512, True)
         status, payload, _ = self.request("GET", "/v1/edition/today", authorized=False)
         self.assertEqual(status, 200)
-        self.assertEqual(payload["id"], "edition-2026-07-12")
+        self.assertEqual(payload["id"], "edition-2026-07-25")
 
     def test_edition_reads_are_complete(self):
         status, today, _ = self.request("GET", "/v1/edition/today")
         self.assertEqual(status, 200)
-        self.assertEqual(len(today["items"]), 10)
+        self.assertEqual(len(today["items"]), 11)
         self.assertIn("feedback", today["items"][0])
         status, summaries, _ = self.request("GET", "/v1/editions")
         self.assertEqual(status, 200)
-        self.assertEqual(summaries["editions"][0]["item_count"], 10)
-        status, archived, _ = self.request("GET", "/v1/editions/edition-2026-07-12")
+        self.assertEqual(summaries["editions"][0]["item_count"], 11)
+        status, archived, _ = self.request("GET", "/v1/editions/edition-2026-07-25")
         self.assertEqual(status, 200)
         self.assertEqual(archived, today)
 
@@ -162,7 +162,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(document["markdown"], "# Articles\n\nNew.\n")
 
     def test_feedback_persists_into_edition_payload(self):
-        story_id = "meta-physics-video-world-models-2026"
+        story_id = "eval-escaped-sandbox-2026"
         status, response, _ = self.request("POST", "/v1/feedback", {"story_id": story_id, "kind": "saved", "value": True})
         self.assertEqual(status, 200)
         self.assertTrue(response["feedback"]["saved"])
@@ -172,7 +172,7 @@ class APITests(unittest.TestCase):
 
     def test_feedback_idempotency_key_prevents_duplicate_events(self):
         request = {
-            "story_id": "meta-physics-video-world-models-2026",
+            "story_id": "eval-escaped-sandbox-2026",
             "kind": "saved",
             "value": True,
         }
@@ -188,7 +188,7 @@ class APITests(unittest.TestCase):
         self.assertEqual((status, payload["error"]["code"]), (409, "idempotency_conflict"))
 
     def test_deep_dive_queue_is_idempotent(self):
-        request = {"story_id": "meta-physics-video-world-models-2026"}
+        request = {"story_id": "eval-escaped-sandbox-2026"}
         first = self.request("POST", "/v1/deep-dives", request)
         second = self.request("POST", "/v1/deep-dives", request)
         self.assertEqual(first[0], 202)
@@ -274,7 +274,7 @@ class APITests(unittest.TestCase):
         self.assertEqual((status, payload["error"]["code"]), (404, "not_found"))
 
     def test_cover_assets_are_authenticated_and_paths_are_bounded(self):
-        assets = self.content / "editions/2026-07-12/assets"
+        assets = self.content / "editions/2026-07-25/assets"
         assets.mkdir(parents=True)
         cover = assets / "story.png"
         cover.write_bytes(b"\x89PNG\r\n\x1a\nfixture")
@@ -285,10 +285,10 @@ class APITests(unittest.TestCase):
             "(story_id, markdown_path, content_sha256, cover_path, cover_is_fallback, indexed_at) "
             "VALUES (?, ?, ?, ?, 1, ?)",
             (
-                "meta-physics-video-world-models-2026",
-                "editions/2026-07-12/01-story.md",
+                "eval-escaped-sandbox-2026",
+                "editions/2026-07-25/01-story.md",
                 "fixture",
-                "editions/2026-07-12/assets/story.png",
+                "editions/2026-07-25/assets/story.png",
                 now,
             ),
         )
@@ -299,13 +299,13 @@ class APITests(unittest.TestCase):
         self.assertEqual(status, 200)
         self.assertEqual(
             today["items"][0]["image_url"],
-            "https://verse.example/v1/assets/2026-07-12/assets/story.png",
+            "https://verse.example/v1/assets/2026-07-25/assets/story.png",
         )
-        status, body, headers = self.request("GET", "/v1/assets/2026-07-12/assets/story.png")
+        status, body, headers = self.request("GET", "/v1/assets/2026-07-25/assets/story.png")
         self.assertEqual((status, body, headers["Content-Type"]), (200, cover.read_bytes(), "image/png"))
         status, payload, _ = self.request(
             "GET",
-            "/v1/assets/2026-07-12/assets/story.png",
+            "/v1/assets/2026-07-25/assets/story.png",
             authorized=False,
         )
         self.assertEqual((status, payload["error"]["code"]), (401, "unauthorized"))
@@ -313,8 +313,8 @@ class APITests(unittest.TestCase):
         self.assertEqual((status, payload["error"]["code"]), (404, "asset_not_found"))
 
     def test_related_story_route_is_bidirectional(self):
-        source = "meta-physics-video-world-models-2026"
-        target = "foley-omni-complete-soundtracks-2026"
+        source = "eval-escaped-sandbox-2026"
+        target = "kimi-k3-benchmarks-2026"
         connection = connect(self.path)
         connection.execute(
             "INSERT INTO story_relations "

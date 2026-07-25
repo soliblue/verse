@@ -74,6 +74,7 @@ def complete_edition(payload: dict) -> dict:
     completed = deepcopy(payload)
     for item in completed.get("items", []):
         item.setdefault("image_url", None)
+        item.setdefault("image_alt", None)
         item.setdefault("feedback", {"saved": False, "seen": False, "preference": None, "updated_at": None})
         item.setdefault(
             "deep_dive",
@@ -125,6 +126,8 @@ def validate_edition(payload: object, minimum_items: int = 8, maximum_items: int
         if not isinstance(item.get("reading_minutes"), int) or isinstance(item.get("reading_minutes"), bool) or item["reading_minutes"] < 1:
             raise ValueError(f"{path}.reading_minutes must be a positive integer")
         require_url(item.get("image_url"), f"{path}.image_url", nullable=True)
+        if item.get("image_alt") is not None:
+            require_text(item["image_alt"], f"{path}.image_alt")
         validate_citations(item.get("citations"), f"{path}.citations")
         validate_feedback(item.get("feedback"), f"{path}.feedback")
         validate_deep_dive(item.get("deep_dive"), f"{path}.deep_dive")

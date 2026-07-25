@@ -13,7 +13,6 @@ struct StoryActionsMenu: View {
     var body: some View {
         Menu {
             Section("Feedback") {
-                preferenceButton("More like this", icon: "hand.thumbsup", value: .moreLikeThis)
                 preferenceButton("Less like this", icon: "hand.thumbsdown", value: .lessLikeThis)
                 preferenceButton("Too basic", icon: "textformat.size.smaller", value: .tooBasic)
             }

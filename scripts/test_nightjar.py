@@ -146,12 +146,12 @@ class NightjarAgentTests(unittest.TestCase):
 
             result = stamp_agent_provenance(
                 workspace,
-                "2026-07-12",
+                "2026-07-25",
                 agent_result,
                 protocol_log,
             )
             metadata, _ = parse_document(
-                workspace / "content/editions/2026-07-12/01-meta-physics-video-world-models-2026.md"
+                workspace / "content/editions/2026-07-25/01-eval-escaped-sandbox-2026.md"
             )
 
             self.assertEqual(result["model"], "gpt-5.6-sol")
@@ -166,15 +166,15 @@ class NightjarAgentTests(unittest.TestCase):
             workspace = Path(directory) / "workspace"
             prepare_workspace(root, workspace, None)
             event_paths = []
-            for path in sorted((workspace / "content/editions/2026-07-12").glob("*.md")):
+            for path in sorted((workspace / "content/editions/2026-07-25").glob("*.md")):
                 metadata, _ = parse_document(path)
                 if metadata.get("kind") == "event":
                     event_paths.append(path)
             for path in event_paths:
                 self.set_story_kind(path, "technique")
-            result = validate_workspace(root, workspace, "2026-07-12", scope="articles")
+            result = validate_workspace(root, workspace, "2026-07-25", scope="articles")
 
-            self.assertEqual(result["stories"], 10)
+            self.assertEqual(result["stories"], 11)
             self.assertGreater(result["citations"], 10)
 
     def test_agent_edition_does_not_require_covers(self):
@@ -184,11 +184,15 @@ class NightjarAgentTests(unittest.TestCase):
             shutil.copytree(ROOT / "content", root / "content")
             workspace = Path(directory) / "workspace"
             prepare_workspace(root, workspace, None)
-            edition = workspace / "content/editions/2026-07-12"
-            shutil.rmtree(edition / "assets")
+            edition = workspace / "content/editions/2026-07-25"
+            shutil.rmtree(edition / "assets", ignore_errors=True)
             for path in edition.glob("[0-9][0-9]-*.md"):
                 metadata, body = parse_document(path)
-                metadata = {key: value for key, value in metadata.items() if not key.startswith("cover")}
+                metadata = {
+                    key: value
+                    for key, value in metadata.items()
+                    if not key.startswith("cover") and key not in {"image", "image_alt"}
+                }
                 path.write_text(render_document(metadata, body), encoding="utf-8")
             event_paths = []
             for path in sorted(edition.glob("[0-9][0-9]-*.md")):
@@ -197,9 +201,9 @@ class NightjarAgentTests(unittest.TestCase):
                     event_paths.append(path)
             for path in event_paths:
                 self.set_story_kind(path, "technique")
-            result = validate_workspace(root, workspace, "2026-07-12", scope="articles")
+            result = validate_workspace(root, workspace, "2026-07-25", scope="articles")
 
-            self.assertEqual(result["stories"], 10)
+            self.assertEqual(result["stories"], 11)
             self.assertFalse((edition / "assets").exists())
 
     def test_agent_edition_rejects_event_stories(self):
@@ -209,11 +213,11 @@ class NightjarAgentTests(unittest.TestCase):
             shutil.copytree(ROOT / "content", root / "content")
             workspace = Path(directory) / "workspace"
             prepare_workspace(root, workspace, None)
-            story_paths = sorted((workspace / "content/editions/2026-07-12").glob("[0-9][0-9]-*.md"))
+            story_paths = sorted((workspace / "content/editions/2026-07-25").glob("[0-9][0-9]-*.md"))
             self.set_story_kind(story_paths[0], "event")
 
             with self.assertRaisesRegex(ValueError, "must not contain event stories"):
-                validate_workspace(root, workspace, "2026-07-12", scope="articles")
+                validate_workspace(root, workspace, "2026-07-25", scope="articles")
 
     def test_event_run_cannot_edit_places(self):
         with tempfile.TemporaryDirectory() as directory:

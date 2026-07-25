@@ -122,6 +122,11 @@ final class EditionRepository {
 
     private func store(_ response: EditionSummariesResponse) {
         guard let data = try? encoder.encode(response) else { return }
+        let remoteIDs = Set(response.editions.map(\.id))
+        for cached in (try? context.fetch(FetchDescriptor<CachedEdition>())) ?? []
+        where !remoteIDs.contains(cached.id) {
+            context.delete(cached)
+        }
         var descriptor = FetchDescriptor<CachedEditionIndex>(
             predicate: #Predicate { $0.key == "editions" }
         )

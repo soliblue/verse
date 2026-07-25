@@ -39,6 +39,7 @@ struct RootTabView: View {
             NavigationStack(path: $articlesPath) {
                 TodayView(
                     editions: editions,
+                    api: api,
                     feedback: feedback,
                     topics: topics,
                     configuration: configuration,
@@ -137,6 +138,7 @@ struct RootTabView: View {
     private func storyDetail(_ story: StoryItem) -> some View {
         StoryDetailView(
             story: story,
+            api: api,
             feedback: feedback,
             explore: explore
         )

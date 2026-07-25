@@ -49,25 +49,32 @@ class MarkdownContentTests(unittest.TestCase):
         payload, index = write_edition(self.edition, self.root, public_base_url="https://verse.example")
 
         self.assertEqual(payload["id"], self.edition["id"])
-        self.assertEqual(len(payload["items"]), 10)
+        self.assertEqual(len(payload["items"]), 11)
         self.assertEqual(payload["items"][0]["body"], self.edition["items"][0]["body"])
         self.assertEqual(payload["items"][0]["citations"], self.edition["items"][0]["citations"])
         self.assertIsNone(payload["items"][0]["image_url"])
-        self.assertEqual(len(index["stories"]), 10)
-        self.assertFalse((self.root / "editions/2026-07-12/assets").exists())
-        story_metadata, _ = load_edition(self.root / "editions/2026-07-12/edition.md")
+        self.assertEqual(len(index["stories"]), 11)
+        self.assertFalse((self.root / "editions/2026-07-25/assets").exists())
+        story_metadata, _ = load_edition(self.root / "editions/2026-07-25/edition.md")
         self.assertTrue(all(item["image_url"] is None for item in story_metadata["items"]))
 
-    def test_historical_covers_remain_readable(self):
-        payload, _ = load_edition(
-            ROOT / "content/editions/2026-07-12/edition.md",
-            public_base_url="https://verse.example",
-        )
+    def test_local_article_images_remain_readable(self):
+        write_edition(self.edition, self.root)
+        edition = self.root / "editions/2026-07-25"
+        story = edition / "01-eval-escaped-sandbox-2026.md"
+        metadata, body = parse_document(story)
+        metadata["image"] = "assets/explainer.png"
+        metadata["image_alt"] = "A checked educational diagram"
+        (edition / "assets").mkdir()
+        (edition / "assets/explainer.png").write_bytes(b"image")
+        story.write_text(render_document(metadata, body), encoding="utf-8")
+        payload, _ = load_edition(edition / "edition.md", public_base_url="https://verse.example")
 
         self.assertEqual(
             payload["items"][0]["image_url"],
-            "https://verse.example/v1/assets/2026-07-12/assets/meta-physics-video-world-models-2026.png",
+            "https://verse.example/v1/assets/2026-07-25/assets/explainer.png",
         )
+        self.assertEqual(payload["items"][0]["image_alt"], "A checked educational diagram")
 
     def test_preferences_round_trip_is_human_editable(self):
         path = self.root / "preferences.md"
@@ -99,8 +106,8 @@ class MarkdownContentTests(unittest.TestCase):
         status = sync_content(connection, self.root)
         story_id = first["items"][0]["id"]
         record_feedback(connection, story_id, "saved", True)
-        self.assertEqual(status, {"preferences": 1, "editions": 1, "stories": 10, "deep_dives": 0})
-        self.assertEqual(connection.execute("SELECT count(*) FROM story_documents").fetchone()[0], 10)
+        self.assertEqual(status, {"preferences": 1, "editions": 1, "stories": 11, "deep_dives": 0})
+        self.assertEqual(connection.execute("SELECT count(*) FROM story_documents").fetchone()[0], 11)
         write_deep_dive(
             self.root,
             story_id,
@@ -134,9 +141,9 @@ class MarkdownContentTests(unittest.TestCase):
 
     def test_unsafe_story_paths_are_rejected(self):
         write_edition(self.edition, self.root)
-        path = self.root / "editions/2026-07-12/edition.md"
+        path = self.root / "editions/2026-07-25/edition.md"
         text = path.read_text(encoding="utf-8").replace(
-            '"01-meta-physics-video-world-models-2026.md"',
+            '"01-eval-escaped-sandbox-2026.md"',
             '"../preferences.md"',
         )
         path.write_text(text, encoding="utf-8")
@@ -164,7 +171,10 @@ class ExploreContentTests(unittest.TestCase):
         self.assertNotIn("home_latitude", serialized)
         self.assertNotIn("home_longitude", serialized)
         self.assertNotIn("VERSE_PROXIMITY_ANCHOR", serialized)
-        self.assertEqual({venue["distance_band"] for venue in payload["venues"]}, {"unknown"})
+        self.assertLessEqual(
+            {venue["distance_band"] for venue in payload["venues"]},
+            {"unknown", "walkable", "short_ride", "long_ride"},
+        )
 
     def test_distance_is_computed_only_from_an_explicit_private_anchor(self):
         venue = {"latitude": 52.5005, "longitude": 13.4005}

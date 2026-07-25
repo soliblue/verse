@@ -155,6 +155,8 @@ final class FeedbackPersistenceTests: XCTestCase {
             sourceURL: URL(string: "https://example.com/story")!,
             publishedAt: "2026-07-12T06:00:00Z",
             readingMinutes: 2,
+            imageURL: nil,
+            imageAlt: nil,
             relatedEventIDs: nil,
             citations: [],
             feedback: .empty,

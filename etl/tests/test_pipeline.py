@@ -326,7 +326,7 @@ class PipelineTests(unittest.TestCase):
                 (self.run_id,),
             )
         }
-        self.assertEqual(scores, {-0.175})
+        self.assertEqual(scores, {-0.525})
 
     def test_queued_deep_dive_contains_bounded_source_evidence(self):
         story = current_edition(self.connection)["items"][0]
