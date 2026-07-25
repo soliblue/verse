@@ -38,11 +38,14 @@ jobs:
           scripts/bootstrap
           python3 - <<'PY'
           import os
+          import json
           import sqlite3
+          from pathlib import Path
 
           connection = sqlite3.connect(os.environ["VERSE_DB_PATH"])
           assert connection.execute("pragma quick_check").fetchone()[0] == "ok"
-          assert connection.execute("select count(*) from edition_items").fetchone()[0] == 10
+          expected = len(json.loads(Path("etl/seeds/first-edition.json").read_text())["items"])
+          assert connection.execute("select count(*) from edition_items").fetchone()[0] == expected
           print("repeatable bootstrap valid")
           PY
 
