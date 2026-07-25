@@ -66,13 +66,9 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(app.staticTexts["Prompts"].exists)
         XCTAssertFalse(app.buttons["Back"].exists)
         XCTAssertFalse(app.buttons["More"].exists)
-        app.buttons["Topics"].tap()
-        XCTAssertTrue(
-            app.descendants(matching: .any)["topics-markdown-editor"]
-                .waitForExistence(timeout: 5)
-        )
-        XCTAssertTrue(app.buttons["topics-save"].exists)
-        app.buttons["topics-close"].tap()
+        XCTAssertTrue(app.buttons["Articles"].exists)
+        XCTAssertTrue(app.buttons["Events"].exists)
+        XCTAssertFalse(app.buttons["Topics"].exists)
 
         openTab("Articles", app: app)
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
