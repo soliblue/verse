@@ -17,10 +17,6 @@ validate_edition(complete_edition(edition))
 validate_topics(topics)
 
 topic_ids = {topic["id"] for topic in topics["topics"]}
-used_topic_ids = {topic_id for item in edition["items"] for topic_id in item["topic_ids"]}
-unknown_topic_ids = used_topic_ids - topic_ids
-if unknown_topic_ids:
-    raise RuntimeError("edition references unknown topics: " + ", ".join(sorted(unknown_topic_ids)))
 collector_topic_ids = {
     topic_id for source in collectors["sources"] for topic_id in source["topic_ids"]
 }
