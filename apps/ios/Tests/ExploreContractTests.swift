@@ -42,7 +42,7 @@ final class ExploreContractTests: XCTestCase {
         let url = try XCTUnwrap(Bundle.main.url(forResource: "first-edition", withExtension: "json"))
         let edition = try JSONDecoder().decode(EditionPayload.self, from: Data(contentsOf: url))
 
-        XCTAssertTrue(edition.items.allSatisfy { $0.relatedEventIDs == nil })
+        XCTAssertTrue(edition.items.allSatisfy { $0.relatedEventIDs?.isEmpty != false })
     }
 
     func testAttendedHistoryDecodesAndRemainsPartOfEventLookup() throws {
