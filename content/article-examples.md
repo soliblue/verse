@@ -47,3 +47,10 @@ Positive references for learning what Verse should find, ordered from most to le
 - Added: 2026-07-25
 - Topic: European AI, semiconductor and model-company alliances, sovereign AI, and infrastructure investment
 - Why it was interesting: pending
+
+## 7. Italo signs a €3 billion Siemens train deal to enter Germany
+
+- URL: https://www.perplexity.ai/page/italo-signs-eur3b-siemens-deal-Wu7iKrSQSC2WMmn9sI_IoQ
+- Added: 2026-07-25
+- Topic: European high-speed rail, private competition with Deutsche Bahn, infrastructure investment, and practical changes to travel in Germany
+- Why it was interesting: A concrete European business decision that could visibly change daily life: 26 new high-speed trains, service across 18 German cities from 2028, and a serious private competitor to Deutsche Bahn.

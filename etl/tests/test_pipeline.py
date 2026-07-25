@@ -307,13 +307,13 @@ class PipelineTests(unittest.TestCase):
     def test_feedback_follows_topics_instead_of_source_name(self):
         payload = json.loads(self.sources.read_text(encoding="utf-8"))
         payload["sources"][0]["name"] = "arXiv"
-        payload["sources"][0]["topic_ids"] = ["creative-tooling"]
-        self.sources.write_text(json.dumps(payload), encoding="utf-8")
         current = current_edition(self.connection)
         arxiv_story = next(item for item in current["items"] if item["source_name"] == "arXiv")
-        creative_story = next(item for item in current["items"] if "creative-tooling" in item["topic_ids"])
+        topic_story = next(item for item in current["items"] if item["id"] != arxiv_story["id"])
+        payload["sources"][0]["topic_ids"] = [topic_story["topic_ids"][0]]
+        self.sources.write_text(json.dumps(payload), encoding="utf-8")
         record_feedback(self.connection, arxiv_story["id"], "less_like_this", True)
-        record_feedback(self.connection, creative_story["id"], "too_basic", True)
+        record_feedback(self.connection, topic_story["id"], "too_basic", True)
         with patch("etl.collect.fetch", return_value=collected_items()):
             collect_stage(self.connection, self.run_id, self.sources)
         normalize_stage(self.connection, self.run_id)
@@ -326,7 +326,7 @@ class PipelineTests(unittest.TestCase):
                 (self.run_id,),
             )
         }
-        self.assertEqual(scores, {-0.525})
+        self.assertEqual(scores, {-0.175})
 
     def test_queued_deep_dive_contains_bounded_source_evidence(self):
         story = current_edition(self.connection)["items"][0]

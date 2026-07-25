@@ -26,7 +26,8 @@ class APITests(unittest.TestCase):
         topic_payload = json.loads((ROOT / "etl/seeds/default-topics.json").read_text(encoding="utf-8"))
         replace_topics(connection, topic_payload)
         write_preferences(self.content / "preferences.md", topic_payload)
-        publish_edition(connection, json.loads((ROOT / "etl/seeds/first-edition.json").read_text(encoding="utf-8")))
+        self.edition = json.loads((ROOT / "etl/seeds/first-edition.json").read_text(encoding="utf-8"))
+        publish_edition(connection, self.edition)
         publish_explore(
             connection,
             json.loads((ROOT / "apps/ios/src/Resources/first-explore.json").read_text(encoding="utf-8")),
@@ -162,7 +163,7 @@ class APITests(unittest.TestCase):
         self.assertEqual(document["markdown"], "# Articles\n\nNew.\n")
 
     def test_feedback_persists_into_edition_payload(self):
-        story_id = "eval-escaped-sandbox-2026"
+        story_id = self.edition["items"][0]["id"]
         status, response, _ = self.request("POST", "/v1/feedback", {"story_id": story_id, "kind": "saved", "value": True})
         self.assertEqual(status, 200)
         self.assertTrue(response["feedback"]["saved"])
@@ -172,7 +173,7 @@ class APITests(unittest.TestCase):
 
     def test_feedback_idempotency_key_prevents_duplicate_events(self):
         request = {
-            "story_id": "eval-escaped-sandbox-2026",
+            "story_id": self.edition["items"][0]["id"],
             "kind": "saved",
             "value": True,
         }
@@ -188,7 +189,7 @@ class APITests(unittest.TestCase):
         self.assertEqual((status, payload["error"]["code"]), (409, "idempotency_conflict"))
 
     def test_deep_dive_queue_is_idempotent(self):
-        request = {"story_id": "eval-escaped-sandbox-2026"}
+        request = {"story_id": self.edition["items"][0]["id"]}
         first = self.request("POST", "/v1/deep-dives", request)
         second = self.request("POST", "/v1/deep-dives", request)
         self.assertEqual(first[0], 202)
@@ -285,7 +286,7 @@ class APITests(unittest.TestCase):
             "(story_id, markdown_path, content_sha256, cover_path, cover_is_fallback, indexed_at) "
             "VALUES (?, ?, ?, ?, 1, ?)",
             (
-                "eval-escaped-sandbox-2026",
+                self.edition["items"][0]["id"],
                 "editions/2026-07-25/01-story.md",
                 "fixture",
                 "editions/2026-07-25/assets/story.png",
@@ -313,8 +314,8 @@ class APITests(unittest.TestCase):
         self.assertEqual((status, payload["error"]["code"]), (404, "asset_not_found"))
 
     def test_related_story_route_is_bidirectional(self):
-        source = "eval-escaped-sandbox-2026"
-        target = "kimi-k3-benchmarks-2026"
+        source = self.edition["items"][0]["id"]
+        target = self.edition["items"][1]["id"]
         connection = connect(self.path)
         connection.execute(
             "INSERT INTO story_relations "

@@ -150,8 +150,13 @@ class NightjarAgentTests(unittest.TestCase):
                 agent_result,
                 protocol_log,
             )
+            edition_metadata, _ = parse_document(
+                workspace / "content/editions/2026-07-25/edition.md"
+            )
             metadata, _ = parse_document(
-                workspace / "content/editions/2026-07-25/01-eval-escaped-sandbox-2026.md"
+                workspace
+                / "content/editions/2026-07-25"
+                / edition_metadata["stories"][0]
             )
 
             self.assertEqual(result["model"], "gpt-5.6-sol")

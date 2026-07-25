@@ -31,3 +31,5 @@ Complete.
 - 2026-07-25: Added authenticated, offline-cached article visuals and a direct Like action.
 - 2026-07-25: Published an 11-story edition with 19 citations and removed seven old editions.
 - 2026-07-25: Passed 89 Python tests and verified the live API exposes only the July 25 edition.
+- 2026-07-25: Added the Italo Siemens deal as ranked example 7 and replaced cryptic headline guidance with concrete, practical explanatory writing rules.
+- 2026-07-25: Replaced the live edition with 11 newly researched plain-language stories after reviewing every headline and summary.

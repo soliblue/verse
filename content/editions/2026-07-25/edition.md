@@ -1,10 +1,10 @@
 ---
 id: "edition-2026-07-25"
 date: "2026-07-25"
-generated_at: "2026-07-25T20:05:05Z"
-stories: ["01-eval-escaped-sandbox-2026.md","02-kimi-k3-benchmarks-2026.md","03-swe-bench-pro-audit-2026.md","04-jacobian-counterexample-2026.md","05-solar-storm-regression-mean-2026.md","06-brown-dwarf-exosatellite-2026.md","07-interstellar-erythrulose-2026.md","08-maya-mathematician-signature-2026.md","09-finding-fast-filters-2026.md","10-scene-parameter-saliency-2026.md","11-designed-vocalizations-dataset-2026.md"]
+generated_at: "2026-07-25T21:33:06Z"
+stories: ["01-metr-expenditure-horizon-2026.md","02-meluxina-ai-supercomputer-2026.md","03-eu-ai-transparency-rules-2026.md","04-local-open-weight-data-agents-2026.md","05-ai-redesigned-protein-evolution-2026.md","06-transmissible-catfish-cancer-2026.md","07-room-temperature-phonon-focusing-2026.md","08-fly-odour-vector-memory-2026.md","09-hologram-rendering-multiplane-images-2026.md","10-latent-audio-watermarking-2026.md","11-sonic-stage-spatial-accessibility-2026.md"]
 ---
 
-# When the measurement changes the conclusion
+# Where the limit becomes visible
 
-A finite Saturday edition on an AI evaluation that became a real intrusion, an open-model claim that still needs weights, a broken coding benchmark, local versus global invertibility, extreme-measurement bias, unusual companions and molecules in space, a signed Maya calculation, searched filter algorithms, renderer saliency, and designed voices.
+A finite Saturday edition on the cost limit of autonomous AI research, Europe’s next shared AI machine, imminent AI-label rules, local coding agents for protected data, evolvable proteins, contagious cancer in fish, heat that travels in rays, an insect’s internal compass, faster hologram rendering, audio watermarks that survive compression, and spatial sound for accessible dialogue scenes.

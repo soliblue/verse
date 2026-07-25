@@ -49,19 +49,20 @@ class MarkdownContentTests(unittest.TestCase):
         payload, index = write_edition(self.edition, self.root, public_base_url="https://verse.example")
 
         self.assertEqual(payload["id"], self.edition["id"])
-        self.assertEqual(len(payload["items"]), 11)
+        self.assertEqual(len(payload["items"]), len(self.edition["items"]))
         self.assertEqual(payload["items"][0]["body"], self.edition["items"][0]["body"])
         self.assertEqual(payload["items"][0]["citations"], self.edition["items"][0]["citations"])
         self.assertIsNone(payload["items"][0]["image_url"])
-        self.assertEqual(len(index["stories"]), 11)
-        self.assertFalse((self.root / "editions/2026-07-25/assets").exists())
-        story_metadata, _ = load_edition(self.root / "editions/2026-07-25/edition.md")
+        self.assertEqual(len(index["stories"]), len(self.edition["items"]))
+        edition = self.root / "editions" / self.edition["date"]
+        self.assertFalse((edition / "assets").exists())
+        story_metadata, _ = load_edition(edition / "edition.md")
         self.assertTrue(all(item["image_url"] is None for item in story_metadata["items"]))
 
     def test_local_article_images_remain_readable(self):
-        write_edition(self.edition, self.root)
-        edition = self.root / "editions/2026-07-25"
-        story = edition / "01-eval-escaped-sandbox-2026.md"
+        _, index = write_edition(self.edition, self.root)
+        edition = self.root / "editions" / self.edition["date"]
+        story = index["stories"][0]["path"]
         metadata, body = parse_document(story)
         metadata["image"] = "assets/explainer.png"
         metadata["image_alt"] = "A checked educational diagram"
@@ -106,8 +107,9 @@ class MarkdownContentTests(unittest.TestCase):
         status = sync_content(connection, self.root)
         story_id = first["items"][0]["id"]
         record_feedback(connection, story_id, "saved", True)
-        self.assertEqual(status, {"preferences": 1, "editions": 1, "stories": 11, "deep_dives": 0})
-        self.assertEqual(connection.execute("SELECT count(*) FROM story_documents").fetchone()[0], 11)
+        item_count = len(self.edition["items"])
+        self.assertEqual(status, {"preferences": 1, "editions": 1, "stories": item_count, "deep_dives": 0})
+        self.assertEqual(connection.execute("SELECT count(*) FROM story_documents").fetchone()[0], item_count)
         write_deep_dive(
             self.root,
             story_id,
@@ -131,9 +133,9 @@ class MarkdownContentTests(unittest.TestCase):
         publish_edition(connection, second)
         index_edition(connection, second, second_index, self.root)
 
-        relation = related_stories(connection, second["items"][0]["id"])
-        self.assertEqual(relation["stories"][0]["item"]["id"], story_id)
-        self.assertEqual(relation["stories"][0]["relation"], "related")
+        relations = related_stories(connection, second["items"][0]["id"])["stories"]
+        relation = next(item for item in relations if item["item"]["id"] == story_id)
+        self.assertEqual(relation["relation"], "related")
         sync_content(connection, self.root)
         older = next(item for item in edition(connection, first["id"])["items"] if item["id"] == story_id)
         self.assertTrue(older["feedback"]["saved"])
@@ -141,12 +143,10 @@ class MarkdownContentTests(unittest.TestCase):
 
     def test_unsafe_story_paths_are_rejected(self):
         write_edition(self.edition, self.root)
-        path = self.root / "editions/2026-07-25/edition.md"
-        text = path.read_text(encoding="utf-8").replace(
-            '"01-eval-escaped-sandbox-2026.md"',
-            '"../preferences.md"',
-        )
-        path.write_text(text, encoding="utf-8")
+        path = self.root / "editions" / self.edition["date"] / "edition.md"
+        metadata, body = parse_document(path)
+        metadata["stories"][0] = "../preferences.md"
+        path.write_text(render_document(metadata, body), encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "unsafe"):
             load_edition(path)
 
