@@ -13,9 +13,6 @@ struct RootTabView: View {
     @State private var selectedTab = AppTab.articles
     @State private var articlesPath = NavigationPath()
     @State private var calendarPath = NavigationPath()
-    @State private var placesPath = NavigationPath()
-    @State private var libraryPath = NavigationPath()
-    @State private var settingsPath = NavigationPath()
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -54,53 +51,6 @@ struct RootTabView: View {
             }
             .tabItem { tabIcon(.calendar) }
             .tag(AppTab.calendar)
-
-            NavigationStack(path: $placesPath) {
-                ExploreView(
-                    mode: .places,
-                    repository: explore,
-                    feedback: eventFeedback,
-                    configuration: configuration
-                )
-                .navigationDestination(for: EventItem.self) { event in
-                    eventDetail(event)
-                }
-                .navigationDestination(for: Venue.self) { venue in
-                    venueDetail(venue)
-                }
-            }
-            .tabItem { tabIcon(.places) }
-            .tag(AppTab.places)
-
-            NavigationStack(path: $libraryPath) {
-                LibraryView(editions: editions, feedback: feedback)
-                    .navigationDestination(for: StoryItem.self) { story in
-                        storyDetail(story)
-                    }
-                    .navigationDestination(for: EventItem.self) { event in
-                        eventDetail(event)
-                    }
-                    .navigationDestination(for: EditionSummary.self) { edition in
-                        EditionView(
-                            summary: edition,
-                            editions: editions,
-                            configuration: configuration
-                        )
-                    }
-            }
-            .tabItem { tabIcon(.library) }
-            .tag(AppTab.library)
-
-            NavigationStack(path: $settingsPath) {
-                SettingsView(
-                    configuration: configuration,
-                    api: api,
-                    feedback: feedback,
-                    topics: topics
-                )
-            }
-            .tabItem { tabIcon(.settings) }
-            .tag(AppTab.settings)
         }
         .background(KeyboardDismissalHost())
         .toolbarBackground(.hidden, for: .navigationBar)

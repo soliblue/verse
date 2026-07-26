@@ -6,9 +6,7 @@ final class StoryDetailStore {
     private(set) var state: CachedStoryState?
     private(set) var isSending = false
 
-    var isSaved: Bool { state?.isSaved ?? false }
     var preference: FeedbackPreference? { state?.preference }
-    var deepDiveStatus: DeepDiveStatus { state?.deepDiveStatus ?? .notRequested }
 
     func load(
         story: StoryItem,
@@ -19,12 +17,6 @@ final class StoryDetailStore {
         if markSeen, state?.isSeen == false {
             state = await repository.update(story: story, kind: .seen, value: true)
         }
-    }
-
-    func toggleSaved(story: StoryItem, repository: FeedbackRepository) async {
-        isSending = true
-        state = await repository.update(story: story, kind: .saved, value: !isSaved)
-        isSending = false
     }
 
     func setPreference(
@@ -41,9 +33,4 @@ final class StoryDetailStore {
         isSending = false
     }
 
-    func requestDeepDive(story: StoryItem, repository: FeedbackRepository) async {
-        isSending = true
-        state = await repository.requestDeepDive(story: story)
-        isSending = false
-    }
 }

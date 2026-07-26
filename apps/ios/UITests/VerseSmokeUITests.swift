@@ -9,9 +9,11 @@ final class VerseSmokeUITests: XCTestCase {
 
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.tabBars.buttons.count, 5)
-        XCTAssertTrue(app.buttons["reader-save"].exists)
-        XCTAssertTrue(app.buttons["reader-actions"].exists)
+        XCTAssertEqual(app.tabBars.buttons.count, 2)
+        XCTAssertTrue(app.buttons["reader-like"].exists)
+        XCTAssertTrue(app.buttons["reader-dislike"].exists)
+        XCTAssertFalse(app.buttons["reader-save"].exists)
+        XCTAssertFalse(app.buttons["reader-actions"].exists)
         XCTAssertFalse(app.buttons["app-menu"].exists)
 
         let first = app.descendants(matching: .any)["reader-story-1"]
@@ -26,7 +28,7 @@ final class VerseSmokeUITests: XCTestCase {
         assertHittable(second)
     }
 
-    func testStoryKeepsSupportingDetailsOnDemand() {
+    func testReaderOnlyShowsLikeAndDislikeActions() {
         let app = XCUIApplication()
         app.launch()
 
@@ -34,42 +36,25 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(first.waitForExistence(timeout: 8))
         XCTAssertTrue(app.descendants(matching: .any)["story-body"].waitForExistence(timeout: 5))
         XCTAssertFalse(app.navigationBars.buttons.firstMatch.exists)
-        XCTAssertTrue(app.buttons["reader-save"].exists)
-        app.buttons["reader-actions"].tap()
-        XCTAssertTrue(app.buttons["Story details"].waitForExistence(timeout: 5))
-        app.buttons["Story details"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["story-info"].waitForExistence(timeout: 5))
-        XCTAssertTrue(
-            app.descendants(matching: .any)["story-original"].waitForExistence(timeout: 5)
-        )
-        app.buttons["Done"].tap()
-
-        XCTAssertTrue(app.tabBars.buttons["Articles"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["reader-like"].exists)
+        XCTAssertTrue(app.buttons["reader-dislike"].exists)
+        XCTAssertFalse(app.buttons["reader-save"].exists)
+        XCTAssertFalse(app.buttons["reader-actions"].exists)
     }
 
-    func testNavigationLivesInBottomTabs() {
+    func testBottomTabsOnlyShowArticlesAndCalendar() {
         executionTimeAllowance = 90
         let app = XCUIApplication()
         app.launch()
 
-        openTab("Library", app: app)
-        XCTAssertTrue(app.descendants(matching: .any)["library-screen"].waitForExistence(timeout: 5))
-
-        openTab("Settings", app: app)
-        XCTAssertTrue(app.descendants(matching: .any)["settings-screen"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.textFields["Server URL"].exists)
-        XCTAssertTrue(app.staticTexts["Prompts"].exists)
-        XCTAssertFalse(app.buttons["Back"].exists)
-        XCTAssertFalse(app.buttons["More"].exists)
-        XCTAssertTrue(app.buttons["Articles"].exists)
-        XCTAssertTrue(app.buttons["Events"].exists)
-        XCTAssertFalse(app.buttons["Topics"].exists)
-
-        openTab("Articles", app: app)
-        XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["Articles"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["Calendar"].exists)
+        XCTAssertFalse(app.tabBars.buttons["Places"].exists)
+        XCTAssertFalse(app.tabBars.buttons["Library"].exists)
+        XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
     }
 
-    func testCalendarAndPlacesAreDirectDestinations() {
+    func testCalendarIsADirectDestination() {
         executionTimeAllowance = 90
         let app = XCUIApplication()
         app.launch()
@@ -91,10 +76,6 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertTrue(app.descendants(matching: .any)["event-detail"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["event-actions"].exists)
         app.navigationBars.buttons.firstMatch.tap()
-
-        openTab("Places", app: app)
-        XCTAssertTrue(app.descendants(matching: .any)["places-screen"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.staticTexts["UdK Sound Studies"].waitForExistence(timeout: 5))
     }
 
     private func openTab(_ title: String, app: XCUIApplication) {

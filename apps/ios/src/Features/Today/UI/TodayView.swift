@@ -11,7 +11,6 @@ struct TodayView: View {
     @State private var store = TodayStore()
     @State private var toolbarStore = StoryDetailStore()
     @State private var focusedStoryID: StoryItem.ID?
-    @State private var detailStory: StoryItem?
 
     var body: some View {
         Group {
@@ -66,20 +65,12 @@ struct TodayView: View {
             }
         }
         .background(pageBackground.ignoresSafeArea())
-        .overlay(alignment: .top) {
+        .overlay(alignment: .topTrailing) {
             if let story = focusedStory {
                 StoryPageToolbar(
-                    sourceURL: story.sourceURL,
-                    isSaved: toolbarStore.isSaved,
                     preference: toolbarStore.preference,
-                    deepDiveStatus: toolbarStore.deepDiveStatus,
                     isDisabled: toolbarStore.isSending,
                     foregroundColor: VerseTheme.ink,
-                    onSave: {
-                        Task {
-                            await toolbarStore.toggleSaved(story: story, repository: feedback)
-                        }
-                    },
                     onPreference: { preference in
                         Task {
                             await toolbarStore.setPreference(
@@ -88,20 +79,13 @@ struct TodayView: View {
                                 repository: feedback
                             )
                         }
-                    },
-                    onDeepDive: {
-                        Task {
-                            await toolbarStore.requestDeepDive(story: story, repository: feedback)
-                        }
-                    },
-                    onShowDetails: { detailStory = story }
+                    }
                 )
+                .padding(.horizontal, 12)
+                .padding(.top, 4)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
-        .sheet(item: $detailStory) { story in
-            StoryInfoSheet(story: story, state: toolbarStore.state)
-        }
         .task(id: focusedStory?.id) {
             guard let focusedStory else { return }
             await toolbarStore.load(story: focusedStory, repository: feedback)

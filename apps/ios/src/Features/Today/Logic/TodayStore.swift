@@ -46,7 +46,7 @@ final class TodayStore {
     ) async {
         guard !isRefreshing else { return }
         guard configuration.isConfigured else {
-            statusMessage = "Add the VPS address in Settings to refresh."
+            statusMessage = "Verse is offline."
             return
         }
         isRefreshing = true
