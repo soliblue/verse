@@ -18,32 +18,15 @@ struct RootTabView: View {
     @State private var settingsPath = NavigationPath()
 
     var body: some View {
-        selectedRoot
-            .background(KeyboardDismissalHost())
-            .toolbarBackground(.hidden, for: .navigationBar)
-            .tint(VerseTheme.accent)
-            .sensoryFeedback(.selection, trigger: selectedTab)
-            .onChange(of: selectedTab) { _, _ in
-                resetPaths()
-            }
-            .task {
-                await eventFeedback.flushPending()
-                await venueFeedback.flushPending()
-            }
-    }
-
-    @ViewBuilder
-    private var selectedRoot: some View {
-        switch selectedTab {
-        case .articles:
+        TabView(selection: $selectedTab) {
             NavigationStack(path: $articlesPath) {
                 TodayView(
                     editions: editions,
                     api: api,
                     feedback: feedback,
                     topics: topics,
-                    configuration: configuration,
-                    selectedTab: $selectedTab
+                    explore: explore,
+                    configuration: configuration
                 )
                 .navigationDestination(for: StoryItem.self) { story in
                     storyDetail(story)
@@ -52,8 +35,9 @@ struct RootTabView: View {
                     eventDetail(event)
                 }
             }
+            .tabItem { tabIcon(.articles) }
+            .tag(AppTab.articles)
 
-        case .calendar:
             NavigationStack(path: $calendarPath) {
                 ExploreView(
                     mode: .calendar,
@@ -67,14 +51,10 @@ struct RootTabView: View {
                 .navigationDestination(for: Venue.self) { venue in
                     venueDetail(venue)
                 }
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        AppNavigationMenu(selection: $selectedTab)
-                    }
-                }
             }
+            .tabItem { tabIcon(.calendar) }
+            .tag(AppTab.calendar)
 
-        case .places:
             NavigationStack(path: $placesPath) {
                 ExploreView(
                     mode: .places,
@@ -88,14 +68,10 @@ struct RootTabView: View {
                 .navigationDestination(for: Venue.self) { venue in
                     venueDetail(venue)
                 }
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        AppNavigationMenu(selection: $selectedTab)
-                    }
-                }
             }
+            .tabItem { tabIcon(.places) }
+            .tag(AppTab.places)
 
-        case .library:
             NavigationStack(path: $libraryPath) {
                 LibraryView(editions: editions, feedback: feedback)
                     .navigationDestination(for: StoryItem.self) { story in
@@ -111,14 +87,10 @@ struct RootTabView: View {
                             configuration: configuration
                         )
                     }
-                    .toolbar {
-                        ToolbarItem(placement: .topBarLeading) {
-                            AppNavigationMenu(selection: $selectedTab)
-                        }
-                    }
             }
+            .tabItem { tabIcon(.library) }
+            .tag(AppTab.library)
 
-        case .settings:
             NavigationStack(path: $settingsPath) {
                 SettingsView(
                     configuration: configuration,
@@ -126,13 +98,27 @@ struct RootTabView: View {
                     feedback: feedback,
                     topics: topics
                 )
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        AppNavigationMenu(selection: $selectedTab)
-                    }
-                }
             }
+            .tabItem { tabIcon(.settings) }
+            .tag(AppTab.settings)
         }
+        .background(KeyboardDismissalHost())
+        .toolbarBackground(.hidden, for: .navigationBar)
+        .toolbarBackground(VerseTheme.paper, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .tint(VerseTheme.accent)
+        .sensoryFeedback(.selection, trigger: selectedTab)
+        .task {
+            await eventFeedback.flushPending()
+            await venueFeedback.flushPending()
+        }
+    }
+
+    @ViewBuilder
+    private func tabIcon(_ tab: AppTab) -> some View {
+        Label(tab.title, systemImage: tab.systemImage)
+            .labelStyle(.iconOnly)
+            .accessibilityIdentifier("app-tab-\(tab.title)")
     }
 
     private func storyDetail(_ story: StoryItem) -> some View {
@@ -157,13 +143,5 @@ struct RootTabView: View {
             venue: venue,
             feedback: venueFeedback
         )
-    }
-
-    private func resetPaths() {
-        articlesPath = NavigationPath()
-        calendarPath = NavigationPath()
-        placesPath = NavigationPath()
-        libraryPath = NavigationPath()
-        settingsPath = NavigationPath()
     }
 }

@@ -6,39 +6,37 @@ struct TodayView: View {
     let api: APIClient
     let feedback: FeedbackRepository
     let topics: TopicsRepository
+    let explore: ExploreRepository
     let configuration: ServerConfiguration
-    @Binding var selectedTab: AppTab
     @State private var store = TodayStore()
     @State private var toolbarStore = StoryDetailStore()
     @State private var focusedStoryID: StoryItem.ID?
+    @State private var detailStory: StoryItem?
 
     var body: some View {
         Group {
-            if let edition = store.edition {
-                let stories = edition.items
-                    .filter { $0.kind != "event" }
-                    .sorted { $0.position < $1.position }
-
-                ScrollView(.vertical) {
-                    LazyVStack(spacing: 0) {
+            if store.edition != nil {
+                ScrollView(.horizontal) {
+                    LazyHStack(spacing: 0) {
                         ForEach(Array(stories.enumerated()), id: \.element.id) { index, story in
-                            TodayStoryPage(
+                            StoryPageView(
                                 story: story,
                                 number: index + 1,
                                 total: stories.count,
-                                api: api
+                                api: api,
+                                relatedEvents: explore.events(ids: story.relatedEventIDs ?? [])
                             )
+                            .refreshable { await refresh() }
                             .id(story.id)
-                            .containerRelativeFrame(.vertical)
+                            .containerRelativeFrame(.horizontal)
+                            .accessibilityIdentifier("reader-story-\(index + 1)")
                         }
                     }
                     .scrollTargetLayout()
                 }
                 .scrollTargetBehavior(.paging)
                 .scrollIndicators(.hidden)
-                .ignoresSafeArea(.container, edges: .bottom)
                 .scrollPosition(id: $focusedStoryID)
-                .refreshable { await refresh() }
                 .accessibilityIdentifier("verse-reader")
                 .overlay(alignment: .bottom) {
                     if let message = store.statusMessage {
@@ -71,7 +69,6 @@ struct TodayView: View {
         .overlay(alignment: .top) {
             if let story = focusedStory {
                 StoryPageToolbar(
-                    selectedTab: $selectedTab,
                     sourceURL: story.sourceURL,
                     isSaved: toolbarStore.isSaved,
                     preference: toolbarStore.preference,
@@ -96,21 +93,18 @@ struct TodayView: View {
                         Task {
                             await toolbarStore.requestDeepDive(story: story, repository: feedback)
                         }
-                    }
+                    },
+                    onShowDetails: { detailStory = story }
                 )
-            } else {
-                HStack {
-                    AppNavigationMenu(selection: $selectedTab)
-                    Spacer()
-                }
-                .padding(.horizontal, 12)
-                .padding(.top, 4)
             }
         }
         .toolbar(.hidden, for: .navigationBar)
+        .sheet(item: $detailStory) { story in
+            StoryInfoSheet(story: story, state: toolbarStore.state)
+        }
         .task(id: focusedStory?.id) {
             guard let focusedStory else { return }
-            await toolbarStore.load(story: focusedStory, repository: feedback, markSeen: false)
+            await toolbarStore.load(story: focusedStory, repository: feedback)
         }
         .task {
             await store.load(
@@ -136,11 +130,13 @@ struct TodayView: View {
         )
     }
 
-    private var focusedStory: StoryItem? {
-        guard let edition = store.edition else { return nil }
-        let stories = edition.items
+    private var stories: [StoryItem] {
+        store.edition?.items
             .filter { $0.kind != "event" }
-            .sorted { $0.position < $1.position }
+            .sorted { $0.position < $1.position } ?? []
+    }
+
+    private var focusedStory: StoryItem? {
         return stories.first { $0.id == focusedStoryID } ?? stories.first
     }
 
@@ -148,5 +144,4 @@ struct TodayView: View {
         guard let focusedStory else { return VerseTheme.paper }
         return VerseTheme.storyBackground(for: focusedStory.id)
     }
-
 }

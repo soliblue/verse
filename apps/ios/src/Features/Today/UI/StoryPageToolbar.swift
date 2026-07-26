@@ -1,7 +1,6 @@
 import SwiftUI
 
 struct StoryPageToolbar: View {
-    @Binding var selectedTab: AppTab
     let sourceURL: URL
     let isSaved: Bool
     let preference: FeedbackPreference?
@@ -11,10 +10,10 @@ struct StoryPageToolbar: View {
     let onSave: () -> Void
     let onPreference: (FeedbackPreference) -> Void
     let onDeepDive: () -> Void
+    let onShowDetails: () -> Void
 
     var body: some View {
         HStack(spacing: 0) {
-            AppNavigationMenu(selection: $selectedTab)
             Spacer()
             Button(action: onSave) {
                 Image(systemName: isSaved ? "bookmark.fill" : "bookmark")
@@ -43,6 +42,7 @@ struct StoryPageToolbar: View {
                 isDisabled: isDisabled,
                 onPreference: onPreference,
                 onDeepDive: onDeepDive,
+                onShowDetails: onShowDetails,
                 accessibilityIdentifier: "reader-actions"
             )
         }

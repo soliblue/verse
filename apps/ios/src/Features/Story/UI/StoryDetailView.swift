@@ -10,29 +10,16 @@ struct StoryDetailView: View {
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 0) {
-                if let imageURL = story.imageURL {
-                    StoryImageView(url: imageURL, alt: story.imageAlt, api: api, height: nil)
-                    .padding(.bottom, 28)
-                }
-                Text(story.title)
-                    .font(.title)
-                    .foregroundStyle(VerseTheme.ink)
-                    .accessibilityIdentifier("story-detail")
-                StoryRelatedEventsView(
-                    events: explore.events(ids: story.relatedEventIDs ?? [])
-                )
-                Text(story.body)
-                    .font(.body)
-                    .foregroundStyle(VerseTheme.ink)
-                    .lineSpacing(6)
-                    .textSelection(.enabled)
-                    .padding(.top, 28)
-            }
+            StoryArticleContent(
+                story: story,
+                api: api,
+                relatedEvents: explore.events(ids: story.relatedEventIDs ?? [])
+            )
             .padding(.horizontal, 24)
             .padding(.top, 20)
             .padding(.bottom, 64)
         }
+        .accessibilityIdentifier("story-detail")
         .background(VerseTheme.paper)
         .toolbar(.visible, for: .navigationBar)
         .toolbarBackground(.hidden, for: .navigationBar)

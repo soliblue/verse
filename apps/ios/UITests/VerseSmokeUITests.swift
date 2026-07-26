@@ -2,26 +2,24 @@ import XCTest
 
 @MainActor
 final class VerseSmokeUITests: XCTestCase {
-    func testLaunchesAsAQuietPagedReader() {
+    func testLaunchesAsAFullArticleSwipeReader() {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
         app.launch()
 
         XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.buttons["app-menu"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.tabBars.buttons.count, 5)
         XCTAssertTrue(app.buttons["reader-save"].exists)
         XCTAssertTrue(app.buttons["reader-actions"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["verse-floating-tabs"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["verse-mark"].exists)
-        app.buttons["app-menu"].tap()
-        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
-        app.buttons["Articles"].tap()
+        XCTAssertFalse(app.buttons["app-menu"].exists)
 
         let first = app.descendants(matching: .any)["reader-story-1"]
         XCTAssertTrue(first.waitForExistence(timeout: 5))
         assertHittable(first)
+        XCTAssertTrue(app.descendants(matching: .any)["story-body"].exists)
 
-        app.descendants(matching: .any)["verse-reader"].swipeUp()
+        app.descendants(matching: .any)["verse-reader"].swipeLeft()
 
         let second = app.descendants(matching: .any)["reader-story-2"]
         XCTAssertTrue(second.waitForExistence(timeout: 5))
@@ -34,12 +32,10 @@ final class VerseSmokeUITests: XCTestCase {
 
         let first = app.descendants(matching: .any)["reader-story-1"]
         XCTAssertTrue(first.waitForExistence(timeout: 8))
-        first.tap()
-
-        XCTAssertTrue(app.descendants(matching: .any)["story-detail"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.navigationBars.buttons.firstMatch.exists)
-        XCTAssertTrue(app.buttons["story-save"].exists)
-        app.buttons["story-actions"].tap()
+        XCTAssertTrue(app.descendants(matching: .any)["story-body"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.navigationBars.buttons.firstMatch.exists)
+        XCTAssertTrue(app.buttons["reader-save"].exists)
+        app.buttons["reader-actions"].tap()
         XCTAssertTrue(app.buttons["Story details"].waitForExistence(timeout: 5))
         app.buttons["Story details"].tap()
         XCTAssertTrue(app.descendants(matching: .any)["story-info"].waitForExistence(timeout: 5))
@@ -48,11 +44,10 @@ final class VerseSmokeUITests: XCTestCase {
         )
         app.buttons["Done"].tap()
 
-        app.navigationBars.buttons.firstMatch.tap()
-        XCTAssertTrue(app.buttons["app-menu"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.tabBars.buttons["Articles"].waitForExistence(timeout: 5))
     }
 
-    func testNavigationLivesInThePixelMenu() {
+    func testNavigationLivesInBottomTabs() {
         executionTimeAllowance = 90
         let app = XCUIApplication()
         app.launch()
@@ -103,10 +98,7 @@ final class VerseSmokeUITests: XCTestCase {
     }
 
     private func openTab(_ title: String, app: XCUIApplication) {
-        let menu = app.buttons["app-menu"]
-        XCTAssertTrue(menu.waitForExistence(timeout: 5))
-        menu.tap()
-        let tab = app.buttons["app-menu-\(title)"]
+        let tab = app.tabBars.buttons[title]
         XCTAssertTrue(tab.waitForExistence(timeout: 5))
         tab.tap()
     }
