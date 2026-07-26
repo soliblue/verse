@@ -2,7 +2,7 @@
 
 Goal: Show complete articles directly in the morning reader and replace the top-left menu with native bottom navigation.
 
-Status: In progress.
+Status: Complete.
 
 Contracts:
 - The current edition opens on a complete article, without an intermediate summary card.
@@ -21,3 +21,4 @@ Log:
 - 2026-07-26: Started reader and navigation refactor.
 - 2026-07-26: Implemented shared full-article content, horizontal paging, icon-only bottom tabs, focused seen state, details access, and updated smoke tests.
 - 2026-07-26: Passed 89 local tests, contract validation, Python compilation, shell syntax checks, and diff validation.
+- 2026-07-26: GitHub Actions passed the release build, unit tests, UI swipe and tab tests, and simulator screenshot review.
