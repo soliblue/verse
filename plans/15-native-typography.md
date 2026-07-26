@@ -19,3 +19,4 @@ Log:
 - 2026-07-26: Started native typography migration.
 - 2026-07-26: Replaced fixed custom typography with semantic styles, removed bundled fonts, and validated contracts, plist parsing, references, and whitespace.
 - 2026-07-26: Applied the rounded system design at the app root and removed obsolete runtime font registration.
+- 2026-07-26: Restored the CoreGraphics import required by the remaining CGFloat layout tokens after the release build exposed it.

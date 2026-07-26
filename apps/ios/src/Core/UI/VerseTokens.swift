@@ -1,3 +1,5 @@
+import CoreGraphics
+
 enum VerseTokens {
     enum Icon {
         static let s: CGFloat = 14
