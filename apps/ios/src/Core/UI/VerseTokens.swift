@@ -1,15 +1,4 @@
-import CoreGraphics
-
 enum VerseTokens {
-    enum Text {
-        static let hero: CGFloat = 40
-        static let xxl: CGFloat = 24
-        static let xl: CGFloat = 22
-        static let l: CGFloat = 16
-        static let m: CGFloat = 14
-        static let s: CGFloat = 12
-    }
-
     enum Icon {
         static let s: CGFloat = 14
         static let m: CGFloat = 17

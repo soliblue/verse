@@ -14,9 +14,9 @@ struct ExploreCalendarView: View {
                         } label: {
                             VStack(spacing: 6) {
                                 Text(weekday(date))
-                                    .font(.utility(10))
+                                    .font(.caption2)
                                 Text(dayNumber(date))
-                                    .font(.utility(15))
+                                    .font(.headline)
                                 Circle()
                                     .frame(width: 4, height: 4)
                                     .opacity(hasEvents(date) ? 1 : 0)
@@ -39,7 +39,7 @@ struct ExploreCalendarView: View {
             List {
                 if selectedOccurrences.isEmpty {
                     Text("No verified events on this day.")
-                        .font(.reading(16))
+                        .font(.body)
                         .foregroundStyle(VerseTheme.secondaryInk)
                         .listRowBackground(VerseTheme.paper)
                 }
@@ -50,12 +50,12 @@ struct ExploreCalendarView: View {
                     } else {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(occurrence.title)
-                                .font(.display(20))
+                                .font(.headline)
                             Text(
                                 "\(EventDateFormatting.time(occurrence.startAt)) · "
                                     + (venue(for: occurrence)?.name ?? "Berlin")
                             )
-                            .font(.utility(12))
+                            .font(.caption)
                             .foregroundStyle(VerseTheme.secondaryInk)
                             EventStatusBadge(occurrence: occurrence)
                         }

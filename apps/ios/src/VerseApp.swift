@@ -16,7 +16,6 @@ struct VerseApp: App {
     private let calendar: CalendarRepository
 
     init() {
-        FontRegistrar.registerBundledFonts()
         let container = try! ModelContainer(
             for: CachedEdition.self,
             CachedEditionIndex.self,
@@ -54,6 +53,7 @@ struct VerseApp: App {
                 venueFeedback: venueFeedback,
                 calendar: calendar
             )
+            .fontDesign(.rounded)
             .preferredColorScheme(.light)
             .environment(\.locale, Locale(identifier: "en"))
         }

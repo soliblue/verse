@@ -34,13 +34,13 @@ struct StoryPageView: View {
             }
 
             Text(story.title)
-                .font(.display(compact ? 34 : 40))
+                .font(.title2)
                 .foregroundStyle(VerseTheme.ink)
                 .minimumScaleFactor(0.86)
                 .lineLimit(compact ? 4 : 5)
 
             Text(story.summary)
-                .font(.reading(compact ? 17 : 20))
+                .font(.body)
                 .foregroundStyle(VerseTheme.secondaryInk)
                 .lineSpacing(compact ? 3 : 5)
                 .lineLimit(compact ? 7 : 9)

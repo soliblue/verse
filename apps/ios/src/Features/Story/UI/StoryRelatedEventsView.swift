@@ -10,12 +10,12 @@ struct StoryRelatedEventsView: View {
                     NavigationLink(value: event) {
                         VStack(alignment: .leading, spacing: 5) {
                             Text(EventDateFormatting.full(event.occurrence.startAt))
-                                .font(.utility(11))
+                                .font(.caption2)
                                 .foregroundStyle(VerseTheme.secondaryInk)
                             Text(event.title)
-                                .font(.display(20))
+                                .font(.headline)
                             Text("\(event.venue.name) · \(event.occurrence.bookingLabel)")
-                                .font(.utility(12))
+                                .font(.caption)
                                 .foregroundStyle(VerseTheme.secondaryInk)
                         }
                     }

@@ -7,16 +7,16 @@ struct VenueRowView: View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
                 Text(venue.name)
-                    .font(.display(22))
+                    .font(.headline)
                 Spacer()
                 if let distance = venue.distanceLabel {
                     Text(distance.uppercased())
-                        .font(.utility(10))
+                        .font(.caption2)
                         .foregroundStyle(VerseTheme.secondaryInk)
                 }
             }
             Text(venue.whyWatched)
-                .font(.reading(15))
+                .font(.subheadline)
                 .foregroundStyle(VerseTheme.secondaryInk)
                 .lineLimit(2)
         }

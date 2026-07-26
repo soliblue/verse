@@ -11,11 +11,11 @@ struct EventRowView: View {
                     Spacer()
                     EventStatusBadge(occurrence: event.occurrence)
                 }
-                .font(.utility(12))
+                .font(.caption)
                 .foregroundStyle(VerseTheme.secondaryInk)
 
                 Text(event.title)
-                    .font(.display(23))
+                    .font(.headline)
                     .foregroundStyle(VerseTheme.ink)
 
                 Text(
@@ -23,11 +23,11 @@ struct EventRowView: View {
                         .compactMap { $0 }
                         .joined(separator: " · ")
                 )
-                    .font(.utility(12))
+                    .font(.caption)
                     .foregroundStyle(VerseTheme.secondaryInk)
 
                 Text(event.whySelected)
-                    .font(.reading(15))
+                    .font(.subheadline)
                     .foregroundStyle(VerseTheme.secondaryInk)
                     .lineLimit(2)
             }

@@ -9,18 +9,18 @@ struct VenueDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 24) {
                 Text(venue.name)
-                    .font(.display(38))
+                    .font(.title)
                 Text(venue.whyWatched)
-                    .font(.reading(18))
+                    .font(.body)
                     .foregroundStyle(VerseTheme.secondaryInk)
                     .lineSpacing(5)
                 if let distance = venue.distanceLabel {
                     Label(distance, systemImage: "bicycle")
-                        .font(.reading(16))
+                        .font(.body)
                 }
                 if let address = venue.address {
                     Label(address, systemImage: "mappin")
-                        .font(.reading(16))
+                        .font(.body)
                 }
                 Link(destination: venue.calendarURL ?? venue.officialURL) {
                     Label("Official calendar", systemImage: "arrow.up.right")

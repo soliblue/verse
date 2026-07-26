@@ -11,36 +11,36 @@ struct StoryInfoSheet: View {
                 VStack(alignment: .leading, spacing: 28) {
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Summary")
-                            .font(.utility(12))
+                            .font(.caption)
                             .tracking(0.9)
                             .textCase(.uppercase)
                         Text(story.summary)
-                            .font(.reading(17))
+                            .font(.body)
                             .foregroundStyle(VerseTheme.secondaryInk)
                             .lineSpacing(4)
                     }
 
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Why it was selected")
-                            .font(.utility(12))
+                            .font(.caption)
                             .tracking(0.9)
                             .textCase(.uppercase)
                         Text(story.whySelected)
-                            .font(.reading(17))
+                            .font(.body)
                             .foregroundStyle(VerseTheme.secondaryInk)
                             .lineSpacing(4)
                     }
 
                     VStack(alignment: .leading, spacing: 12) {
                         Text("Sources")
-                            .font(.utility(12))
+                            .font(.caption)
                             .tracking(0.9)
                             .textCase(.uppercase)
                         Text(
                             "\(story.sourceName) · \(DateFormatting.shortDate(story.publishedAt))"
                                 + " · \(story.readingMinutes) min"
                         )
-                        .font(.utility(12))
+                        .font(.caption)
                         .foregroundStyle(VerseTheme.secondaryInk)
                         Link(destination: story.sourceURL) {
                             Label("Open original", systemImage: "arrow.up.right")
@@ -56,23 +56,23 @@ struct StoryInfoSheet: View {
                         EmptyView()
                     case .queued:
                         Label("Deep dive queued for the next edition.", systemImage: "clock")
-                            .font(.reading(16))
+                            .font(.body)
                     case .failed:
                         Label("The latest deep dive attempt failed.", systemImage: "exclamationmark.triangle")
-                            .font(.reading(16))
+                            .font(.body)
                     case .ready:
                         VStack(alignment: .leading, spacing: 12) {
                             Text("Deep dive")
-                                .font(.utility(12))
+                                .font(.caption)
                                 .tracking(0.9)
                                 .textCase(.uppercase)
                             if let title = state?.deepDiveTitle {
                                 Text(title)
-                                    .font(.display(24))
+                                    .font(.title3)
                             }
                             if let body = state?.deepDiveBody {
                                 Text(body)
-                                    .font(.reading(17))
+                                    .font(.body)
                                     .lineSpacing(4)
                                     .textSelection(.enabled)
                             }

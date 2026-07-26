@@ -16,14 +16,14 @@ struct StoryDetailView: View {
                     .padding(.bottom, 28)
                 }
                 Text(story.title)
-                    .font(.display(38))
+                    .font(.title)
                     .foregroundStyle(VerseTheme.ink)
                     .accessibilityIdentifier("story-detail")
                 StoryRelatedEventsView(
                     events: explore.events(ids: story.relatedEventIDs ?? [])
                 )
                 Text(story.body)
-                    .font(.reading(18))
+                    .font(.body)
                     .foregroundStyle(VerseTheme.ink)
                     .lineSpacing(6)
                     .textSelection(.enabled)

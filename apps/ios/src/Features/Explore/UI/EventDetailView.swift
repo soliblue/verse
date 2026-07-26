@@ -9,7 +9,7 @@ struct EventDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: 0) {
                 Text(event.title)
-                    .font(.display(38))
+                    .font(.title)
                     .foregroundStyle(VerseTheme.ink)
                     .accessibilityIdentifier("event-detail")
 
@@ -24,12 +24,12 @@ struct EventDetailView: View {
                             .multilineTextAlignment(.trailing)
                     }
                 }
-                .font(.utility(13))
+                .font(.footnote)
                 .foregroundStyle(VerseTheme.secondaryInk)
                 .padding(.top, 14)
 
                 Text(event.description)
-                    .font(.reading(18))
+                    .font(.body)
                     .foregroundStyle(VerseTheme.ink)
                     .lineSpacing(6)
                     .textSelection(.enabled)

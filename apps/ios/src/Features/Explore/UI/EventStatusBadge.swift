@@ -5,7 +5,7 @@ struct EventStatusBadge: View {
 
     var body: some View {
         Text(occurrence.bookingLabel.uppercased())
-            .font(.utility(10))
+            .font(.caption2)
             .tracking(0.7)
             .foregroundStyle(occurrence.soldOut ? VerseTheme.secondaryInk : VerseTheme.ink)
             .padding(.horizontal, 7)
