@@ -1,6 +1,6 @@
 # Keyboard input fidelity
 
-Status: in progress.
+Status: released as 0.3.1 (22) to internal TestFlight.
 
 ## Goal
 
@@ -39,7 +39,7 @@ Make fast typing reliable and approximate the current iPhone keyboard: character
 - Audio metering publishes and reads real RMS on background queues at 10 Hz. Core Animation interpolates the 11 bars; unchanged layout passes no longer cancel animations.
 - Poll completion writes also run off the typing thread, retaining the live job-ID check and insertion publication order.
 - Insertion keeps both persistent and local transcript guards so an older bridge snapshot cannot insert twice.
-- Native verification pending. Synthetic simulator animation is not evidence of microphone handoff or physical-device frame rate.
+- Synthetic simulator animation is not evidence of microphone handoff or physical-device frame rate.
 - First CI run [33992363217](https://github.com/soliblue/verse/actions/runs/33992363217) compiled all iOS targets and passed backend, RMS, insertion, and waveform tests. It exposed Swift's isolated-deinitializer crash during synchronous input-engine teardown and an unbound test input view. No TestFlight upload was started.
 - Explicit nonisolated teardown fixes the engine lifetime path; the fixture now binds the controller's concrete input view through UIKit. Unit summaries are exported before UI tests finish.
 - The crash stack matches [Swift issue 87316](https://github.com/swiftlang/swift/issues/87316). The regression test retains synchronous teardown rather than hiding it behind an async test.
@@ -48,3 +48,12 @@ Make fast typing reliable and approximate the current iPhone keyboard: character
 - The responder-hosted custom fixture still collapsed to zero height. The production input view now declares its initial and intrinsic height and implements Apple's self-sizing fitting contract. CI exports fixture geometry and complete attachments for direct inspection.
 - CI [33994759024](https://github.com/soliblue/verse/actions/runs/33994759024) passes all 39 unit tests. Full diagnostics isolate the remaining fixture failure: UIKit supplies a 402-point host and a 260-point keyboard guide, but the input view retains zero width. Initial window attachment and zero-width fitting proposals now use the real host's width. No fixed screen size or alternative preview layout is used.
 - CI [33995591041](https://github.com/soliblue/verse/actions/runs/33995591041) passes all 12 UI tests. Actual UIKit screenshots confirm the 402-by-260 keyboard, compact toolbar, light/dark keys, character preview, and native reference geometry. A delayed controller release exposed the same Swift isolated-deinitializer bug in the transcription poller. Apply explicit nonisolated teardown there too, with a synchronous lifetime regression. Extend the waveform recording to retain more frames after simulator capture startup.
+
+## Release verification
+
+- Source commit: `062ea3c7ca94766b1086f51704f08aefd02f4ac8`.
+- [Final CI](https://github.com/soliblue/verse/actions/runs/33996571821): 40 native unit tests, 12 UI tests, and 24 backend tests passed, with no skipped tests. The first attempt stalled in XCTest's app-launch control before a keyboard assertion; the unchanged retry passed on a fresh runner.
+- Reviewed real UIKit-hosted light/dark screenshots, expanded key preview, host-field typing, native Apple references, and waveform video. The 200-key overlapping-input batch averaged 92 ms and 120 waveform updates averaged 11 ms on the final simulator runner. These measure update work, not touch latency or physical display FPS.
+- [Private upload](https://github.com/soliblue/verse/actions/runs/33998108074) succeeded. Apple confirmed version 0.3.1, build 22, `VALID`, `IN_BETA_TESTING`, group `Internal`, on 2026-09-05 at 23:17 UTC.
+- The existing HTTPS service health check passed. No backend deployment, private-data deletion, new provider, or automation changes were needed.
+- Real-phone microphone handoff, system keyboard dock, and perceived typing/frame rate remain device checks. Simulator evidence does not prove them.
