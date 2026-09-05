@@ -131,6 +131,15 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
+      - name: Export native UI summary
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          if [ -d "$RUNNER_TEMP/verse-ui-tests.xcresult" ]; then
+            xcrun xcresulttool get test-results summary \
+              --path "$RUNNER_TEMP/verse-ui-tests.xcresult" \
+              > "$RUNNER_TEMP/verse-ui-summary.json"
+          fi
+
       - name: Capture smoke screenshots
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
@@ -164,8 +173,9 @@ jobs:
         with:
           name: verse-ios-evidence
           path: |
-            ${{ runner.temp }}/verse-smoke/**/*.png
-            ${{ runner.temp }}/verse-smoke/**/*.mov
+            ${{ runner.temp }}/verse-smoke
+            ${{ runner.temp }}/verse-unit-summary.json
+            ${{ runner.temp }}/verse-ui-summary.json
             ${{ runner.temp }}/verse-*-tests.xcresult
           if-no-files-found: ignore
 

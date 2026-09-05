@@ -308,21 +308,41 @@ final class KeyboardTypingTests: XCTestCase {
     }
 
     func testGeometryAcrossPhoneWidthsAndGlobeLayout() throws {
-        for width in [320.0, 390.0, 430.0] {
-            let keyboard = KeyboardTypingView(frame: CGRect(x: 0, y: 0, width: width, height: 204))
+        for width in [320.0, 390.0, 402.0, 430.0] {
+            let keyboard = KeyboardTypingView(frame: CGRect(x: 0, y: 0, width: width, height: 216))
             let q = try key("q", in: keyboard)
             let w = try key("w", in: keyboard)
             let a = try key("a", in: keyboard)
-            XCTAssertEqual(q.frame.minX, 5, accuracy: 0.01)
-            XCTAssertEqual(q.frame.height, 42, accuracy: 0.01)
-            XCTAssertEqual(a.frame.minY - q.frame.minY, 51, accuracy: 0.01)
+            XCTAssertEqual(q.frame.minX, 6.5, accuracy: 0.01)
+            XCTAssertEqual(q.frame.height, 43, accuracy: 0.01)
+            XCTAssertEqual(a.frame.minY - q.frame.minY, 54, accuracy: 0.01)
             XCTAssertEqual(a.frame.minX - q.frame.minX, (w.frame.minX - q.frame.minX) / 2, accuracy: 0.01)
-            XCTAssertEqual(try key("p", in: keyboard).frame.maxX, width - 5, accuracy: 0.01)
+            XCTAssertEqual(try key("p", in: keyboard).frame.maxX, width - 6.5, accuracy: 0.01)
+            XCTAssertEqual(try key("Shift", in: keyboard).frame.width, q.frame.width + 12, accuracy: 0.01)
             let initialSpace = try key("Space", in: keyboard).frame.width
             keyboard.setGlobeVisible(false)
             XCTAssertTrue(keyboard.globeButton.isHidden)
             XCTAssertGreaterThan(try key("Space", in: keyboard).frame.width, initialSpace)
+            XCTAssertEqual(try key("Numbers", in: keyboard).frame.width, try key("Return", in: keyboard).frame.width, accuracy: 0.01)
         }
+    }
+
+    func testNativeKeyColorsCornersAndBlankSpace() throws {
+        let keyboard = makeKeyboard()
+        let labels = ["q", "Shift", "Numbers", "Space", "Return", "Delete"]
+        for label in labels {
+            let key = try key(label, in: keyboard)
+            XCTAssertEqual(key.backgroundColor, .white)
+            XCTAssertEqual(key.layer.cornerRadius, 8)
+            XCTAssertEqual(key.layer.shadowOpacity, 0)
+        }
+        XCTAssertEqual(try key("Space", in: keyboard).title(for: .normal), "")
+        keyboard.updateAppearance(dark: true)
+        for label in labels {
+            XCTAssertEqual(try key(label, in: keyboard).backgroundColor, UIColor(white: 61.0 / 255, alpha: 1))
+        }
+        try press("Shift", id: 1, time: 1, in: keyboard)
+        XCTAssertEqual(try key("Shift", in: keyboard).backgroundColor, UIColor(white: 61.0 / 255, alpha: 1))
     }
 
     func testWaveformUsesLayersAndResetsAfterRecording() {
@@ -343,7 +363,7 @@ final class KeyboardTypingTests: XCTestCase {
     }
 
     private func makeKeyboard() -> KeyboardTypingView {
-        KeyboardTypingView(frame: CGRect(x: 0, y: 0, width: 390, height: 204))
+        KeyboardTypingView(frame: CGRect(x: 0, y: 0, width: 390, height: 216))
     }
 
     private func key(_ label: String, in view: UIView) throws -> UIButton {

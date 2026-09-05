@@ -3,7 +3,7 @@ import UIKit
 import SwiftUI
 
 final class KeyboardViewController: UIInputViewController {
-    static let contentHeight: CGFloat = 248
+    static let contentHeight: CGFloat = 260
     #if DEBUG
     var isPreview = false
     var previewsColdStart = false
@@ -40,12 +40,14 @@ final class KeyboardViewController: UIInputViewController {
     private var controlsState = ""
 
     override func loadView() {
-        inputView = UIInputView(frame: .zero, inputViewStyle: .keyboard)
+        let root = KeyboardInputView(frame: CGRect(x: 0, y: 0, width: 0, height: Self.contentHeight), inputViewStyle: .keyboard)
+        root.autoresizingMask = .flexibleWidth
+        root.allowsSelfSizing = true
+        inputView = root
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        inputView?.allowsSelfSizing = true
         view.clipsToBounds = false
         view.accessibilityIdentifier = "keyboard-content"
         language.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
@@ -163,9 +165,6 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
-        #if DEBUG
-        if isPreview { return }
-        #endif
         keyboard.setGlobeVisible(needsInputModeSwitchKey)
     }
 
@@ -367,6 +366,16 @@ final class KeyboardViewController: UIInputViewController {
         render()
         updateTypingContext()
         refresh()
+    }
+}
+
+private final class KeyboardInputView: UIInputView {
+    override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric, height: KeyboardViewController.contentHeight)
+    }
+
+    override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {
+        CGSize(width: targetSize.width, height: KeyboardViewController.contentHeight)
     }
 }
 #endif

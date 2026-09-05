@@ -32,10 +32,7 @@ final class KeyboardTypingView: UIView {
             let key = slot == 31 ? globeButton : UIButton(type: .custom)
             key.isExclusiveTouch = false
             key.accessibilityTraits.insert(.keyboardKey)
-            key.layer.cornerRadius = 6
-            key.layer.shadowColor = UIColor.black.cgColor
-            key.layer.shadowOffset = CGSize(width: 0, height: 1)
-            key.layer.shadowRadius = 0
+            key.layer.cornerRadius = 8
             key.addAction(UIAction { [weak self] _ in self?.activate(slot: slot) }, for: .touchUpInside)
             addSubview(key)
             keys.append(key)
@@ -243,7 +240,7 @@ final class KeyboardTypingView: UIView {
             symbol = "globe"
             key.accessibilityIdentifier = "keyboard-key-globe"
         case .space:
-            title = "space"
+            title = ""
             label = "Space"
             symbol = nil
             key.accessibilityIdentifier = "keyboard-key-space"
@@ -262,27 +259,21 @@ final class KeyboardTypingView: UIView {
     }
 
     private func style(_ key: UIButton, action: KeyboardKeyLayout.Action, pressed: Bool) {
-        let special = !action.isCharacter && action != .space
-        let activeShift = action == .shift && input.mode == .letters && input.isUppercase
         let actionReturn = action == .enter && !returnTitle.isEmpty
         let background: UIColor
         let foreground: UIColor
         if actionReturn {
             background = pressed ? UIColor.systemBlue.withAlphaComponent(0.75) : .systemBlue
             foreground = .white
-        } else if activeShift {
-            background = .white
-            foreground = .black
         } else {
             background = dark
-                ? UIColor(white: pressed ? 0.42 : (special ? 0.20 : 0.29), alpha: 1)
-                : (pressed ? UIColor(white: 0.88, alpha: 1) : (special ? UIColor(red: 0.68, green: 0.70, blue: 0.74, alpha: 1) : .white))
+                ? UIColor(white: pressed ? 0.42 : 61.0 / 255, alpha: 1)
+                : (pressed ? UIColor(white: 0.88, alpha: 1) : .white)
             foreground = dark ? .white : .black
         }
         if key.backgroundColor != background { key.backgroundColor = background }
         key.tintColor = foreground
         key.setTitleColor(foreground, for: .normal)
-        key.layer.shadowOpacity = dark ? 0 : 0.2
     }
 
     private var returnTitle: String {

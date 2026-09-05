@@ -2,6 +2,17 @@ import XCTest
 
 @MainActor
 final class VerseSmokeUITests: XCTestCase {
+    override func tearDown() {
+        let state = XCUIApplication().staticTexts["keyboard-fixture-state"]
+        if state.exists {
+            let attachment = XCTAttachment(string: state.label)
+            attachment.name = "keyboard-fixture-layout"
+            attachment.lifetime = .keepAlways
+            add(attachment)
+        }
+        super.tearDown()
+    }
+
     func testColdKeyboardLinkLayout() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--keyboard-cold-ui-testing"]

@@ -4,6 +4,18 @@ import XCTest
 
 @MainActor
 final class KeyboardRenderingTests: XCTestCase {
+    func testKeyboardDeclaresHeightBeforeHosting() throws {
+        let controller = KeyboardViewController()
+        controller.isPreview = true
+        controller.loadViewIfNeeded()
+        let root = try XCTUnwrap(controller.inputView)
+        XCTAssertTrue(root === controller.view)
+        XCTAssertTrue(root.allowsSelfSizing)
+        XCTAssertEqual(root.bounds.height, KeyboardViewController.contentHeight)
+        XCTAssertEqual(root.intrinsicContentSize.height, KeyboardViewController.contentHeight)
+        XCTAssertEqual(root.systemLayoutSizeFitting(CGSize(width: 402, height: 0)), CGSize(width: 402, height: KeyboardViewController.contentHeight))
+    }
+
     func testWaveformInterpolatesAtSampleCadence() throws {
         try XCTSkipIf(UIAccessibility.isReduceMotionEnabled)
         let (window, waveform) = installedWaveform()

@@ -13,6 +13,7 @@ struct KeyboardPreviewScreen: UIViewControllerRepresentable {
 private final class KeyboardFixtureController: UIViewController {
     private let field = KeyboardFixtureTextView()
     private let arguments = ProcessInfo.processInfo.arguments
+    private let layoutState = UILabel()
     private var keyboard: KeyboardViewController?
     private var waveformTimer: Timer?
     private var popupTimer: Timer?
@@ -29,6 +30,12 @@ private final class KeyboardFixtureController: UIViewController {
         title.textColor = .secondaryLabel
         title.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(title)
+        layoutState.accessibilityIdentifier = "keyboard-fixture-state"
+        layoutState.font = .monospacedSystemFont(ofSize: 11, weight: .regular)
+        layoutState.textColor = .tertiaryLabel
+        layoutState.numberOfLines = 0
+        layoutState.translatesAutoresizingMaskIntoConstraints = false
+        view.addSubview(layoutState)
         field.accessibilityIdentifier = "keyboard-preview-text"
         field.accessibilityLabel = "Keyboard test field"
         field.font = .systemFont(ofSize: 20)
@@ -41,6 +48,9 @@ private final class KeyboardFixtureController: UIViewController {
         NSLayoutConstraint.activate([
             title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             title.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
+            layoutState.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            layoutState.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
+            layoutState.topAnchor.constraint(equalTo: title.bottomAnchor, constant: 20),
             field.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 16),
             field.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -16),
             field.heightAnchor.constraint(equalToConstant: 100),
@@ -64,6 +74,7 @@ private final class KeyboardFixtureController: UIViewController {
     override func viewDidAppear(_ animated: Bool) {
         super.viewDidAppear(animated)
         field.becomeFirstResponder()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.updateLayoutState() }
         if arguments.contains("--keyboard-wave-ui-testing") {
             let start = ProcessInfo.processInfo.systemUptime
             let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
@@ -98,6 +109,18 @@ private final class KeyboardFixtureController: UIViewController {
         waveformTimer = nil
         popupTimer?.invalidate()
         popupTimer = nil
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updateLayoutState()
+    }
+
+    private func updateLayoutState() {
+        let root = keyboard?.viewIfLoaded
+        let parent = keyboard?.parent.map { String(describing: type(of: $0)) } ?? "nil"
+        let state = "focus=\(field.isFirstResponder)\nguide=\(view.keyboardLayoutGuide.layoutFrame)\nroot=\(root?.frame.description ?? "nil") window=\(root?.window != nil)\ninput=\(field.inputView?.frame.description ?? "nil") same=\(field.inputView === root)\nparent=\(parent) selfSizing=\(keyboard?.inputView?.allowsSelfSizing ?? false)"
+        if layoutState.text != state { layoutState.text = state }
     }
 
     private func descendant(in root: UIView, matching predicate: (UIView) -> Bool) -> UIView? {
