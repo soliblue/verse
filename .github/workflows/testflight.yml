@@ -35,6 +35,8 @@ jobs:
           DISTRIBUTION_CERTIFICATE_BASE64: ${{ secrets.DISTRIBUTION_CERTIFICATE_BASE64 }}
           DISTRIBUTION_CERTIFICATE_PASSWORD: ${{ secrets.DISTRIBUTION_CERTIFICATE_PASSWORD }}
           PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          KEYBOARD_PROVISIONING_PROFILE_BASE64: ${{ secrets.KEYBOARD_PROVISIONING_PROFILE_BASE64 }}
+          SHARE_PROVISIONING_PROFILE_BASE64: ${{ secrets.SHARE_PROVISIONING_PROFILE_BASE64 }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: |
           python3 - <<'PY'
@@ -47,6 +49,8 @@ jobs:
               "DISTRIBUTION_CERTIFICATE_BASE64",
               "DISTRIBUTION_CERTIFICATE_PASSWORD",
               "PROVISIONING_PROFILE_BASE64",
+              "KEYBOARD_PROVISIONING_PROFILE_BASE64",
+              "SHARE_PROVISIONING_PROFILE_BASE64",
               "APPLE_TEAM_ID",
           )
           missing = [name for name in required if not os.environ.get(name)]
@@ -82,21 +86,33 @@ jobs:
           security list-keychains -d user -s "$KEYCHAIN_PATH" login.keychain-db
           echo "VERSE_KEYCHAIN_PATH=$KEYCHAIN_PATH" >> "$GITHUB_ENV"
 
-      - name: Install provisioning profile
+      - name: Install provisioning profiles
         env:
           PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
+          KEYBOARD_PROVISIONING_PROFILE_BASE64: ${{ secrets.KEYBOARD_PROVISIONING_PROFILE_BASE64 }}
+          SHARE_PROVISIONING_PROFILE_BASE64: ${{ secrets.SHARE_PROVISIONING_PROFILE_BASE64 }}
         run: |
-          PROFILE_SOURCE="$RUNNER_TEMP/verse.mobileprovision"
-          PROFILE_PLIST="$RUNNER_TEMP/verse.mobileprovision.plist"
-          mkdir -p "$HOME/Library/MobileDevice/Provisioning Profiles"
-          printf '%s' "$PROVISIONING_PROFILE_BASE64" | base64 --decode > "$PROFILE_SOURCE"
-          security cms -D -i "$PROFILE_SOURCE" > "$PROFILE_PLIST"
-          PROFILE_UUID="$(/usr/libexec/PlistBuddy -c 'Print UUID' "$PROFILE_PLIST")"
-          PROFILE_NAME="$(/usr/libexec/PlistBuddy -c 'Print Name' "$PROFILE_PLIST")"
-          PROFILE_PATH="$HOME/Library/MobileDevice/Provisioning Profiles/$PROFILE_UUID.mobileprovision"
-          cp "$PROFILE_SOURCE" "$PROFILE_PATH"
-          echo "PROVISIONING_PROFILE_NAME=$PROFILE_NAME" >> "$GITHUB_ENV"
-          echo "VERSE_PROFILE_PATH=$PROFILE_PATH" >> "$GITHUB_ENV"
+          python3 - <<'PY'
+          import base64
+          import os
+          import plistlib
+          import subprocess
+          from pathlib import Path
+
+          directory = Path.home() / "Library/MobileDevice/Provisioning Profiles"
+          directory.mkdir(parents=True, exist_ok=True)
+          for prefix in ("", "KEYBOARD_", "SHARE_"):
+              content = base64.b64decode(os.environ[prefix + "PROVISIONING_PROFILE_BASE64"])
+              source = Path(os.environ["RUNNER_TEMP"]) / ("verse-" + prefix.lower() + ".mobileprovision")
+              source.write_bytes(content)
+              result = subprocess.run(["security", "cms", "-D", "-i", str(source)], capture_output=True, check=True)
+              profile = plistlib.loads(result.stdout)
+              destination = directory / (profile["UUID"] + ".mobileprovision")
+              destination.write_bytes(content)
+              with open(os.environ["GITHUB_ENV"], "a") as environment:
+                  environment.write(prefix + "PROVISIONING_PROFILE_NAME=" + profile["Name"] + "\n")
+                  environment.write("VERSE_" + prefix + "PROFILE_PATH=" + str(destination) + "\n")
+          PY
 
       - name: Build and upload to internal TestFlight
         env:
@@ -117,4 +133,9 @@ jobs:
             "$RUNNER_TEMP/verse-distribution.p12" \
             "$RUNNER_TEMP/verse.mobileprovision" \
             "$RUNNER_TEMP/verse.mobileprovision.plist" \
-            "${VERSE_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}"
+            "$RUNNER_TEMP/verse-.mobileprovision" \
+            "$RUNNER_TEMP/verse-keyboard_.mobileprovision" \
+            "$RUNNER_TEMP/verse-share_.mobileprovision" \
+            "${VERSE_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}" \
+            "${VERSE_KEYBOARD_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}" \
+            "${VERSE_SHARE_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}"

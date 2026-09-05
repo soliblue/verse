@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   backend:
-    name: Backend and Nightjar
+    name: Transcription backend
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -26,28 +26,13 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Configure temporary database
-        run: echo "VERSE_DB_PATH=$RUNNER_TEMP/verse.sqlite" >> "$GITHUB_ENV"
+      - name: Install audio tools
+        run: sudo apt-get update && sudo apt-get install -y ffmpeg
 
-      - name: Run checks
-        run: make check
-
-      - name: Verify repeatable bootstrap
+      - name: Test transcription API and storage
         run: |
-          scripts/bootstrap
-          scripts/bootstrap
-          python3 - <<'PY'
-          import os
-          import json
-          import sqlite3
-          from pathlib import Path
-
-          connection = sqlite3.connect(os.environ["VERSE_DB_PATH"])
-          assert connection.execute("pragma quick_check").fetchone()[0] == "ok"
-          expected = len(json.loads(Path("etl/seeds/first-edition.json").read_text())["items"])
-          assert connection.execute("select count(*) from edition_items").fetchone()[0] == expected
-          print("repeatable bootstrap valid")
-          PY
+          python3 -m compileall -q speech_server
+          python3 -m unittest discover -s speech_server -t . -p 'test_*.py' -v
 
   ios:
     name: iOS build and smoke test
@@ -67,9 +52,6 @@ jobs:
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1
         with:
           python-version: '3.12'
-
-      - name: Verify bundled contracts
-        run: python3 -m scripts.check_contracts
 
       - name: Build without signing
         run: |
@@ -131,9 +113,9 @@ jobs:
           mkdir -p "$RUNNER_TEMP/verse-smoke"
           xcrun simctl install "$SMOKE_UDID" "$APP"
           xcrun simctl ui "$SMOKE_UDID" appearance light
-          xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse
+          xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing
           sleep 5
-          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/today-light.png"
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/transcriptions-light.png"
 
       - name: Upload simulator evidence
         if: always()

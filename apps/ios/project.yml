@@ -20,6 +20,10 @@ targets:
       - path: src
         excludes:
           - Info.plist
+      - path: Shared
+    dependencies:
+      - target: VerseKeyboard
+      - target: VerseShare
     info:
       path: src/Info.plist
     settings:
@@ -27,19 +31,56 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME: AccentColor
         CODE_SIGN_STYLE: Automatic
+        CODE_SIGN_ENTITLEMENTS: Verse.entitlements
         CURRENT_PROJECT_VERSION: 1
         ENABLE_PREVIEWS: true
         GENERATE_INFOPLIST_FILE: true
         INFOPLIST_KEY_CFBundleDisplayName: Verse
         INFOPLIST_KEY_CFBundleDevelopmentRegion: en
-        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.news
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
-        MARKETING_VERSION: 0.1.0
+        MARKETING_VERSION: 0.2.0
         PRODUCT_BUNDLE_IDENTIFIER: soli.verse
         PRODUCT_NAME: Verse
         SWIFT_APPROACHABLE_CONCURRENCY: true
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+  VerseKeyboard:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Keyboard
+        excludes: [Info.plist]
+      - path: Shared
+    info:
+      path: Keyboard/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: soli.verse.keyboard
+        CODE_SIGN_ENTITLEMENTS: Verse.entitlements
+        GENERATE_INFOPLIST_FILE: true
+        MARKETING_VERSION: 0.2.0
+        CURRENT_PROJECT_VERSION: 1
+        APPLICATION_EXTENSION_API_ONLY: true
+        SKIP_INSTALL: true
+  VerseShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Share
+        excludes: [Info.plist]
+      - path: Shared
+    info:
+      path: Share/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: soli.verse.share
+        CODE_SIGN_ENTITLEMENTS: Verse.entitlements
+        GENERATE_INFOPLIST_FILE: true
+        MARKETING_VERSION: 0.2.0
+        CURRENT_PROJECT_VERSION: 1
+        APPLICATION_EXTENSION_API_ONLY: true
+        SKIP_INSTALL: true
   VerseTests:
     type: bundle.unit-test
     platform: iOS

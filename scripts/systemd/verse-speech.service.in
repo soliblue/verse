@@ -1,0 +1,24 @@
+[Unit]
+Description=Verse private transcription API
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=__ROOT__
+Environment=VERSE_ROOT=__ROOT__
+EnvironmentFile=__ROOT__/server/.env
+Environment=VERSE_WHISPER_MODELS=__MODELS__
+Environment=VERSE_WHISPER_MODELS_ALLOWED=small,medium,large-v3
+Environment=VERSE_WHISPER_DEFAULT_MODEL=small
+ExecStart=__PYTHON__ -m speech_server
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=15
+KillMode=control-group
+NoNewPrivileges=true
+PrivateTmp=true
+UMask=0077
+
+[Install]
+WantedBy=default.target

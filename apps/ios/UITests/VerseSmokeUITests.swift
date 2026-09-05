@@ -2,94 +2,51 @@ import XCTest
 
 @MainActor
 final class VerseSmokeUITests: XCTestCase {
-    func testLaunchesAsAFullArticleSwipeReader() {
+    func testTranscriptionHub() {
+        let app = launch()
+        XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.buttons["Import audio"].exists)
+        XCTAssertTrue(app.buttons["Activate keyboard"].exists)
+        XCTAssertFalse(app.tabBars.firstMatch.exists)
+        XCTAssertFalse(app.staticTexts["Articles"].exists)
+        XCTAssertFalse(app.staticTexts["Calendar"].exists)
+        screenshot("hub")
+    }
+
+    func testTranscriptCanBeReadAndCopied() {
+        let app = launch()
+        let recording = app.staticTexts["Hey, I'm on my way. Let's meet outside in ten minutes."]
+        XCTAssertTrue(recording.waitForExistence(timeout: 8))
+        recording.tap()
+        XCTAssertTrue(app.staticTexts["transcript-text"].waitForExistence(timeout: 5))
+        app.buttons["Copy transcript"].tap()
+        XCTAssertTrue(app.buttons["Copied"].exists)
+        XCTAssertTrue(app.buttons["Share transcript"].exists)
+        screenshot("transcript")
+    }
+
+    func testSettingsDismissWithoutExtraNavigation() {
+        let app = launch()
+        app.buttons["Settings"].tap()
+        XCTAssertTrue(app.secureTextFields["Device token"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["Done"].exists)
+        XCTAssertFalse(app.staticTexts["Appearance"].exists)
+        screenshot("settings")
+        app.buttons["Done"].tap()
+        XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 5))
+    }
+
+    private func launch() -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["-AppleLanguages", "(de)", "-AppleLocale", "de_DE"]
+        app.launchArguments = ["--ui-testing"]
         app.launch()
-
-        XCTAssertTrue(app.descendants(matching: .any)["verse-reader"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 5))
-        XCTAssertEqual(app.tabBars.buttons.count, 2)
-        XCTAssertTrue(app.buttons["reader-like"].exists)
-        XCTAssertTrue(app.buttons["reader-dislike"].exists)
-        XCTAssertFalse(app.buttons["reader-save"].exists)
-        XCTAssertFalse(app.buttons["reader-actions"].exists)
-        XCTAssertFalse(app.buttons["app-menu"].exists)
-
-        let first = app.descendants(matching: .any)["reader-story-1"]
-        XCTAssertTrue(first.waitForExistence(timeout: 5))
-        assertHittable(first)
-        XCTAssertTrue(app.descendants(matching: .any)["story-body"].exists)
-
-        app.descendants(matching: .any)["verse-reader"].swipeLeft()
-
-        let second = app.descendants(matching: .any)["reader-story-2"]
-        XCTAssertTrue(second.waitForExistence(timeout: 5))
-        assertHittable(second)
+        return app
     }
 
-    func testReaderOnlyShowsLikeAndDislikeActions() {
-        let app = XCUIApplication()
-        app.launch()
-
-        let first = app.descendants(matching: .any)["reader-story-1"]
-        XCTAssertTrue(first.waitForExistence(timeout: 8))
-        XCTAssertTrue(app.descendants(matching: .any)["story-body"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.navigationBars.buttons.firstMatch.exists)
-        XCTAssertTrue(app.buttons["reader-like"].exists)
-        XCTAssertTrue(app.buttons["reader-dislike"].exists)
-        XCTAssertFalse(app.buttons["reader-save"].exists)
-        XCTAssertFalse(app.buttons["reader-actions"].exists)
+    private func screenshot(_ name: String) {
+        let attachment = XCTAttachment(screenshot: XCUIScreen.main.screenshot())
+        attachment.name = name
+        attachment.lifetime = .keepAlways
+        add(attachment)
     }
-
-    func testBottomTabsOnlyShowArticlesAndCalendar() {
-        executionTimeAllowance = 90
-        let app = XCUIApplication()
-        app.launch()
-
-        XCTAssertTrue(app.tabBars.buttons["Articles"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.tabBars.buttons["Calendar"].exists)
-        XCTAssertFalse(app.tabBars.buttons["Places"].exists)
-        XCTAssertFalse(app.tabBars.buttons["Library"].exists)
-        XCTAssertFalse(app.tabBars.buttons["Settings"].exists)
-    }
-
-    func testCalendarIsADirectDestination() {
-        executionTimeAllowance = 90
-        let app = XCUIApplication()
-        app.launch()
-
-        openTab("Calendar", app: app)
-        XCTAssertTrue(app.descendants(matching: .any)["calendar-screen"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Previous week"].exists)
-        XCTAssertFalse(app.buttons["Next week"].exists)
-
-        let july16 = app.buttons["calendar-day-2026-07-16"]
-        XCTAssertTrue(july16.waitForExistence(timeout: 5))
-        july16.tap()
-        XCTAssertTrue(app.staticTexts["Berlin Beats: GiGi FM"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Add to Calendar"].exists)
-
-        app.buttons["calendar-day-2026-07-18"].tap()
-        XCTAssertTrue(app.staticTexts["DayDreamLab by Transmission"].waitForExistence(timeout: 5))
-        app.staticTexts["DayDreamLab by Transmission"].tap()
-        XCTAssertTrue(app.descendants(matching: .any)["event-detail"].waitForExistence(timeout: 5))
-        XCTAssertTrue(app.buttons["event-actions"].exists)
-        app.navigationBars.buttons.firstMatch.tap()
-    }
-
-    private func openTab(_ title: String, app: XCUIApplication) {
-        let tab = app.tabBars.buttons[title]
-        XCTAssertTrue(tab.waitForExistence(timeout: 5))
-        tab.tap()
-    }
-
-    private func assertHittable(_ element: XCUIElement) {
-        let expectation = XCTNSPredicateExpectation(
-            predicate: NSPredicate(format: "exists == true AND hittable == true"),
-            object: element
-        )
-        XCTAssertEqual(XCTWaiter.wait(for: [expectation], timeout: 5), .completed)
-    }
-
 }

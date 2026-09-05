@@ -1,5 +1,19 @@
 # Verse
 
+## Current product: transcription
+
+As of 2026-09-05, Verse is a private Whisper transcription app, not a reader. This section supersedes the legacy product and architecture below.
+
+- Main app: `apps/ios/src/Features/Transcription`, with recording history, transcript detail, and minimal settings.
+- Extensions: `apps/ios/Keyboard`, `apps/ios/Share`, and a shared Keychain bridge in `apps/ios/Shared`.
+- Backend: `speech_server`, local faster-whisper, durable SQLite jobs, private audio files, one bounded inference worker. No provider API.
+- Preserve `soli.verse` and the existing TestFlight app. User enters a device token; no account or login flow.
+- Keyboard microphone sessions are explicitly activated in the main app, limited to five minutes, and discard idle audio.
+- Nightjar, event jobs, and reader automation stay disabled. Legacy content and source are retained but not active product surfaces.
+- See `plans/18-verse-transcription.md` and `speech_server/README.md` for current contracts.
+
+## Legacy reader reference
+
 Verse is a private, single-user iOS reader. It gathers material matching the operator's interests, prepares a finite morning edition on a VPS while they sleep, and supports deeper research when useful. It is a personal tool, not a SaaS and not intended for public App Store release.
 
 ## Product
