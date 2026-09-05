@@ -217,12 +217,13 @@ final class TranscriptionStore {
     }
 
     func finishRecording() async throws {
+        let keyboard = keyboardExpiresAt != nil
         let result = Result { try recorder.finish() }
         VerseBridge.isRecording = false
         if keyboardExpiresAt == nil { recorder.deactivate() }
         await updateActivity("transcribing")
         let url = try result.get()
-        if let url { try await upload(url, keyboard: keyboardExpiresAt != nil) }
+        if let url { try await upload(url, keyboard: keyboard) }
     }
 
     func importAudio(_ url: URL) async throws {

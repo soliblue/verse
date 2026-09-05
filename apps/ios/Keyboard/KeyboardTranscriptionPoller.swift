@@ -11,6 +11,7 @@ final class KeyboardTranscriptionPoller {
 
     private var task: Task<Void, Never>?
     private var lastPoll = Date.distantPast
+    private var generation = 0
 
     func poll() {
         guard task == nil, Date().timeIntervalSince(lastPoll) >= 2 else { return }
@@ -18,14 +19,15 @@ final class KeyboardTranscriptionPoller {
         guard !id.isEmpty, !VerseBridge.token.isEmpty,
               let base = URL(string: VerseBridge.baseURL), base.scheme == "https", base.host != nil else { return }
         lastPoll = Date()
+        generation += 1
+        let currentGeneration = generation
         task = Task { [weak self] in
-            defer { self?.task = nil }
+            defer { if self?.generation == currentGeneration { self?.task = nil } }
             var request = URLRequest(url: base.appendingPathComponent("v1/transcriptions").appendingPathComponent(id))
             request.setValue("Bearer \(VerseBridge.token)", forHTTPHeaderField: "Authorization")
             request.timeoutInterval = 15
-            let result = await Task { try await URLSession.shared.data(for: request) }.result
-            guard !Task.isCancelled, VerseBridge.pendingJobID == id else { return }
-            if case .success(let (data, response)) = result,
+            if let (data, response) = try? await URLSession.shared.data(for: request),
+               !Task.isCancelled, VerseBridge.pendingJobID == id,
                let response = response as? HTTPURLResponse {
                 if response.statusCode == 401 {
                     VerseBridge.errorText = "Your device token was not accepted. Check Verse Settings."
@@ -54,6 +56,7 @@ final class KeyboardTranscriptionPoller {
     }
 
     func cancel() {
+        generation += 1
         task?.cancel()
         task = nil
     }
