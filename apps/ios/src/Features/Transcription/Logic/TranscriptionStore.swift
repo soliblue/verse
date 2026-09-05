@@ -22,8 +22,8 @@ final class TranscriptionStore {
     private var interruptionTask: Task<Void, Never>?
 
     init() {
-        if VerseBridge.token.isEmpty, let previous = KeychainStore.value(for: "device-secret") {
-            VerseBridge.token = previous
+        if VerseBridge.token.isEmpty {
+            VerseBridge.token = KeychainStore.value(for: "device-secret")
         }
         VerseBridge.sessionExpiresAt = 0
         VerseBridge.isRecording = false

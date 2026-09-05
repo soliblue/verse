@@ -55,7 +55,7 @@ struct SpeechSettingsView: View {
                     .onChange(of: language) { _, value in VerseBridge.language = value }
                 } footer: { Text("Whisper runs on your private server. Larger models take longer. Recordings and transcripts stay there until you delete them.") }
 
-                Section("Keyboard") {
+                Section {
                     Text("Add Verse in iPhone Settings → General → Keyboard → Keyboards → Add New Keyboard. Then enable Allow Full Access for Verse.")
                     Button("Open iPhone Settings") {
                         if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
@@ -63,7 +63,7 @@ struct SpeechSettingsView: View {
                     Button("Activate for 5 minutes") {
                         store.perform { try await store.activateKeyboard(); dismiss() }
                     }
-                } footer: {
+                } header: { Text("Keyboard") } footer: {
                     Text("Activate here before switching apps. The microphone stays on during this session; audio is only saved between Speak and Stop. In any text field, select Verse with the globe, speak, then tap Insert. Secure fields may use Apple’s keyboard instead.")
                 }
 

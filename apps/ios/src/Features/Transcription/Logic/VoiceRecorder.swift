@@ -16,7 +16,7 @@ final class VoiceRecorder {
         let permission = await AVAudioApplication.requestRecordPermission()
         guard permission else { throw SpeechFailure("Allow microphone access in iPhone Settings to record.") }
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetooth])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.defaultToSpeaker, .allowBluetoothHFP])
         try session.setActive(true)
         let input = engine.inputNode
         let format = input.outputFormat(forBus: 0)
