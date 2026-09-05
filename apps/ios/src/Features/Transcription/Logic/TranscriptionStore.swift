@@ -13,11 +13,13 @@ final class TranscriptionStore {
     var error: String?
     var isUploading = false
     var isRefreshing = false
+    var isStartingRecording = false
     var keyboardExpiresAt: Date?
     var pendingAudio: [URL] = []
     private var timer: Timer?
     private var lastPoll = Date.distantPast
     private var keyboardJobID = ""
+    private var uploadBackgroundTask = UIBackgroundTaskIdentifier.invalid
     private let demo = ProcessInfo.processInfo.arguments.contains("--ui-testing")
     private var interruptionTask: Task<Void, Never>?
 
@@ -90,10 +92,13 @@ final class TranscriptionStore {
     }
 
     func toggleRecording() async throws {
+        guard !isStartingRecording else { return }
         guard isConfigured else { throw SpeechFailure("Add your device token in Settings first.") }
         if recorder.isRecording {
             try await finishRecording()
         } else {
+            isStartingRecording = true
+            defer { isStartingRecording = false }
             try await recorder.activate()
             try recorder.begin()
             VerseBridge.isRecording = true
@@ -102,10 +107,14 @@ final class TranscriptionStore {
     }
 
     func activateKeyboard() async throws {
+        guard !isStartingRecording else { return }
         guard isConfigured else { throw SpeechFailure("Add your device token in Settings first.") }
+        isStartingRecording = true
+        defer { isStartingRecording = false }
         try await recorder.activate()
         keyboardExpiresAt = Date().addingTimeInterval(300)
         VerseBridge.sessionExpiresAt = keyboardExpiresAt!.timeIntervalSince1970
+        VerseBridge.sessionHeartbeatAt = Date().timeIntervalSince1970
         VerseBridge.errorText = ""
         VerseBridge.statusText = "Ready"
     }
@@ -113,6 +122,7 @@ final class TranscriptionStore {
     func endSession() async throws {
         keyboardExpiresAt = nil
         VerseBridge.sessionExpiresAt = 0
+        VerseBridge.sessionHeartbeatAt = 0
         let result = Result { try recorder.finish() }
         recorder.deactivate()
         VerseBridge.isRecording = false
@@ -131,6 +141,8 @@ final class TranscriptionStore {
     func importAudio(_ url: URL) async throws {
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
+        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
+        guard size > 0, size <= 52_428_800 else { throw SpeechFailure("Choose an audio file smaller than 50 MB.") }
         let folder = pendingDirectory
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let destination = folder.appendingPathComponent("\(UUID().uuidString)-\(url.lastPathComponent)")
@@ -139,20 +151,23 @@ final class TranscriptionStore {
     }
 
     func upload(_ url: URL, keyboard: Bool = false) async throws {
+        guard !isUploading else { throw SpeechFailure("Wait for the current upload to finish.") }
         isUploading = true
         VerseBridge.statusText = "Uploading…"
-        let task = UIApplication.shared.beginBackgroundTask(withName: "Upload recording")
+        uploadBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Upload recording") { [weak self] in
+            Task { @MainActor in self?.endUploadBackgroundTask() }
+        }
         defer {
             isUploading = false
-            if task != .invalid { UIApplication.shared.endBackgroundTask(task) }
+            endUploadBackgroundTask()
             loadPendingAudio()
         }
         let item = try await api.upload(url)
         items.insert(item, at: 0)
         VerseBridge.statusText = "Transcribing…"
+        VerseBridge.pendingJobID = item.id
         if keyboard {
             keyboardJobID = item.id
-            VerseBridge.pendingJobID = item.id
         }
         try JSONEncoder().encode(items).write(to: cacheURL, options: .atomic)
         try FileManager.default.removeItem(at: url)
@@ -161,10 +176,22 @@ final class TranscriptionStore {
     func delete(_ item: Transcription) async throws {
         if !demo { try await api.delete(item.id) }
         items.removeAll { $0.id == item.id }
+        if VerseBridge.pendingJobID == item.id {
+            VerseBridge.pendingJobID = ""
+            VerseBridge.statusText = ""
+        }
+        if keyboardJobID == item.id { keyboardJobID = "" }
+        if VerseBridge.transcriptID == item.id {
+            VerseBridge.transcriptID = ""
+            VerseBridge.transcriptText = ""
+        }
         try JSONEncoder().encode(items).write(to: cacheURL, options: .atomic)
     }
 
     private func tick() {
+        if keyboardExpiresAt != nil, Date().timeIntervalSince1970 - VerseBridge.sessionHeartbeatAt >= 1 {
+            VerseBridge.sessionHeartbeatAt = Date().timeIntervalSince1970
+        }
         if let expiry = keyboardExpiresAt, expiry <= Date() {
             keyboardExpiresAt = nil
             perform { try await self.endSession() }
@@ -211,5 +238,17 @@ final class TranscriptionStore {
     private func loadPendingAudio() {
         guard !recorder.isRecording else { return }
         pendingAudio = (try? FileManager.default.contentsOfDirectory(at: pendingDirectory, includingPropertiesForKeys: nil)) ?? []
+    }
+
+    func discardPending(_ url: URL) throws {
+        try FileManager.default.removeItem(at: url)
+        loadPendingAudio()
+    }
+
+    private func endUploadBackgroundTask() {
+        if uploadBackgroundTask != .invalid {
+            UIApplication.shared.endBackgroundTask(uploadBackgroundTask)
+            uploadBackgroundTask = .invalid
+        }
     }
 }

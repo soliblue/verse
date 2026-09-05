@@ -31,6 +31,10 @@ struct TranscriptionHubView: View {
                                 store.perform { try await store.upload(url) }
                             } label: { Label("Retry recording", systemImage: "arrow.clockwise") }
                             .disabled(store.isUploading)
+                            .swipeActions {
+                                Button("Delete", role: .destructive) { store.perform { try store.discardPending(url) } }
+                                    .disabled(store.isUploading)
+                            }
                         }
                     }
                 }
@@ -61,7 +65,7 @@ struct TranscriptionHubView: View {
             .overlay {
                 if store.items.isEmpty && store.pendingAudio.isEmpty && store.isConfigured {
                     ContentUnavailableView {
-                        Label("Your voice, in words", systemImage: "waveform")
+                        Label("No recordings", systemImage: "waveform")
                     } description: { Text("Record something or share an audio file to Verse.") }
                     .allowsHitTesting(false)
                 }
@@ -117,7 +121,7 @@ struct TranscriptionHubView: View {
                     Image(systemName: "keyboard").font(.title3).frame(width: 48, height: 48)
                 }
                 .accessibilityLabel("Activate keyboard")
-                .disabled(store.recorder.isRecording || store.isUploading)
+                .disabled(store.recorder.isRecording || store.isUploading || store.isStartingRecording)
                 Button {
                     store.perform { try await store.toggleRecording() }
                 } label: {
@@ -128,7 +132,7 @@ struct TranscriptionHubView: View {
                         .background(LinearGradient(colors: [.purple, .indigo, .cyan], startPoint: .topLeading, endPoint: .bottomTrailing), in: Circle())
                 }
                 .accessibilityLabel(store.recorder.isRecording ? "Stop recording" : "Record")
-                .disabled(store.isUploading)
+                .disabled(store.isUploading || store.isStartingRecording)
                 Color.clear.frame(width: 48, height: 48).accessibilityHidden(true)
             }
         }

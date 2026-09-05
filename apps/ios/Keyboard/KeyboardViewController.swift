@@ -57,34 +57,59 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func refresh() {
-        let active = VerseBridge.sessionExpiresAt > Date().timeIntervalSince1970
-        record.setTitle(VerseBridge.isRecording ? "Stop" : (active ? "Speak" : "Open Verse"), for: .normal)
-        insert.isEnabled = !VerseBridge.transcriptText.isEmpty && VerseBridge.transcriptID != insertedID
+        let active = sessionIsActive
+        let recording = active && VerseBridge.isRecording
+        let commandPending = active && VerseBridge.commandID != VerseBridge.acknowledgedCommandID
+        let processing = isProcessing
+        let hasTranscript = !VerseBridge.transcriptText.isEmpty && VerseBridge.transcriptID != insertedID
+        record.setTitle(!active ? "Open Verse" : (recording ? "Stop" : (processing ? "Transcribing…" : "Speak")), for: .normal)
+        record.isEnabled = hasFullAccess && (!active || (recording || !processing) && !commandPending)
+        insert.isEnabled = hasFullAccess && hasTranscript && !VerseBridge.isRecording && !processing && !commandPending
         if !hasFullAccess {
             status.text = "Enable Full Access for Verse in Settings → Keyboards."
-        } else if !active {
-            status.text = "Open Verse and start a keyboard session, then return here."
         } else if !VerseBridge.errorText.isEmpty {
             status.text = VerseBridge.errorText
+        } else if recording {
+            status.text = "Listening…"
+        } else if processing {
+            status.text = VerseBridge.statusText.isEmpty ? "Transcribing…" : VerseBridge.statusText
+        } else if hasTranscript {
+            status.text = VerseBridge.transcriptText
+        } else if !active {
+            status.text = "Open Verse and start a keyboard session, then return here."
         } else {
-            status.text = VerseBridge.statusText.isEmpty ? "Tap Speak, then Stop. Your words appear here." : VerseBridge.statusText
+            status.text = "Tap Speak, then Stop. Your words appear here."
         }
+    }
+
+    private var sessionIsActive: Bool {
+        let now = Date().timeIntervalSince1970
+        return VerseBridge.sessionExpiresAt > now && now - VerseBridge.sessionHeartbeatAt < 3
+    }
+
+    private var isProcessing: Bool {
+        guard VerseBridge.errorText.isEmpty else { return false }
+        return !VerseBridge.pendingJobID.isEmpty || VerseBridge.statusText == "Uploading…" || VerseBridge.statusText == "Transcribing…"
     }
 
     @objc private func toggleRecording() {
         guard hasFullAccess else { return }
-        guard VerseBridge.sessionExpiresAt > Date().timeIntervalSince1970 else {
+        guard sessionIsActive else {
             if let url = URL(string: "verse://keyboard") {
                 extensionContext?.open(url)
             }
             return
         }
+        guard VerseBridge.isRecording || !isProcessing,
+              VerseBridge.commandID == VerseBridge.acknowledgedCommandID else { return }
+        if !VerseBridge.isRecording { insertedID = VerseBridge.transcriptID }
         VerseBridge.send(VerseBridge.isRecording ? "stop" : "start")
+        refresh()
     }
 
     @objc private func insertTranscript() {
         let text = VerseBridge.transcriptText
-        guard !text.isEmpty, VerseBridge.transcriptID != insertedID else { return }
+        guard insert.isEnabled, !text.isEmpty, VerseBridge.transcriptID != insertedID else { return }
         textDocumentProxy.insertText(text)
         insertedID = VerseBridge.transcriptID
         refresh()

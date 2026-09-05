@@ -34,6 +34,11 @@ enum VerseBridge {
         set { write(String(newValue), key: "sessionExpiresAt") }
     }
 
+    static var sessionHeartbeatAt: Double {
+        get { Double(read("sessionHeartbeatAt") ?? "0") ?? 0 }
+        set { write(String(newValue), key: "sessionHeartbeatAt") }
+    }
+
     static var isRecording: Bool {
         get { read("isRecording") == "true" }
         set { write(String(newValue), key: "isRecording") }
