@@ -78,6 +78,15 @@ class WorkerTests(unittest.TestCase):
             self.worker.process(self.store.create("a.wav", "medium", "en", 1))
             self.assertIsNone(self.worker.process_handle)
 
+    def test_warmup_failure_does_not_stop_future_jobs(self):
+        with patch.object(self.worker, "ensure_model", side_effect=OSError("Insufficient resources")):
+            self.worker.process(warmup_model="medium")
+        self.assertIsNone(self.worker.process_handle)
+        with patch.object(Config, "model_path", return_value=Path("model")), patch("speech_server.worker.subprocess.Popen", side_effect=self.engine):
+            job = self.store.create("a.wav", "medium", "en", 1)
+            self.worker.process(job)
+            self.assertEqual(self.store.get(job["id"])["state"], "completed")
+
 
 if __name__ == "__main__":
     unittest.main()

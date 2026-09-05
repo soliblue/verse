@@ -60,7 +60,7 @@ class Worker:
                 if self.warmup_model is not None:
                     model = self.warmup_model
                     self.warmup_model = None
-                    self.ensure_model(model)
+                    self.process(warmup_model=model)
                 if self.process_handle is not None and time.monotonic() - self.last_used >= self.config.model_idle_timeout:
                     self.release_model()
                 self.wake.wait(2)
@@ -68,9 +68,13 @@ class Worker:
                 continue
             self.process(queued[0])
 
-    def process(self, job):
-        self.store.update(job["id"], state="transcribing")
+    def process(self, job=None, warmup_model=None):
+        if job is not None:
+            self.store.update(job["id"], state="transcribing")
         try:
+            if warmup_model is not None:
+                self.ensure_model(warmup_model)
+                return
             with tempfile.TemporaryDirectory(prefix="verse-speech-") as directory:
                 output = Path(directory) / "result.json"
                 self.ensure_model(job["model"])
@@ -91,4 +95,5 @@ class Worker:
                 self.last_used = time.monotonic()
         except Exception as error:
             self.release_model()
-            self.store.update(job["id"], state="failed", error=str(error))
+            if job is not None:
+                self.store.update(job["id"], state="failed", error=str(error))
