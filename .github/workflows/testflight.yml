@@ -37,6 +37,7 @@ jobs:
           PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
           KEYBOARD_PROVISIONING_PROFILE_BASE64: ${{ secrets.KEYBOARD_PROVISIONING_PROFILE_BASE64 }}
           SHARE_PROVISIONING_PROFILE_BASE64: ${{ secrets.SHARE_PROVISIONING_PROFILE_BASE64 }}
+          WIDGET_PROVISIONING_PROFILE_BASE64: ${{ secrets.WIDGET_PROVISIONING_PROFILE_BASE64 }}
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: |
           python3 - <<'PY'
@@ -51,6 +52,7 @@ jobs:
               "PROVISIONING_PROFILE_BASE64",
               "KEYBOARD_PROVISIONING_PROFILE_BASE64",
               "SHARE_PROVISIONING_PROFILE_BASE64",
+              "WIDGET_PROVISIONING_PROFILE_BASE64",
               "APPLE_TEAM_ID",
           )
           missing = [name for name in required if not os.environ.get(name)]
@@ -91,6 +93,7 @@ jobs:
           PROVISIONING_PROFILE_BASE64: ${{ secrets.PROVISIONING_PROFILE_BASE64 }}
           KEYBOARD_PROVISIONING_PROFILE_BASE64: ${{ secrets.KEYBOARD_PROVISIONING_PROFILE_BASE64 }}
           SHARE_PROVISIONING_PROFILE_BASE64: ${{ secrets.SHARE_PROVISIONING_PROFILE_BASE64 }}
+          WIDGET_PROVISIONING_PROFILE_BASE64: ${{ secrets.WIDGET_PROVISIONING_PROFILE_BASE64 }}
         run: |
           python3 - <<'PY'
           import base64
@@ -101,7 +104,7 @@ jobs:
 
           directory = Path.home() / "Library/MobileDevice/Provisioning Profiles"
           directory.mkdir(parents=True, exist_ok=True)
-          for prefix in ("", "KEYBOARD_", "SHARE_"):
+          for prefix in ("", "KEYBOARD_", "SHARE_", "WIDGET_"):
               content = base64.b64decode(os.environ[prefix + "PROVISIONING_PROFILE_BASE64"])
               source = Path(os.environ["RUNNER_TEMP"]) / ("verse-" + prefix.lower() + ".mobileprovision")
               source.write_bytes(content)
@@ -136,6 +139,8 @@ jobs:
             "$RUNNER_TEMP/verse-.mobileprovision" \
             "$RUNNER_TEMP/verse-keyboard_.mobileprovision" \
             "$RUNNER_TEMP/verse-share_.mobileprovision" \
+            "$RUNNER_TEMP/verse-widget_.mobileprovision" \
             "${VERSE_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}" \
             "${VERSE_KEYBOARD_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}" \
-            "${VERSE_SHARE_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}"
+            "${VERSE_SHARE_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}" \
+            "${VERSE_WIDGET_PROFILE_PATH:-$RUNNER_TEMP/missing.mobileprovision}"

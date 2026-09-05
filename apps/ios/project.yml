@@ -24,6 +24,7 @@ targets:
     dependencies:
       - target: VerseKeyboard
       - target: VerseShare
+      - target: VerseControls
     info:
       path: src/Info.plist
     settings:
@@ -45,6 +46,25 @@ targets:
         PRODUCT_NAME: Verse
         SWIFT_APPROACHABLE_CONCURRENCY: true
         SWIFT_DEFAULT_ACTOR_ISOLATION: MainActor
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) VERSE_APP"
+  VerseControls:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: Widget
+        excludes: [Info.plist]
+      - path: Shared
+    info:
+      path: Widget/Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: soli.verse.controls
+        GENERATE_INFOPLIST_FILE: true
+        MARKETING_VERSION: 0.2.0
+        CURRENT_PROJECT_VERSION: 1
+        APPLICATION_EXTENSION_API_ONLY: true
+        SKIP_INSTALL: true
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) VERSE_WIDGET"
   VerseKeyboard:
     type: app-extension
     platform: iOS

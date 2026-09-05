@@ -1,4 +1,5 @@
 import AVFoundation
+import ActivityKit
 import Observation
 import UIKit
 import UserNotifications
@@ -6,6 +7,7 @@ import UserNotifications
 @MainActor
 @Observable
 final class TranscriptionStore {
+    static let shared = TranscriptionStore()
     let recorder = VoiceRecorder()
     let api = SpeechAPI()
     var items: [Transcription] = []
@@ -22,6 +24,9 @@ final class TranscriptionStore {
     private var uploadBackgroundTask = UIBackgroundTaskIdentifier.invalid
     private let demo = ProcessInfo.processInfo.arguments.contains("--ui-testing")
     private var interruptionTask: Task<Void, Never>?
+    private var activity: Activity<DictationActivityAttributes>?
+    private var activityTask: Task<Void, Never>?
+    private var sessionGeneration = 0
 
     init() {
         if VerseBridge.token.isEmpty {
@@ -39,8 +44,17 @@ final class TranscriptionStore {
         }
         loadPendingAudio()
         interruptionTask = Task { [weak self] in
-            for await _ in NotificationCenter.default.notifications(named: AVAudioSession.interruptionNotification) {
-                self?.perform { [weak self] in try await self?.endSession() }
+            for await notification in NotificationCenter.default.notifications(named: AVAudioSession.interruptionNotification) {
+                if let type = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+                   type == AVAudioSession.InterruptionType.began.rawValue {
+                    self?.perform { [weak self] in try await self?.endSession() }
+                }
+            }
+        }
+        let previousActivities = Activity<DictationActivityAttributes>.activities
+        Task {
+            for activity in previousActivities {
+                await activity.end(nil, dismissalPolicy: .immediate)
             }
         }
         timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] _ in
@@ -54,12 +68,17 @@ final class TranscriptionStore {
         Task {
             let result = await Task { try await operation() }.result
             if case .failure(let failure) = result {
-                error = failure.localizedDescription
-                VerseBridge.errorText = failure.localizedDescription
-                VerseBridge.statusText = ""
-                loadPendingAudio()
+                await reportFailure(failure)
             }
         }
+    }
+
+    func reportFailure(_ failure: Error) async {
+        error = failure.localizedDescription
+        VerseBridge.errorText = failure.localizedDescription
+        VerseBridge.statusText = ""
+        loadPendingAudio()
+        await updateActivity(recorder.isRecording ? "recording" : "ready")
     }
 
     func refresh() async throws {
@@ -79,9 +98,15 @@ final class TranscriptionStore {
                 VerseBridge.transcriptText = item.text ?? ""
                 VerseBridge.transcriptID = item.id
                 VerseBridge.errorText = ""
+                if VerseBridge.pendingInsertionJobID == item.id {
+                    VerseBridge.insertionTranscriptID = item.id
+                    VerseBridge.insertionReadyAt = Date().timeIntervalSince1970
+                    VerseBridge.pendingInsertionJobID = ""
+                }
             } else { VerseBridge.errorText = item.error ?? "Transcription failed. Try again in Verse." }
             keyboardJobID = ""
             VerseBridge.pendingJobID = ""
+            await updateActivity(recorder.isRecording ? "recording" : "ready")
         }
     }
 
@@ -95,15 +120,39 @@ final class TranscriptionStore {
     func toggleRecording() async throws {
         guard !isStartingRecording else { return }
         guard isConfigured else { throw SpeechFailure("Add your device token in Settings first.") }
+        guard !isUploading || recorder.isRecording else { throw SpeechFailure("Wait for this recording to upload.") }
         if recorder.isRecording {
             try await finishRecording()
         } else {
             isStartingRecording = true
             defer { isStartingRecording = false }
+            let generation = sessionGeneration
             try await recorder.activate()
+            guard generation == sessionGeneration else {
+                recorder.deactivate()
+                throw SpeechFailure("Dictation session ended.")
+            }
             try recorder.begin()
             VerseBridge.isRecording = true
             VerseBridge.errorText = ""
+            await updateActivity("recording")
+        }
+    }
+
+    func toggleSystemDictation() async throws {
+        guard !isStartingRecording else { return }
+        if recorder.isRecording {
+            try await finishRecording()
+        } else {
+            guard AVAudioApplication.shared.recordPermission == .granted else {
+                throw SpeechFailure("Open Verse once and allow microphone access before using dictation controls.")
+            }
+            guard !isUploading, VerseBridge.pendingJobID.isEmpty else {
+                throw SpeechFailure("Wait for your last transcription to finish.")
+            }
+            try await activateKeyboard()
+            VerseBridge.insertionTranscriptID = ""
+            try await toggleRecording()
         }
     }
 
@@ -112,8 +161,38 @@ final class TranscriptionStore {
         guard isConfigured else { throw SpeechFailure("Add your device token in Settings first.") }
         isStartingRecording = true
         defer { isStartingRecording = false }
-        try await recorder.activate()
-        keyboardExpiresAt = Date().addingTimeInterval(300)
+        let generation = sessionGeneration
+        if activity == nil {
+            guard ActivityAuthorizationInfo().areActivitiesEnabled else {
+                throw SpeechFailure("Allow Live Activities for Verse in iPhone Settings to use background dictation.")
+            }
+            activity = try Activity.request(
+                attributes: DictationActivityAttributes(),
+                content: ActivityContent(state: .init(phase: "ready", startedAt: Date()), staleDate: nil),
+                pushType: nil
+            )
+            let observedActivity = activity!
+            activityTask?.cancel()
+            activityTask = Task { [weak self] in
+                for await state in observedActivity.activityStateUpdates {
+                    if state == .dismissed || state == .ended {
+                        guard !Task.isCancelled else { return }
+                        self?.perform { [weak self] in try await self?.endSession() }
+                        return
+                    }
+                }
+            }
+        }
+        let activation = await Task { try await recorder.activate() }.result
+        if case .failure = activation {
+            await endActivity()
+        }
+        try activation.get()
+        guard generation == sessionGeneration else {
+            recorder.deactivate()
+            throw SpeechFailure("Dictation session ended.")
+        }
+        keyboardExpiresAt = Date().addingTimeInterval(VerseBridge.sessionDuration)
         VerseBridge.sessionExpiresAt = keyboardExpiresAt!.timeIntervalSince1970
         VerseBridge.sessionHeartbeatAt = Date().timeIntervalSince1970
         VerseBridge.errorText = ""
@@ -121,12 +200,18 @@ final class TranscriptionStore {
     }
 
     func endSession() async throws {
+        sessionGeneration += 1
+        let backgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Finish dictation")
+        defer {
+            if backgroundTask != .invalid { UIApplication.shared.endBackgroundTask(backgroundTask) }
+        }
         keyboardExpiresAt = nil
         VerseBridge.sessionExpiresAt = 0
         VerseBridge.sessionHeartbeatAt = 0
         let result = Result { try recorder.finish() }
         recorder.deactivate()
         VerseBridge.isRecording = false
+        await endActivity()
         let url = try result.get()
         if let url { try await upload(url, keyboard: true) }
     }
@@ -135,6 +220,7 @@ final class TranscriptionStore {
         let result = Result { try recorder.finish() }
         VerseBridge.isRecording = false
         if keyboardExpiresAt == nil { recorder.deactivate() }
+        await updateActivity("transcribing")
         let url = try result.get()
         if let url { try await upload(url, keyboard: keyboardExpiresAt != nil) }
     }
@@ -169,6 +255,7 @@ final class TranscriptionStore {
         VerseBridge.pendingJobID = item.id
         if keyboard {
             keyboardJobID = item.id
+            VerseBridge.pendingInsertionJobID = item.id
         }
         try JSONEncoder().encode(items).write(to: cacheURL, options: .atomic)
         try FileManager.default.removeItem(at: url)
@@ -205,7 +292,8 @@ final class TranscriptionStore {
             VerseBridge.acknowledgedCommandID = command
             let action = VerseBridge.commandAction
             if keyboardExpiresAt != nil {
-                if action == "start", !recorder.isRecording, !isUploading {
+                if action == "start", !recorder.isRecording, !isUploading, VerseBridge.pendingJobID.isEmpty {
+                    VerseBridge.insertionTranscriptID = ""
                     perform { try await self.toggleRecording() }
                 } else if action == "stop", recorder.isRecording {
                     perform { try await self.finishRecording() }
@@ -251,5 +339,17 @@ final class TranscriptionStore {
             UIApplication.shared.endBackgroundTask(uploadBackgroundTask)
             uploadBackgroundTask = .invalid
         }
+    }
+
+    private func updateActivity(_ phase: String) async {
+        await activity?.update(ActivityContent(state: .init(phase: phase, startedAt: recorder.startedAt), staleDate: keyboardExpiresAt))
+    }
+
+    private func endActivity() async {
+        activityTask?.cancel()
+        activityTask = nil
+        let ending = activity
+        activity = nil
+        await ending?.end(nil, dismissalPolicy: .immediate)
     }
 }

@@ -4,6 +4,34 @@ import Security
 enum VerseBridge {
     static let defaultBaseURL = "https://verse.soli.blue"
 
+    static var sessionDuration: Double {
+        get {
+            let duration = Double(read("sessionDuration") ?? "900") ?? 900
+            return [300.0, 900.0, 3600.0].contains(duration) ? duration : 900
+        }
+        set { write(String(newValue), key: "sessionDuration") }
+    }
+
+    static var pendingInsertionJobID: String {
+        get { read("pendingInsertionJobID") ?? "" }
+        set { write(newValue, key: "pendingInsertionJobID") }
+    }
+
+    static var insertionTranscriptID: String {
+        get { read("insertionTranscriptID") ?? "" }
+        set { write(newValue, key: "insertionTranscriptID") }
+    }
+
+    static var insertionReadyAt: Double {
+        get { Double(read("insertionReadyAt") ?? "0") ?? 0 }
+        set { write(String(newValue), key: "insertionReadyAt") }
+    }
+
+    static var lastInsertedTranscriptID: String {
+        get { read("lastInsertedTranscriptID") ?? "" }
+        set { write(newValue, key: "lastInsertedTranscriptID") }
+    }
+
     static var baseURL: String {
         get { read("baseURL") ?? defaultBaseURL }
         set { write(newValue, key: "baseURL") }

@@ -34,6 +34,8 @@ struct TranscriptDetailView: View {
             }
         }
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar(.visible, for: .navigationBar)
+        .background(Color(red: 1, green: 0.97, blue: 0.85).ignoresSafeArea())
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 if let item, let text = item.text, !text.isEmpty {
