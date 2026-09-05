@@ -108,7 +108,7 @@ final class KeyboardViewController: UIInputViewController {
             width.isActive = true
             button.heightAnchor.constraint(equalToConstant: 48).isActive = true
         }
-        let waveform = UIImageView(image: UIImage(systemName: "waveform.bubble"))
+        let waveform = UIImageView(image: UIImage(systemName: "waveform"))
         waveform.tintColor = UIColor(red: 0.89, green: 0.29, blue: 0.04, alpha: 1)
         waveform.contentMode = .scaleAspectFit
         waveform.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 27, weight: .regular)
