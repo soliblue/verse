@@ -118,9 +118,11 @@ final class KeyboardTypingView: UIView {
         style(enter)
         let bottom = UIStackView(arrangedSubviews: [mode, globeButton, space, enter])
         bottom.spacing = 6
+        let globeWidth = globeButton.widthAnchor.constraint(equalTo: bottom.widthAnchor, multiplier: 0.13)
+        globeWidth.priority = .defaultHigh
         NSLayoutConstraint.activate([
             mode.widthAnchor.constraint(equalTo: bottom.widthAnchor, multiplier: 0.13),
-            globeButton.widthAnchor.constraint(equalTo: bottom.widthAnchor, multiplier: 0.13),
+            globeWidth,
             enter.widthAnchor.constraint(equalTo: bottom.widthAnchor, multiplier: 0.22)
         ])
         rows.addArrangedSubview(bottom)

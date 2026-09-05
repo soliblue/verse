@@ -60,7 +60,9 @@ final class KeyboardViewController: UIInputViewController {
         insert.setImage(UIImage(systemName: "text.badge.plus"), for: .normal)
         insert.accessibilityLabel = "Insert transcript"
         insert.addTarget(self, action: #selector(insertTranscript), for: .touchUpInside)
-        insert.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        let insertWidth = insert.widthAnchor.constraint(equalToConstant: 44)
+        insertWidth.priority = .defaultHigh
+        insertWidth.isActive = true
         keyboard.insertText = { [weak self] text in self?.textDocumentProxy.insertText(text) }
         keyboard.deleteBackward = { [weak self] in self?.textDocumentProxy.deleteBackward() }
         keyboard.globeButton.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
@@ -92,6 +94,14 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     override func textDidChange(_ textInput: UITextInput?) { updateAppearance() }
+
+    override func viewWillLayoutSubviews() {
+        super.viewWillLayoutSubviews()
+        #if DEBUG
+        if isPreview { return }
+        #endif
+        keyboard.globeButton.isHidden = !needsInputModeSwitchKey
+    }
 
     private func updateAppearance() {
         var dark = textDocumentProxy.keyboardAppearance == .dark || (textDocumentProxy.keyboardAppearance == .default && traitCollection.userInterfaceStyle == .dark)
