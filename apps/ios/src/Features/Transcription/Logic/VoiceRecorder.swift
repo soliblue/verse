@@ -1,17 +1,24 @@
 import AVFoundation
+import Foundation
 import Observation
 
 @MainActor
 @Observable
 final class VoiceRecorder {
     private let engine = AVAudioEngine()
-    private let writer = CaptureWriter()
+    private let writer: CaptureWriter
+    private let meter: LevelPublisher
     private(set) var fileURL: URL?
     private(set) var isActive = false
     private(set) var isRecording = false
     private(set) var startedAt = Date()
 
-    var audioLevel: Double { isRecording ? writer.audioLevel : 0 }
+    init() {
+        let writer = CaptureWriter()
+        self.writer = writer
+        meter = LevelPublisher(writer: writer)
+        meter.stop()
+    }
 
     func activate() async throws {
         guard !isActive else { return }
@@ -47,9 +54,11 @@ final class VoiceRecorder {
         fileURL = url
         startedAt = Date()
         isRecording = true
+        meter.start()
     }
 
     func finish() throws -> URL? {
+        meter.stop()
         guard isRecording else { return nil }
         isRecording = false
         let url = fileURL
@@ -59,9 +68,50 @@ final class VoiceRecorder {
     }
 
     func deactivate() {
+        meter.stop()
         engine.stop()
         if isActive { engine.inputNode.removeTap(onBus: 0) }
         isActive = false
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
+    }
+
+    nonisolated final class LevelPublisher: @unchecked Sendable {
+        private let queue = DispatchQueue(label: "soli.verse.audio-level", qos: .userInitiated)
+        private let writer: CaptureWriter
+        private let publish: @Sendable (Double) -> Void
+        private var timer: DispatchSourceTimer?
+        private var generation = 0
+
+        init(writer: CaptureWriter, publish: @escaping @Sendable (Double) -> Void = { VerseBridge.publishAudioLevel($0) }) {
+            self.writer = writer
+            self.publish = publish
+        }
+
+        deinit { timer?.cancel() }
+
+        func start() {
+            queue.async { [self] in
+                generation += 1
+                let currentGeneration = generation
+                timer?.cancel()
+                let source = DispatchSource.makeTimerSource(queue: queue)
+                source.setEventHandler { [weak self] in
+                    guard let self, generation == currentGeneration else { return }
+                    publish(writer.audioLevel)
+                }
+                source.schedule(deadline: .now(), repeating: .milliseconds(100), leeway: .milliseconds(10))
+                timer = source
+                source.resume()
+            }
+        }
+
+        func stop() {
+            queue.async { [self] in
+                generation += 1
+                timer?.cancel()
+                timer = nil
+                publish(0)
+            }
+        }
     }
 }

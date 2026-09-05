@@ -35,7 +35,6 @@ final class TranscriptionStore {
         }
         VerseBridge.sessionExpiresAt = 0
         VerseBridge.isRecording = false
-        VerseBridge.audioLevel = 0
         VerseBridge.acknowledgedCommandID = VerseBridge.commandID
         if demo {
             items = [.preview]
@@ -76,7 +75,6 @@ final class TranscriptionStore {
     }
 
     func reportFailure(_ failure: Error) async {
-        VerseBridge.audioLevel = 0
         error = failure.localizedDescription
         VerseBridge.errorText = failure.localizedDescription
         VerseBridge.statusText = ""
@@ -228,7 +226,6 @@ final class TranscriptionStore {
         if case .failure = result { recordingUpload?.cancel(); recordingUpload = nil }
         recorder.deactivate()
         VerseBridge.isRecording = false
-        VerseBridge.audioLevel = 0
         await endActivity()
         let url = try result.get()
         if let url { try await upload(url, keyboard: true) }
@@ -239,7 +236,6 @@ final class TranscriptionStore {
         let result = Result { try recorder.finish() }
         if case .failure = result { recordingUpload?.cancel(); recordingUpload = nil }
         VerseBridge.isRecording = false
-        VerseBridge.audioLevel = 0
         if keyboardExpiresAt == nil { recorder.deactivate() }
         await updateActivity("transcribing")
         let url = try result.get()
@@ -303,7 +299,6 @@ final class TranscriptionStore {
     }
 
     private func tick() {
-        if recorder.isRecording { VerseBridge.audioLevel = recorder.audioLevel }
         if keyboardExpiresAt != nil, Date().timeIntervalSince1970 - VerseBridge.sessionHeartbeatAt >= 1 {
             VerseBridge.sessionHeartbeatAt = Date().timeIntervalSince1970
         }

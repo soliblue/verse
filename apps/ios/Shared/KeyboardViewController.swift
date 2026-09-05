@@ -3,9 +3,24 @@ import UIKit
 import SwiftUI
 
 final class KeyboardViewController: UIInputViewController {
+    static let contentHeight: CGFloat = 248
     #if DEBUG
     var isPreview = false
     var previewsColdStart = false
+    var previewTextInput: ((String) -> Void)?
+    var previewDeleteBackward: (() -> Void)?
+
+    func previewWaveform(level: Double) {
+        if waveform.isHidden {
+            record.setImage(UIImage(systemName: "stop.fill"), for: .normal)
+            record.accessibilityLabel = "Stop recording"
+            language.isEnabled = false
+            model.isEnabled = false
+            launch.view.isHidden = true
+            insert.isHidden = true
+        }
+        waveform.update(level: level, recording: true)
+    }
     #endif
     private let language = UIButton(type: .system)
     private let model = UIButton(type: .system)
@@ -17,13 +32,26 @@ final class KeyboardViewController: UIInputViewController {
     private var timer: Timer?
     private var insertedID = ""
     private let poller = KeyboardTranscriptionPoller()
+    private var snapshotTask: Task<Void, Never>?
+    private var meterTimer: Timer?
+    private var meterTask: Task<Void, Never>?
+    private var bridge: [String: String] = [:]
+    private var darkAppearance: Bool?
+    private var controlsState = ""
+
+    override func loadView() {
+        view = UIInputView(frame: .zero, inputViewStyle: .keyboard)
+    }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.clipsToBounds = true
+        inputView?.allowsSelfSizing = true
+        view.clipsToBounds = false
+        view.accessibilityIdentifier = "keyboard-content"
         language.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
         language.accessibilityLabel = "Transcription language"
         model.setImage(UIImage(systemName: "cpu"), for: .normal)
+        model.setPreferredSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 18, weight: .regular), forImageIn: .normal)
         model.accessibilityLabel = "Transcription model"
         for button in [language, model] {
             button.showsMenuAsPrimaryAction = true
@@ -36,6 +64,7 @@ final class KeyboardViewController: UIInputViewController {
         configuration.baseForegroundColor = UIColor(red: 0.89, green: 0.29, blue: 0.04, alpha: 1)
         configuration.cornerStyle = .capsule
         record.configuration = configuration
+        record.setPreferredSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 20, weight: .regular), forImageIn: .normal)
         record.accessibilityIdentifier = "keyboard-record"
         record.addTarget(self, action: #selector(toggleRecording), for: .touchUpInside)
         let recordingControl = UIView()
@@ -63,8 +92,26 @@ final class KeyboardViewController: UIInputViewController {
         let insertWidth = insert.widthAnchor.constraint(equalToConstant: 44)
         insertWidth.priority = .defaultHigh
         insertWidth.isActive = true
-        keyboard.insertText = { [weak self] text in self?.textDocumentProxy.insertText(text) }
-        keyboard.deleteBackward = { [weak self] in self?.textDocumentProxy.deleteBackward() }
+        keyboard.accessibilityIdentifier = "keyboard-typing-surface"
+        keyboard.insertText = { [weak self] text in
+            guard let self else { return }
+            #if DEBUG
+            if isPreview { previewTextInput?(text); return }
+            #endif
+            textDocumentProxy.insertText(text)
+        }
+        keyboard.deleteBackward = { [weak self] in
+            guard let self else { return }
+            #if DEBUG
+            if isPreview { previewDeleteBackward?(); return }
+            #endif
+            textDocumentProxy.deleteBackward()
+        }
+        keyboard.adjustTextPosition = { [weak self] offset in
+            guard let self else { return }
+            textDocumentProxy.adjustTextPosition(byCharacterOffset: offset)
+            updateTypingContext()
+        }
         keyboard.globeButton.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
         let waveformSpace = UIView()
         waveform.translatesAutoresizingMaskIntoConstraints = false
@@ -76,33 +123,46 @@ final class KeyboardViewController: UIInputViewController {
             waveform.bottomAnchor.constraint(equalTo: waveformSpace.bottomAnchor)
         ])
         let toolbar = UIStackView(arrangedSubviews: [language, model, waveformSpace, insert, recordingControl])
+        toolbar.accessibilityIdentifier = "keyboard-toolbar"
         toolbar.spacing = 2
         toolbar.isLayoutMarginsRelativeArrangement = true
         toolbar.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 11, bottom: 0, trailing: 11)
         toolbar.heightAnchor.constraint(equalToConstant: 44).isActive = true
         let stack = UIStackView(arrangedSubviews: [toolbar, keyboard])
         stack.axis = .vertical
-        stack.spacing = 4
+        stack.spacing = 0
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
         NSLayoutConstraint.activate([
-            view.heightAnchor.constraint(equalToConstant: 250),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 5),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -5),
+            view.heightAnchor.constraint(equalToConstant: Self.contentHeight),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 0),
-            stack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -6)
+            stack.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
         updateAppearance()
     }
 
-    override func textDidChange(_ textInput: UITextInput?) { updateAppearance() }
+    override func textDidChange(_ textInput: UITextInput?) {
+        updateAppearance()
+        updateTypingContext()
+    }
+
+    private func updateTypingContext() {
+        #if DEBUG
+        if isPreview { return }
+        #endif
+        keyboard.updateContext(beforeInput: textDocumentProxy.documentContextBeforeInput,
+                               autoCapitalization: textDocumentProxy.autocapitalizationType ?? .sentences,
+                               returnKey: textDocumentProxy.returnKeyType ?? .default)
+    }
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         #if DEBUG
         if isPreview { return }
         #endif
-        keyboard.globeButton.isHidden = !needsInputModeSwitchKey
+        keyboard.setGlobeVisible(needsInputModeSwitchKey)
     }
 
     private func updateAppearance() {
@@ -110,29 +170,38 @@ final class KeyboardViewController: UIInputViewController {
         #if DEBUG
         if isPreview { dark = ProcessInfo.processInfo.arguments.contains("--keyboard-dark-ui-testing") }
         #endif
-        view.backgroundColor = dark ? UIColor(white: 0.10, alpha: 1) : UIColor(red: 0.82, green: 0.83, blue: 0.85, alpha: 1)
+        guard darkAppearance != dark else { return }
+        darkAppearance = dark
+        view.overrideUserInterfaceStyle = dark ? .dark : .light
+        view.backgroundColor = .clear
         view.tintColor = dark ? .white : .black
         keyboard.updateAppearance(dark: dark)
     }
 
     private func updateMenus() {
-        language.setTitle(VerseBridge.language == "auto" ? "AUTO" : VerseBridge.language.uppercased(), for: .normal)
-        language.accessibilityValue = VerseBridge.language
+        let selectedLanguage = bridge["language"] ?? "auto"
+        let selectedModel = bridge["model"] ?? "medium"
+        language.setTitle(selectedLanguage == "auto" ? "AUTO" : selectedLanguage.uppercased(), for: .normal)
+        language.accessibilityValue = selectedLanguage
         language.menu = UIMenu(children: [
             ("auto", "Automatic"), ("en", "English"), ("ar", "Arabic"), ("de", "German"),
             ("fr", "French"), ("es", "Spanish"), ("it", "Italian"), ("pt", "Portuguese"),
             ("tr", "Turkish"), ("zh", "Chinese"), ("ja", "Japanese"), ("ko", "Korean"),
             ("ru", "Russian"), ("hi", "Hindi")
         ].map { code, name in
-            UIAction(title: name, state: VerseBridge.language == code ? .on : .off) { [weak self] _ in
+            UIAction(title: name, state: selectedLanguage == code ? .on : .off) { [weak self] _ in
+                self?.cancelSnapshot()
                 VerseBridge.language = code
+                self?.bridge["language"] = code
                 self?.updateMenus()
             }
         })
-        model.accessibilityValue = VerseBridge.model
+        model.accessibilityValue = selectedModel
         model.menu = UIMenu(children: [("small", "Small"), ("medium", "Medium"), ("large-v3", "Large")].map { code, name in
-            UIAction(title: name, state: VerseBridge.model == code ? .on : .off) { [weak self] _ in
+            UIAction(title: name, state: selectedModel == code ? .on : .off) { [weak self] _ in
+                self?.cancelSnapshot()
                 VerseBridge.model = code
+                self?.bridge["model"] = code
                 self?.updateMenus()
             }
         })
@@ -142,6 +211,7 @@ final class KeyboardViewController: UIInputViewController {
         super.viewWillAppear(animated)
         updateAppearance()
         updateMenus()
+        updateTypingContext()
         #if DEBUG
         if isPreview {
             record.setImage(UIImage(systemName: "waveform"), for: .normal)
@@ -153,7 +223,10 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
         #endif
-        insertedID = VerseBridge.lastInsertedTranscriptID
+        insertedID = ""
+        controlsState = ""
+        insert.isEnabled = false
+        record.isEnabled = false
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in self?.refresh() }
         if let timer { RunLoop.main.add(timer, forMode: .common) }
@@ -163,68 +236,132 @@ final class KeyboardViewController: UIInputViewController {
         super.viewDidDisappear(animated)
         timer?.invalidate()
         timer = nil
+        cancelSnapshot()
         poller.cancel()
+        setMeterActive(false)
+    }
+
+    private func cancelSnapshot() {
+        snapshotTask?.cancel()
+        snapshotTask = nil
     }
 
     private func refresh() {
-        if hasFullAccess { poller.poll() }
+        guard snapshotTask == nil else { return }
+        snapshotTask = Task { [weak self] in
+            let values = await Task.detached(priority: .userInitiated) { VerseBridge.snapshot() }.value
+            guard !Task.isCancelled, let self else { return }
+            snapshotTask = nil
+            let menusChanged = bridge["language"] != values["language"] || bridge["model"] != values["model"]
+            bridge = values
+            if menusChanged { updateMenus() }
+            if hasFullAccess { poller.poll(state: values) }
+            render()
+        }
+    }
+
+    private func value(_ key: String) -> String { bridge[key] ?? "" }
+
+    private func setMeterActive(_ active: Bool) {
+        if active {
+            guard meterTimer == nil else { return }
+            waveform.update(level: 0, recording: true)
+            let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
+                guard let self, meterTask == nil else { return }
+                meterTask = Task { [weak self] in
+                    let level = await Task.detached(priority: .userInitiated) { VerseBridge.readAudioLevel() }.value
+                    guard !Task.isCancelled, let self else { return }
+                    meterTask = nil
+                    waveform.update(level: level, recording: true)
+                }
+            }
+            timer.tolerance = 0.01
+            meterTimer = timer
+            RunLoop.main.add(timer, forMode: .common)
+        } else {
+            guard meterTimer != nil || !waveform.isHidden else { return }
+            meterTimer?.invalidate()
+            meterTimer = nil
+            meterTask?.cancel()
+            meterTask = nil
+            waveform.update(level: 0, recording: false)
+        }
+    }
+
+    private func render() {
         let active = sessionIsActive
-        let recording = active && VerseBridge.isRecording
-        let commandPending = active && VerseBridge.commandID != VerseBridge.acknowledgedCommandID
+        let recording = active && value("isRecording") == "true"
+        let commandPending = active && value("commandID") != value("acknowledgedCommandID")
         let processing = isProcessing
+        setMeterActive(recording)
+        if insertedID.isEmpty { insertedID = value("lastInsertedTranscriptID") }
+        if hasFullAccess, !recording, !processing, !commandPending,
+           DictationInsertionPolicy.canAutomaticallyInsert(
+            transcriptID: value("transcriptID"), text: value("transcriptText"),
+            insertedID: value("lastInsertedTranscriptID"), requestedID: value("insertionTranscriptID"),
+            readyAt: Double(value("insertionReadyAt")) ?? 0, now: Date().timeIntervalSince1970,
+            locallyInsertedID: insertedID
+           ) {
+            textDocumentProxy.insertText(value("transcriptText"))
+            insertedID = value("transcriptID")
+            VerseBridge.lastInsertedTranscriptID = insertedID
+            VerseBridge.insertionTranscriptID = ""
+            bridge["lastInsertedTranscriptID"] = insertedID
+            bridge["insertionTranscriptID"] = ""
+            updateTypingContext()
+        }
+        let hasTranscript = DictationInsertionPolicy.canInsert(transcriptID: value("transcriptID"), text: value("transcriptText"), insertedID: insertedID)
+        let nextControlsState = "\(hasFullAccess)|\(active)|\(recording)|\(commandPending)|\(processing)|\(hasTranscript)|\(value("errorText"))"
+        guard nextControlsState != controlsState else { return }
+        controlsState = nextControlsState
         language.isEnabled = !recording && !processing && !commandPending
         model.isEnabled = language.isEnabled
-        waveform.update(level: VerseBridge.audioLevel, recording: recording)
         let canLaunch = !active && !processing
         record.isHidden = canLaunch
         launch.view.isHidden = !canLaunch
-        if hasFullAccess, !recording, !processing,
-           DictationInsertionPolicy.canAutomaticallyInsert(
-            transcriptID: VerseBridge.transcriptID, text: VerseBridge.transcriptText,
-            insertedID: VerseBridge.lastInsertedTranscriptID, requestedID: VerseBridge.insertionTranscriptID,
-            readyAt: VerseBridge.insertionReadyAt, now: Date().timeIntervalSince1970
-           ) {
-            textDocumentProxy.insertText(VerseBridge.transcriptText)
-            insertedID = VerseBridge.transcriptID
-            VerseBridge.lastInsertedTranscriptID = insertedID
-            VerseBridge.insertionTranscriptID = ""
-        }
-        let hasTranscript = DictationInsertionPolicy.canInsert(transcriptID: VerseBridge.transcriptID, text: VerseBridge.transcriptText, insertedID: insertedID)
         record.configuration?.showsActivityIndicator = processing || commandPending
         record.setImage(processing || commandPending ? nil : UIImage(systemName: recording ? "stop.fill" : "waveform"), for: .normal)
         record.accessibilityLabel = recording ? "Stop recording" : (processing ? "Transcribing" : "Record")
         record.isEnabled = hasFullAccess && active && (recording || !processing) && !commandPending
-        insert.isEnabled = hasFullAccess && hasTranscript && !VerseBridge.isRecording && !processing && !commandPending
+        insert.isEnabled = hasFullAccess && hasTranscript && !recording && !processing && !commandPending
         insert.isHidden = !hasTranscript
-        record.accessibilityHint = VerseBridge.errorText.isEmpty ? "" : VerseBridge.errorText
+        record.accessibilityHint = value("errorText")
     }
 
     private var sessionIsActive: Bool {
         let now = Date().timeIntervalSince1970
-        return VerseBridge.sessionExpiresAt > now && now - VerseBridge.sessionHeartbeatAt < 3
+        return (Double(value("sessionExpiresAt")) ?? 0) > now && now - (Double(value("sessionHeartbeatAt")) ?? 0) < 3
     }
 
     private var isProcessing: Bool {
-        guard VerseBridge.errorText.isEmpty else { return false }
-        return !VerseBridge.pendingJobID.isEmpty || VerseBridge.statusText == "Uploading…" || VerseBridge.statusText == "Transcribing…"
+        guard value("errorText").isEmpty else { return false }
+        return !value("pendingJobID").isEmpty || value("statusText") == "Uploading…" || value("statusText") == "Transcribing…"
     }
 
     @objc private func toggleRecording() {
         guard hasFullAccess, sessionIsActive else { return }
-        guard VerseBridge.isRecording || !isProcessing,
-              VerseBridge.commandID == VerseBridge.acknowledgedCommandID else { return }
-        if !VerseBridge.isRecording { insertedID = VerseBridge.transcriptID }
-        VerseBridge.send(VerseBridge.isRecording ? "stop" : "start")
+        let recording = value("isRecording") == "true"
+        guard recording || !isProcessing,
+              value("commandID") == value("acknowledgedCommandID") else { return }
+        if !recording { insertedID = value("transcriptID") }
+        cancelSnapshot()
+        bridge["commandID"] = VerseBridge.send(recording ? "stop" : "start")
+        render()
         refresh()
     }
 
     @objc private func insertTranscript() {
-        let text = VerseBridge.transcriptText
-        guard insert.isEnabled, !text.isEmpty, VerseBridge.transcriptID != insertedID else { return }
+        let text = value("transcriptText")
+        guard insert.isEnabled, !text.isEmpty, value("transcriptID") != insertedID else { return }
+        cancelSnapshot()
         textDocumentProxy.insertText(text)
-        insertedID = VerseBridge.transcriptID
+        insertedID = value("transcriptID")
         VerseBridge.lastInsertedTranscriptID = insertedID
         VerseBridge.insertionTranscriptID = ""
+        bridge["lastInsertedTranscriptID"] = insertedID
+        bridge["insertionTranscriptID"] = ""
+        render()
+        updateTypingContext()
         refresh()
     }
 }

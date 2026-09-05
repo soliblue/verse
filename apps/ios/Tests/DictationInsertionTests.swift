@@ -17,4 +17,8 @@ final class DictationInsertionTests: XCTestCase {
         XCTAssertFalse(DictationInsertionPolicy.canInsert(transcriptID: "new", text: "", insertedID: "old"))
         XCTAssertFalse(DictationInsertionPolicy.canInsert(transcriptID: "", text: "Hello", insertedID: "old"))
     }
+
+    func testStaleSharedSnapshotCannotRepeatLocalInsertion() {
+        XCTAssertFalse(DictationInsertionPolicy.canAutomaticallyInsert(transcriptID: "new", text: "Hello", insertedID: "old", requestedID: "new", readyAt: 100, now: 101, locallyInsertedID: "new"))
+    }
 }

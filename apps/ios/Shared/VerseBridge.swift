@@ -73,8 +73,17 @@ enum VerseBridge {
     }
 
     static var audioLevel: Double {
-        get { min(1, max(0, Double(read("audioLevel") ?? "0") ?? 0)) }
-        set { write(String(newValue.isFinite ? min(1, max(0, newValue)) : 0), key: "audioLevel") }
+        get { readAudioLevel() }
+        set { publishAudioLevel(newValue) }
+    }
+
+    nonisolated static func readAudioLevel() -> Double {
+        let value = Double(read("audioLevel") ?? "0") ?? 0
+        return value.isFinite ? min(1, max(0, value)) : 0
+    }
+
+    nonisolated static func publishAudioLevel(_ value: Double) {
+        write(String(value.isFinite ? min(1, max(0, value)) : 0), key: "audioLevel")
     }
 
     static var transcriptID: String {
@@ -112,12 +121,56 @@ enum VerseBridge {
         set { write(newValue, key: "language") }
     }
 
-    static func send(_ action: String) {
+    @discardableResult
+    static func send(_ action: String) -> String {
+        let identifier = UUID().uuidString
         commandAction = action
-        commandID = UUID().uuidString
+        commandID = identifier
+        return identifier
     }
 
-    private static func query(_ key: String) -> [String: Any] {
+    nonisolated static func publishTranscriptionResult(id: String, statusCode: Int, state: String?, text: String?, error: String?) {
+        guard read("pendingJobID") == id, !Task.isCancelled else { return }
+        if statusCode == 401 {
+            write("Your device token was not accepted. Check Verse Settings.", key: "errorText")
+        } else if statusCode == 200, state == "completed" {
+            write(text ?? "", key: "transcriptText")
+            write(id, key: "transcriptID")
+            write("", key: "errorText")
+            if read("pendingInsertionJobID") == id {
+                write(id, key: "insertionTranscriptID")
+                write(String(Date().timeIntervalSince1970), key: "insertionReadyAt")
+                write("", key: "pendingInsertionJobID")
+            }
+            write("", key: "pendingJobID")
+            write("", key: "statusText")
+        } else if statusCode == 200, state == "failed" {
+            write(error ?? "Transcription failed. Try again in Verse.", key: "errorText")
+            write("", key: "pendingJobID")
+            write("", key: "pendingInsertionJobID")
+            write("", key: "statusText")
+        }
+    }
+
+    nonisolated static func snapshot() -> [String: String] {
+        var values = query("")
+        values.removeValue(forKey: kSecAttrAccount as String)
+        values[kSecReturnData as String] = true
+        values[kSecReturnAttributes as String] = true
+        values[kSecMatchLimit as String] = kSecMatchLimitAll
+        var result: CFTypeRef?
+        guard SecItemCopyMatching(values as CFDictionary, &result) == errSecSuccess,
+              let items = result as? [[String: Any]] else { return [:] }
+        return items.reduce(into: [:]) { snapshot, item in
+            if let key = item[kSecAttrAccount as String] as? String,
+               let data = item[kSecValueData as String] as? Data,
+               let value = String(data: data, encoding: .utf8) {
+                snapshot[key] = value
+            }
+        }
+    }
+
+    nonisolated private static func query(_ key: String) -> [String: Any] {
         var values: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: "soli.verse.bridge",
@@ -130,7 +183,7 @@ enum VerseBridge {
         return values
     }
 
-    private static func read(_ key: String) -> String? {
+    nonisolated private static func read(_ key: String) -> String? {
         var values = query(key)
         values[kSecReturnData as String] = true
         values[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -140,7 +193,7 @@ enum VerseBridge {
         return String(data: data, encoding: .utf8)
     }
 
-    private static func write(_ value: String, key: String) {
+    nonisolated private static func write(_ value: String, key: String) {
         let values = query(key)
         let attributes: [String: Any] = [
             kSecValueData as String: Data(value.utf8),

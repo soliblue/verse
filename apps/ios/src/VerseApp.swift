@@ -8,9 +8,9 @@ struct VerseApp: App {
     var body: some Scene {
         WindowGroup {
             #if DEBUG
-            if ProcessInfo.processInfo.arguments.contains("--keyboard-ui-testing") {
+            if ProcessInfo.processInfo.arguments.contains("--keyboard-ui-testing") || ProcessInfo.processInfo.arguments.contains("--system-keyboard-ui-testing") {
                 KeyboardPreviewScreen()
-                    .preferredColorScheme(.light)
+                    .preferredColorScheme(ProcessInfo.processInfo.arguments.contains("--keyboard-dark-ui-testing") ? .dark : .light)
             } else {
                 hub
             }

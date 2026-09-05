@@ -14,44 +14,33 @@ final class KeyboardTranscriptionPoller {
     private var lastPoll = Date.distantPast
     private var generation = 0
 
-    func poll() {
+    func poll(state: [String: String]) {
         guard task == nil, Date().timeIntervalSince(lastPoll) >= 0.75 else { return }
-        let id = VerseBridge.pendingJobID
-        guard !id.isEmpty, !VerseBridge.token.isEmpty,
-              let base = URL(string: VerseBridge.baseURL), base.scheme == "https", base.host != nil else { return }
+        let id = state["pendingJobID"] ?? ""
+        let token = state["token"] ?? ""
+        guard !id.isEmpty, !token.isEmpty,
+              let base = URL(string: state["baseURL"] ?? VerseBridge.defaultBaseURL), base.scheme == "https", base.host != nil else { return }
         lastPoll = Date()
         generation += 1
         let currentGeneration = generation
         task = Task { [weak self] in
             defer { if self?.generation == currentGeneration { self?.task = nil } }
             var request = URLRequest(url: base.appendingPathComponent("v1/transcriptions").appendingPathComponent(id))
-            request.setValue("Bearer \(VerseBridge.token)", forHTTPHeaderField: "Authorization")
+            request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
             request.timeoutInterval = 15
             if let (data, response) = try? await URLSession.shared.data(for: request),
-               !Task.isCancelled, VerseBridge.pendingJobID == id,
+               !Task.isCancelled,
                let response = response as? HTTPURLResponse {
-                if response.statusCode == 401 {
-                    VerseBridge.errorText = "Your device token was not accepted. Check Verse Settings."
-                } else if response.statusCode == 200,
-                          let job = try? JSONDecoder().decode(Job.self, from: data), job.id == id {
-                    if job.state == "completed" {
-                        VerseBridge.transcriptText = job.text ?? ""
-                        VerseBridge.transcriptID = id
-                        VerseBridge.errorText = ""
-                        if VerseBridge.pendingInsertionJobID == id {
-                            VerseBridge.insertionTranscriptID = id
-                            VerseBridge.insertionReadyAt = Date().timeIntervalSince1970
-                            VerseBridge.pendingInsertionJobID = ""
-                        }
-                        VerseBridge.pendingJobID = ""
-                        VerseBridge.statusText = ""
-                    } else if job.state == "failed" {
-                        VerseBridge.errorText = job.error ?? "Transcription failed. Try again in Verse."
-                        VerseBridge.pendingJobID = ""
-                        VerseBridge.pendingInsertionJobID = ""
-                        VerseBridge.statusText = ""
-                    }
+                let statusCode = response.statusCode
+                let job = statusCode == 200 ? (try? JSONDecoder().decode(Job.self, from: data)) : nil
+                guard statusCode == 401 || (statusCode == 200 && job?.id == id && (job?.state == "completed" || job?.state == "failed")) else { return }
+                let state = job?.state
+                let text = job?.text
+                let error = job?.error
+                let publication = Task.detached(priority: .userInitiated) {
+                    VerseBridge.publishTranscriptionResult(id: id, statusCode: statusCode, state: state, text: text, error: error)
                 }
+                await withTaskCancellationHandler(operation: { await publication.value }, onCancel: { publication.cancel() })
             }
         }
     }

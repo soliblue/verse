@@ -4,6 +4,7 @@ import UIKit
 final class KeyboardAudioWaveView: UIView {
     private var levels = Array(repeating: 0.0, count: 11)
     private let bars = (0..<11).map { _ in CALayer() }
+    private var lastBounds = CGRect.zero
 
     override init(frame: CGRect) {
         super.init(frame: frame)
@@ -24,6 +25,8 @@ final class KeyboardAudioWaveView: UIView {
 
     override func layoutSubviews() {
         super.layoutSubviews()
+        guard lastBounds != bounds else { return }
+        lastBounds = bounds
         layoutBars(animated: false)
     }
 
@@ -39,8 +42,10 @@ final class KeyboardAudioWaveView: UIView {
                 let animation = CABasicAnimation(keyPath: "bounds.size.height")
                 animation.fromValue = previous
                 animation.toValue = height
-                animation.duration = 0.4
-                animation.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+                animation.duration = 0.1
+                animation.timingFunction = CAMediaTimingFunction(name: .linear)
+                let maximum = Float(window?.windowScene?.screen.maximumFramesPerSecond ?? 60)
+                animation.preferredFrameRateRange = CAFrameRateRange(minimum: min(60, maximum), maximum: maximum, preferred: maximum)
                 bar.add(animation, forKey: "level")
             } else {
                 bar.removeAllAnimations()

@@ -130,6 +130,13 @@ jobs:
           xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --keyboard-cold-ui-testing
           sleep 3
           xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/keyboard-cold-controller-fixture.png"
+          xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --keyboard-wave-ui-testing
+          sleep 2
+          xcrun simctl io "$SMOKE_UDID" recordVideo --codec=h264 "$RUNNER_TEMP/verse-smoke/keyboard-wave-synthetic-10hz.mov" &
+          RECORD_PID=$!
+          sleep 5
+          kill -INT "$RECORD_PID"
+          wait "$RECORD_PID"
           xcrun xcresulttool export attachments \
             --path "$RUNNER_TEMP/verse-ui-tests.xcresult" \
             --output-path "$RUNNER_TEMP/verse-smoke/ui-tests"
@@ -141,6 +148,7 @@ jobs:
           name: verse-ios-evidence
           path: |
             ${{ runner.temp }}/verse-smoke/**/*.png
+            ${{ runner.temp }}/verse-smoke/**/*.mov
             ${{ runner.temp }}/verse-*-tests.xcresult
           if-no-files-found: ignore
 
