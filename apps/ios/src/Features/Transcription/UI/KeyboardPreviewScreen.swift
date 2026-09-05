@@ -20,6 +20,7 @@ private struct KeyboardControllerPreview: UIViewControllerRepresentable {
     func makeUIViewController(context: Context) -> KeyboardViewController {
         let controller = KeyboardViewController()
         controller.isPreview = true
+        controller.previewsColdStart = ProcessInfo.processInfo.arguments.contains("--keyboard-cold-ui-testing")
         return controller
     }
 

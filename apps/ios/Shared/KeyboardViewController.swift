@@ -1,18 +1,21 @@
 #if !VERSE_WIDGET
 import UIKit
+import SwiftUI
 
 final class KeyboardViewController: UIInputViewController {
     #if DEBUG
     var isPreview = false
+    var previewsColdStart = false
     #endif
     private let status = UILabel()
     private let preview = UITextView()
     private let record = UIButton(type: .system)
+    private let launch = UIHostingController(rootView: KeyboardLaunchLink())
+    private let fallback = UILabel()
     private let insert = UIButton(type: .system)
     private let nextKeyboardButton = UIButton(type: .system)
     private var timer: Timer?
     private var insertedID = ""
-    private var openFailed = false
     private let poller = KeyboardTranscriptionPoller()
 
     override func viewDidLoad() {
@@ -58,6 +61,30 @@ final class KeyboardViewController: UIInputViewController {
         record.configuration = recordStyle
         record.accessibilityIdentifier = "keyboard-record"
         record.addTarget(self, action: #selector(toggleRecording), for: .touchUpInside)
+        let recordingControl = UIView()
+        record.translatesAutoresizingMaskIntoConstraints = false
+        recordingControl.addSubview(record)
+        addChild(launch)
+        launch.view.backgroundColor = .clear
+        launch.view.translatesAutoresizingMaskIntoConstraints = false
+        launch.view.isHidden = true
+        recordingControl.addSubview(launch.view)
+        launch.didMove(toParent: self)
+        NSLayoutConstraint.activate([
+            record.leadingAnchor.constraint(equalTo: recordingControl.leadingAnchor),
+            record.trailingAnchor.constraint(equalTo: recordingControl.trailingAnchor),
+            record.topAnchor.constraint(equalTo: recordingControl.topAnchor),
+            record.bottomAnchor.constraint(equalTo: recordingControl.bottomAnchor),
+            launch.view.leadingAnchor.constraint(equalTo: recordingControl.leadingAnchor),
+            launch.view.trailingAnchor.constraint(equalTo: recordingControl.trailingAnchor),
+            launch.view.topAnchor.constraint(equalTo: recordingControl.topAnchor),
+            launch.view.bottomAnchor.constraint(equalTo: recordingControl.bottomAnchor)
+        ])
+        fallback.text = "Or use Dictate with Verse in Control Center."
+        fallback.font = .systemFont(ofSize: 12, weight: .medium)
+        fallback.textColor = status.textColor
+        fallback.isHidden = true
+        fallback.accessibilityIdentifier = "keyboard-launch-fallback"
         insert.setTitle("Insert", for: .normal)
         insert.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
         insert.accessibilityLabel = "Insert transcript"
@@ -92,11 +119,11 @@ final class KeyboardViewController: UIInputViewController {
         let insertWidth = insert.widthAnchor.constraint(equalToConstant: 60)
         insertWidth.priority = .defaultHigh
         insertWidth.isActive = true
-        let row = UIStackView(arrangedSubviews: [nextKeyboardButton, delete, record, enter])
+        let row = UIStackView(arrangedSubviews: [nextKeyboardButton, delete, recordingControl, enter])
         row.spacing = 10
         row.alignment = .center
-        record.heightAnchor.constraint(equalToConstant: 62).isActive = true
-        let stack = UIStackView(arrangedSubviews: [heading, preview, row])
+        recordingControl.heightAnchor.constraint(equalToConstant: 62).isActive = true
+        let stack = UIStackView(arrangedSubviews: [heading, preview, fallback, row])
         stack.axis = .vertical
         stack.spacing = 14
         stack.translatesAutoresizingMaskIntoConstraints = false
@@ -134,10 +161,13 @@ final class KeyboardViewController: UIInputViewController {
         super.viewWillAppear(animated)
         #if DEBUG
         if isPreview {
-            status.text = "Ready"
-            preview.text = "On my way.\nSee you in ten."
+            status.text = previewsColdStart ? "Microphone off" : "Ready"
+            preview.text = previewsColdStart ? "Opens Verse to start the microphone." : "On my way.\nSee you in ten."
             record.setTitle("Speak", for: .normal)
             record.setImage(UIImage(systemName: "mic.fill"), for: .normal)
+            record.isHidden = previewsColdStart
+            launch.view.isHidden = !previewsColdStart
+            fallback.isHidden = !previewsColdStart
             insert.isHidden = true
             return
         }
@@ -159,7 +189,10 @@ final class KeyboardViewController: UIInputViewController {
     private func refresh() {
         if hasFullAccess { poller.poll() }
         let active = sessionIsActive
-        if active { openFailed = false }
+        let canLaunch = !active && hasFullAccess
+        record.isHidden = canLaunch
+        launch.view.isHidden = !canLaunch
+        fallback.isHidden = !canLaunch
         let recording = active && VerseBridge.isRecording
         let commandPending = active && VerseBridge.commandID != VerseBridge.acknowledgedCommandID
         let processing = isProcessing
@@ -197,10 +230,8 @@ final class KeyboardViewController: UIInputViewController {
             status.text = "Ready to insert"
             message = VerseBridge.transcriptText
         } else if !active {
-            status.text = openFailed ? "Open Verse to begin" : "Microphone off"
-            message = openFailed
-                ? "Use Dictate with Verse in Control Center, then return here."
-                : "Opens Verse to start the microphone."
+            status.text = "Microphone off"
+            message = "Opens Verse to start the microphone."
         } else {
             status.text = "Ready"
             message = "Tap Speak to start."
@@ -222,19 +253,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     @objc private func toggleRecording() {
-        guard hasFullAccess else { return }
-        guard sessionIsActive else {
-            if let url = URL(string: "verse://dictate") {
-                extensionContext?.open(url) { [weak self] opened in
-                    guard !opened else { return }
-                    Task { @MainActor in
-                        self?.openFailed = true
-                        self?.refresh()
-                    }
-                }
-            }
-            return
-        }
+        guard hasFullAccess, sessionIsActive else { return }
         guard VerseBridge.isRecording || !isProcessing,
               VerseBridge.commandID == VerseBridge.acknowledgedCommandID else { return }
         if !VerseBridge.isRecording { insertedID = VerseBridge.transcriptID }

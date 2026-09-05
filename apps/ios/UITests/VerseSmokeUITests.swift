@@ -2,6 +2,16 @@ import XCTest
 
 @MainActor
 final class VerseSmokeUITests: XCTestCase {
+    func testColdKeyboardLinkLayout() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--keyboard-cold-ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["keyboard-open-dictation"].firstMatch.waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["keyboard-launch-fallback"].exists)
+        XCTAssertFalse(app.buttons["keyboard-record"].exists)
+        screenshot("keyboard-cold-controller")
+    }
+
     func testActualKeyboardControllerLayout() {
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing", "--keyboard-ui-testing"]

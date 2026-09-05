@@ -19,7 +19,9 @@ struct TranscriptionHubView: View {
                     VStack(spacing: 0) {
                         masthead.padding(.horizontal, 24).padding(.top, 8)
                         ZStack {
-                            Image("CitrusHero").resizable().scaledToFit().accessibilityHidden(true)
+                            Image("CitrusHero").resizable().scaledToFit()
+                                .mask { Rectangle().padding(.vertical, 16).blur(radius: 12) }
+                                .accessibilityHidden(true)
                             recordingControls
                         }
                         .frame(width: min(geometry.size.width, 520), height: min(geometry.size.width, 520))
@@ -34,7 +36,7 @@ struct TranscriptionHubView: View {
                             .accessibilityIdentifier("dictation-return-guidance")
                         }
                         sessionStatus.padding(.horizontal, 24)
-                        TranscriptionHistoryView(store: store)
+                        TranscriptionHistoryView(store: store, minimumHeight: max(190, geometry.size.height - min(geometry.size.width, 520) - 150))
                             .padding(.horizontal, 20).padding(.bottom, 24)
                     }
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)

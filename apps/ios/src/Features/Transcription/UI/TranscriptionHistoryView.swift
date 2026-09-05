@@ -2,6 +2,7 @@ import SwiftUI
 
 struct TranscriptionHistoryView: View {
     @Bindable var store: TranscriptionStore
+    let minimumHeight: CGFloat
     private let green = Color(red: 0, green: 0.39, blue: 0.22)
 
     var body: some View {
@@ -72,9 +73,11 @@ struct TranscriptionHistoryView: View {
             }
             Color.clear.frame(height: 30).accessibilityHidden(true)
         }
-        .padding(.horizontal, 26).padding(.top, 18).padding(.bottom, 24)
+        .frame(minHeight: minimumHeight, alignment: .top)
+        .padding(.leading, 42).padding(.trailing, 26).padding(.top, 18).padding(.bottom, 24)
         .background {
             Image("CitrusReceipt").resizable(capInsets: EdgeInsets(top: 30, leading: 34, bottom: 34, trailing: 30))
+                .mask { Rectangle().padding(8).blur(radius: 6) }
                 .accessibilityHidden(true)
         }
     }
