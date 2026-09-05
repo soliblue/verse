@@ -1,6 +1,6 @@
 # Citrus fidelity
 
-Status: verified, uploading internal release
+Status: complete, build 19 available to internal testers
 
 ## Goal
 
@@ -41,6 +41,7 @@ Native simulator captures of the hub and actual keyboard controller, unit/UI tes
 - 2026-09-05: Replaced unsupported keyboard NSExtensionContext opening with a genuine SwiftUI Link, following KeyboardKit's primary implementation guidance. New URL starts recording immediately and resets navigation to show return guidance. Background Control Center and Action Button remain supported alternatives. Real-device host handoff remains a verification gap.
 - 2026-09-05: First native comparison found visible raster background seams and history text touching the punched paper edge. Feathered image boundaries, increased safe text inset, and made the receipt use remaining screen height. All 29 unit tests and 4 UI tests passed before these visual corrections and the cold-link addition.
 - 2026-09-05: Final CI 33986445188 passed 11 backend tests, 29 native unit tests, and 5 interface tests. Revised hub, ready keyboard, and cold keyboard captures reviewed against the selected reference. Visual QA passed; actual third-party host handoff remains a phone verification gap.
+- 2026-09-05: TestFlight workflow 33986865180 succeeded. App Store Connect independently reports version 0.2.0 build 19 as VALID and IN_BETA_TESTING in Internal. Build 18 was not revoked. Live health and authenticated configuration endpoints returned 200; models remain small, medium, and large-v3.
 
 ## Research
 
