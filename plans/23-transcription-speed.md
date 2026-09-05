@@ -36,6 +36,16 @@ Reduce time after stopping a recording without replacing Medium with a less reli
 - 2026-09-05: Working keyboard choice is concept 1, minimal toolbar and native-style typing keys without predictions. User can override outstanding asynchronous concept choice before release.
 - 2026-09-05: User selected language code and model icon menus on the left, true input-level waveform in the center during recording, and power/waveform/stop icons on the right. This replaces the provisional concept 1 toolbar. No action words or predictions.
 - 2026-09-05: Backend deployed with Medium default and four threads. Twenty backend tests passed. Synthetic end-to-end staging, idempotent finalize, actual Medium inference, and test-job deletion passed on loopback and public HTTPS. Public warm run returned after 6.825s for 5.906s of synthetic audio. Old Python urllib user agent was blocked upstream; named Verse smoke client succeeded. No authentication or tunnel changes.
+- 2026-09-05: Warmup failure now stays inside the worker boundary so a transient spawn failure cannot strand later jobs. Twenty-one backend tests pass. Native CI 33988622050 passed 34 unit tests and six UI tests. Inspected actual light/dark keyboard, cold power control, icon-only hub, Settings, and transcript screenshots; representative evidence saved in assets/release-03.
+- 2026-09-05: Final source commit abd8b52 adds native globe-key visibility and collapsible hidden recovery-control sizing. CI and private TestFlight run 33989160786 are running for version 0.3.0. No second TestFlight build has been requested.
+
+## Device checks after installation
+
+- Cold keyboard power opens Verse and starts capture; manually return to the original app.
+- Ready waveform records directly through the existing active session; Stop inserts the finished transcript once.
+- Live meter moves with microphone volume. Typing, globe switching, model/language menus remain usable.
+- Long recording sends bytes before Stop on the real phone and survives interrupted network access via retained local audio.
+- Actual other-app handoff and background upload are not proven by controller fixtures or simulator tests; confirm on the iPhone 17 Pro.
 
 ## Research
 
