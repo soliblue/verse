@@ -150,7 +150,9 @@ final class TranscriptionStore {
             guard !isUploading, VerseBridge.pendingJobID.isEmpty else {
                 throw SpeechFailure("Wait for your last transcription to finish.")
             }
+            let generation = sessionGeneration
             try await activateKeyboard()
+            guard generation == sessionGeneration else { throw SpeechFailure("Dictation session ended.") }
             VerseBridge.insertionTranscriptID = ""
             try await toggleRecording()
         }
@@ -177,7 +179,11 @@ final class TranscriptionStore {
                 for await state in observedActivity.activityStateUpdates {
                     if state == .dismissed || state == .ended {
                         guard !Task.isCancelled else { return }
-                        self?.perform { [weak self] in try await self?.endSession() }
+                        self?.perform { [weak self] in
+                            if self?.activity?.id == observedActivity.id {
+                                try await self?.endSession()
+                            }
+                        }
                         return
                     }
                 }

@@ -10,11 +10,13 @@ A private iPhone transcription app. Record a message, share an audio file, or di
 - Enter your device token once in Settings. The server address is preconfigured.
 - History is cached for offline reading. Recordings that fail to upload remain on the device for retry.
 
-To use the keyboard, add Verse in iPhone Settings → General → Keyboard → Keyboards, then enable Full Access. Activate a five-minute keyboard session in Verse before switching apps. Select Verse with the globe, tap Speak, Stop, then Insert transcript.
+Open Verse once, enter the device token and allow microphone access. Add Verse in iPhone Settings → General → Keyboard → Keyboards, then enable Full Access. Allow Live Activities for Verse.
 
-iOS does not let keyboard extensions access the microphone directly. The main app keeps an explicitly activated audio session alive; idle audio is discarded. No audio is saved until recording starts. Secure text fields and some apps do not allow third-party keyboards. Opening Verse directly from a keyboard depends on host support; manually switching to Verse always works.
+On iOS 18 or later, add the Verse dictation control in Control Center, or assign the Toggle dictation shortcut to your Action Button. While typing in another app, trigger the control once to record and again to transcribe. Select the Verse keyboard to receive the result. Fresh dictations insert automatically once; older results offer an Insert button. Siri also supports “Dictate with Verse”.
 
-Shared uploads continue on the server after acceptance. If iOS suspends the app or extension, reopen Verse to see the result. Completion notifications are best effort while the app can poll, not remote push notifications.
+iOS does not let keyboard extensions access the microphone directly. The audio-recording intent starts the app process without opening its interface and keeps a visible Live Activity. The microphone stays ready for 15 minutes by default, configurable to 5 or 60 minutes. Idle audio is discarded. Tap End session in the Live Activity to turn it off immediately. A manual Start keyboard session action remains available inside Verse, including on iOS 17. Secure text fields and some apps do not allow third-party keyboards. Universal direct microphone activation from the keyboard itself is not supported.
+
+Shared uploads continue on the server after acceptance. The keyboard polls an individual pending job directly, so it can receive a result even if iOS suspends the main app. Completion notifications are best effort while the app can poll, not remote push notifications.
 
 ## Server
 
@@ -30,7 +32,7 @@ The server binds to localhost port 8787 behind the existing private-token HTTPS 
 python3 -m unittest speech_server.test_server -v
 ```
 
-GitHub CI builds the app and extensions and runs simulator tests. The manually triggered TestFlight workflow signs all three targets and uploads to the existing `soli.verse` app. Credentials remain in GitHub secrets.
+GitHub CI builds the app and extensions and runs simulator tests. The manually triggered TestFlight workflow signs all four targets and uploads to the existing `soli.verse` app. Credentials remain in GitHub secrets.
 
 ## Layout
 
@@ -38,6 +40,7 @@ GitHub CI builds the app and extensions and runs simulator tests. The manually t
 apps/ios/src/Features/Transcription/   App UI and logic
 apps/ios/Keyboard/                    Dictation keyboard
 apps/ios/Share/                       Audio share extension
+apps/ios/Widget/                      Live Activity and dictation control
 apps/ios/Shared/                      Shared Keychain bridge
 speech_server/                       Queue, HTTP API, local Whisper
 plans/18-verse-transcription.md       Implementation record
