@@ -68,8 +68,9 @@ jobs:
             -project apps/ios/Verse.xcodeproj \
             -scheme Verse \
             -configuration Debug \
-            -destination 'generic/platform=iOS Simulator' \
+            -destination "platform=iOS Simulator,id=$SMOKE_UDID" \
             -derivedDataPath "$RUNNER_TEMP/verse-build" \
+            ONLY_ACTIVE_ARCH=YES \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
