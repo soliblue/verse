@@ -370,12 +370,28 @@ final class KeyboardViewController: UIInputViewController {
 }
 
 private final class KeyboardInputView: UIInputView {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        if bounds.width == 0, window != nil { frame.size.width = hostWidth }
+        invalidateIntrinsicContentSize()
+    }
+
     override var intrinsicContentSize: CGSize {
         CGSize(width: UIView.noIntrinsicMetric, height: KeyboardViewController.contentHeight)
     }
 
     override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {
-        CGSize(width: targetSize.width, height: KeyboardViewController.contentHeight)
+        let width = targetSize.width > 0 && targetSize.width.isFinite ? targetSize.width : hostWidth
+        return CGSize(width: width, height: KeyboardViewController.contentHeight)
+    }
+
+    private var hostWidth: CGFloat {
+        var ancestor = superview
+        while let view = ancestor {
+            if view.bounds.width > 0 { return view.bounds.width }
+            ancestor = view.superview
+        }
+        return window?.bounds.width ?? bounds.width
     }
 }
 #endif
