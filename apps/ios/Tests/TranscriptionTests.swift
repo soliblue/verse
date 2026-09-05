@@ -27,10 +27,11 @@ final class TranscriptionTests: XCTestCase {
         let samples = try XCTUnwrap(buffer.floatChannelData?[0])
         for frame in 0..<48_000 { samples[frame] = Float(sin(Double(frame) * 440 * 2 * .pi / 48_000)) * 0.2 }
         try writer.begin(url: url, format: format)
-        writer.append(buffer)
+        for _ in 0..<10 { writer.append(buffer) }
         try writer.finish()
         let file = try AVAudioFile(forReading: url)
-        XCTAssertGreaterThan(file.length, 40_000)
-        XCTAssertLessThan(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max, 50_000)
+        XCTAssertEqual(file.fileFormat.streamDescription.pointee.mFormatID, kAudioFormatMPEG4AAC)
+        XCTAssertGreaterThan(file.length, 450_000)
+        XCTAssertLessThan(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max, 250_000)
     }
 }

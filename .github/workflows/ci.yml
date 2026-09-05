@@ -53,24 +53,29 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Build without signing
-        run: |
-          set -o pipefail
-          xcodebuild build \
-            -project apps/ios/Verse.xcodeproj \
-            -scheme Verse \
-            -configuration Release \
-            -destination 'generic/platform=iOS Simulator' \
-            -derivedDataPath "$RUNNER_TEMP/verse-build" \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
-
-      - name: Select simulator
+      - name: Start simulator
         run: |
           IOS_RUNTIME="$(xcrun simctl list runtimes --json | python3 -c 'import json,sys; rows=[x for x in json.load(sys.stdin)["runtimes"] if x["isAvailable"] and x["name"].startswith("iOS")]; print(max(rows, key=lambda x: tuple(map(int, x["version"].split("."))))["identifier"])')"
           SMOKE_UDID="$(xcrun simctl list devices available --json | python3 -c 'import json,sys; print(next(x["udid"] for x in json.load(sys.stdin)["devices"][sys.argv[1]] if x["name"].startswith("iPhone") and x["state"] == "Shutdown"))' "$IOS_RUNTIME")"
           echo "SMOKE_UDID=$SMOKE_UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$SMOKE_UDID"
+
+      - name: Build without signing
+        id: build
+        run: |
+          set -o pipefail
+          xcodebuild build \
+            -project apps/ios/Verse.xcodeproj \
+            -scheme Verse \
+            -configuration Debug \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath "$RUNNER_TEMP/verse-build" \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Wait for simulator
+        timeout-minutes: 6
+        run: |
           xcrun simctl bootstatus "$SMOKE_UDID" -b
 
       - name: Run unit tests
@@ -91,6 +96,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO
 
       - name: Run UI tests
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 10
         run: |
           xcodebuild test \
@@ -108,6 +114,7 @@ jobs:
             CODE_SIGNING_REQUIRED=NO
 
       - name: Capture smoke screenshots
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         run: |
           APP="$RUNNER_TEMP/verse-build/Build/Products/Debug-iphonesimulator/Verse.app"
           mkdir -p "$RUNNER_TEMP/verse-smoke"

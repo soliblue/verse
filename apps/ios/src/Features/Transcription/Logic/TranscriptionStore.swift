@@ -87,6 +87,7 @@ final class TranscriptionStore {
 
     func checkConnection() async throws {
         guard !demo else { return }
+        error = nil
         models = try await api.configuration().models
         try await refresh()
     }

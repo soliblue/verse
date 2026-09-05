@@ -27,6 +27,7 @@ struct SpeechSettingsView: View {
                         }
                     }.disabled(checking)
                     if !connectionStatus.isEmpty { Label(connectionStatus, systemImage: "checkmark.circle").foregroundStyle(.secondary) }
+                    if let error = store.error { Text(error).font(.footnote).foregroundStyle(.red) }
                 } footer: { Text("Connected to verse.soli.blue. Your token stays in this device’s Keychain.") }
 
                 Section {
