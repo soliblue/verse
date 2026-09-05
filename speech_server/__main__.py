@@ -2,7 +2,7 @@ import os
 import signal
 import threading
 
-from db.environment import load_environment
+from speech_server.environment import load_environment
 from speech_server.config import Config
 from speech_server.http import Server
 

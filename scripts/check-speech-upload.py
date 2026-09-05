@@ -7,7 +7,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from uuid import uuid4
 
-from db.environment import load_environment
+from speech_server.environment import load_environment
 
 
 parser = argparse.ArgumentParser()

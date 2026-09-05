@@ -2,7 +2,7 @@
 
 Private CPU transcription with faster-whisper. Install `requirements-speech.txt` and system `ffmpeg`. Download models before enabling them. Inference never downloads models and uses no paid service.
 
-Run `python -m speech_server`. The process loads the existing project environment files. `VERSE_DEVICE_SECRET` is mandatory. Bind defaults to localhost port 8787; expose it through the existing HTTPS tunnel.
+Run `python -m speech_server`. The process loads the project-root `.env` without overriding existing environment variables. `VERSE_DEVICE_SECRET` is mandatory. Bind defaults to localhost port 8787; expose it through the existing HTTPS tunnel.
 
 Environment:
 
@@ -41,7 +41,7 @@ Jobs contain `id`, `filename`, `state`, `model`, `language`, `detected_language`
 
 Limits: 50 MB per upload, one hour per recording, 5 GB of retained audio, 20 queued/active jobs, two concurrent uploads, 16 HTTP connections, one inference worker. Uploads preserve at least 512 MB of free disk space. Original audio is private and retained until deletion. Requests do not log tokens, filenames, or text. Pending jobs survive restart; interrupted work returns to the queue. Transcription runs in a subprocess for cancellation and time limits. Audio decoding is restricted to media containers, with no network protocols or playlists.
 
-Tests: `python -m unittest speech_server.test_server -v`.
+Tests: `make check`.
 
 The inference subprocess keeps one INT8 model loaded between jobs, releasing it after five idle minutes or when the model changes. Uploads can warm the model before recording stops. Beam size 5 and whole-recording context are unchanged. Each result records `inference_seconds` without logging audio or transcript content.
 

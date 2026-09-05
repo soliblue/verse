@@ -1,86 +1,32 @@
 # Verse
 
-## Current product: transcription
+Private, single-user iPhone transcription app. Keep `soli.verse` and its existing internal TestFlight distribution. No account, paid provider, analytics, or public submission.
 
-As of 2026-09-05, Verse is a private Whisper transcription app, not a reader. This section supersedes the legacy product and architecture below.
+## Structure
 
-- Main app: `apps/ios/src/Features/Transcription`, with recording history, transcript detail, and minimal settings.
-- Extensions: `apps/ios/Keyboard`, `apps/ios/Share`, and a shared Keychain bridge in `apps/ios/Shared`.
-- Backend: `speech_server`, local faster-whisper, durable SQLite jobs, private audio files, one bounded inference worker. No provider API.
-- Preserve `soli.verse` and the existing TestFlight app. User enters a device token; no account or login flow.
-- Keyboard microphone sessions are explicitly activated in the main app, limited to five minutes, and discard idle audio.
-- Nightjar, event jobs, and reader automation stay disabled. Legacy content and source are retained but not active product surfaces.
-- See `plans/18-verse-transcription.md` and `speech_server/README.md` for current contracts.
+- `apps/ios/src/Features/Transcription/{UI,Logic}`: recording, import, history, playback, settings.
+- `apps/ios/{Keyboard,Share,Widget,Shared}`: typing and dictation keyboard, audio sharing, Live Activities, controls, shared Keychain state.
+- `speech_server`: authenticated HTTP API, SQLite jobs, private audio, one bounded local faster-whisper worker.
+- `scripts`: service template, upload verification, model benchmarking.
 
-## Legacy reader reference
+## Contracts
 
-Verse is a private, single-user iOS reader. It gathers material matching the operator's interests, prepares a finite morning edition on a VPS while they sleep, and supports deeper research when useful. It is a personal tool, not a SaaS and not intended for public App Store release.
+- Preserve streaming AAC uploads, integrity checks, idempotent retries, local pending recordings, and single-insertion guards.
+- Default recognition is Medium. No provider API or automatic model downloads.
+- Keyboard extensions cannot record directly. The app owns capture; active sessions permit keyboard control. Cold power opens the app. Ready sessions default to 15 minutes, selectable 5/15/60. Idle audio is discarded.
+- Keep credentials in root `.env`, Keychain, or GitHub secrets. Never commit them. Current recordings and SQLite data under `db/` are private and must survive cleanup/deployment.
+- The VPS service binds to loopback behind the existing HTTPS tunnel and authenticates with a device token. Do not alter shared infrastructure or access controls.
+- Reader, events, and Nightjar are retired. Do not restore their automations.
 
-## Product
+## Working rules
 
-- Cover high-level items plus optional deep dives.
-- Initial interests include audiovisual techniques, new papers from selected labs, and relevant events in Berlin.
-- A daily edition should contain roughly 8 to 12 high-signal items, not an infinite feed.
-- Every item keeps its original link, source, publication date, citations, and a short explanation of why it was selected.
-- Feedback includes saved, seen, more like this, less like this, too basic, and request deep dive.
-- Deep-dive requests may be queued for the next nightly run.
-- The working product name is Verse. The overnight worker may be called Nightjar.
+- Be concise. Less is more; preserve useful responsibility boundaries.
+- UI is presentation; loading and state belong in logic. Prefer native controls, async/await, and Observation.
+- No inline comments, docstrings, decorative headers, em dashes, speculative abstractions, or new try-catch blocks.
+- Root sessions integrate and verify. Delegate independent work when useful.
+- Keep a concise numbered plan for nontrivial changes, including contracts and verification.
+- Preserve unrelated changes. Commit, push, or distribute only when asked.
+- Run `make check`, then GitHub CI for native unit tests, UI tests, builds, and screenshot evidence. Device-only microphone handoff requires real-phone verification; simulator fixtures do not prove it.
+- TestFlight upload success is not availability. Verify Apple processing and internal beta state before claiming a release is ready.
 
-## v0
-
-- Native SwiftUI app with Articles, Calendar, Places, Library, Topics, and minimal Settings surfaces.
-- Articles shows the current edition. Story detail shows the summary, citations, source links, selection reason, feedback, and deep-dive state.
-- Library contains saved items and previous editions.
-- Topics is one editable Markdown preferences document covering interests, labs, artists, sources, venues, and exclusions.
-- The app fetches prepared data from the VPS and remains readable offline through a local cache.
-- No registration, login UI, user table, multi-tenancy, analytics, ads, social features, SEO, or public publishing work.
-- No push notifications in v0. Refresh when the app opens and on manual request.
-- Private access can use Tailscale or one device secret. Never commit credentials.
-
-## Architecture
-
-```text
-apps/ios/             Native reader
-server/               Small private read and feedback API
-db/                   SQLite schema and migrations
-etl/                   Collect, normalize, deduplicate, rank, and write
-prompts/               Versioned editor, summary, and deep-dive prompts
-scripts/               Scheduler, preflight, and systemd units
-plans/                 Numbered implementation plans
-runs/                  Ignored nightly logs and artifacts
-```
-
-- SQLite is the source of truth. Serve materialized edition payloads rather than asking the model during reads.
-- Keep source collection separate from ranking and writing. Jobs must be idempotent and resumable.
-- The nightly VPS timer uses a lock, preflight, bounded runtime, inspectable result files, and a fresh agent run.
-- Prefer local agent CLIs for LLM work: `codex exec`, or `claude -p` when explicitly useful. Keep the provider replaceable. Do not require provider API keys for v0.
-- Use explicit user interests, source quality, novelty, and feedback for ranking. Deduplicate before model work.
-- Store source evidence and model provenance with generated text. Never invent citations.
-- A failed enrichment must not corrupt the previous good edition.
-
-## iOS
-
-- Follow `apps/ios/src/{Core,Features}` with `Features/<Name>/{UI,Logic}`.
-- Use `TabView` with a `NavigationStack` per tab, modern Observation, async/await, and SwiftData caching.
-- UI files contain presentation. Logic files contain loading, filtering, and state. Keep one primary type per file.
-- Prefer small views, native controls, explicit loading and error states, and zero dependencies until a dependency clearly earns its place.
-- GitHub Actions owns signing-free builds, simulator smoke launches, and screenshot artifacts. Private TestFlight or ad-hoc signing can be added when the operator provides keys. Never submit publicly unless explicitly requested.
-
-## Working Rules
-
-- Less is more. If it is not load-bearing, remove it.
-- Root sessions act as lead. Subagents are allowed and preferred when delegation materially helps. Integrate by reading files and command output, not by trusting summaries alone.
-- For nontrivial work, create or update `plans/NN-slug.md` with goal, status, contracts, decisions, and an append-only log.
-- No inline comments, docstrings, decorative headers, em dashes, or large mixed-responsibility files.
-- No try-catch unless explicitly requested. Let unexpected errors propagate to the job boundary and be recorded there.
-- Avoid single-use helpers and premature shared packages. Add shared code only after a second real use.
-- Prefer predictable folders, explicit imports, happy-path structure, and type-safe contracts.
-- No absolute filesystem paths in checked-in files.
-- Secrets stay in environment files, system credential storage, GitHub secrets, or the iOS Keychain. Commit only examples with fake values.
-- Fix malformed data in collectors, normalization, or migrations, not in the read path. Every correction must be reproducible on the next refresh.
-- Preserve unrelated operator changes. Never deploy, distribute, rotate keys, or commit unless explicitly asked.
-- Verify proportionally: formatter and unit checks locally, then the GitHub Actions iOS build and simulator smoke test.
-
-## Machtblick Reference
-
-Machtblick is the implementation reference, not a runtime dependency. Read `../machtblick/AGENTS.md` and reuse patterns from `../machtblick/apps/ios`, `../machtblick/.github/workflows/ios-build.yml`, `../machtblick/scripts/scheduled-bundestag-auto-refresh`, and `../machtblick/scripts/codex_app_thread.py`. This file wins when Verse differs, especially around single-user scope, private distribution, SQLite simplicity, and the absence of publishing requirements.
+See `README.md` for setup and `speech_server/README.md` for the API contract.

@@ -13,9 +13,5 @@ __pycache__/
 DerivedData/
 *.xcuserstate
 xcuserdata/
-runs/*
-!runs/.gitkeep
-tmp/
-var/
 db/recordings/
 models/
