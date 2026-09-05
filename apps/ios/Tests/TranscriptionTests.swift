@@ -28,10 +28,21 @@ final class TranscriptionTests: XCTestCase {
         for frame in 0..<48_000 { samples[frame] = Float(sin(Double(frame) * 440 * 2 * .pi / 48_000)) * 0.2 }
         try writer.begin(url: url, format: format)
         for _ in 0..<10 { writer.append(buffer) }
+        XCTAssertGreaterThan(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0, 32 * 1024)
         try writer.finish()
         let file = try AVAudioFile(forReading: url)
         XCTAssertEqual(file.fileFormat.streamDescription.pointee.mFormatID, kAudioFormatMPEG4AAC)
         XCTAssertGreaterThan(file.length, 450_000)
         XCTAssertLessThan(try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? Int.max, 250_000)
+    }
+
+    func testRecordingUploadIdentifierSurvivesRetry() {
+        let id = "ABCD1234-5678-4ABC-9123-123456789ABC"
+        let url = URL(fileURLWithPath: "Recording-\(id).m4a")
+        XCTAssertEqual(SpeechAPI.recordingIdentifier(for: url), "abcd123456784abc9123123456789abc")
+        let restored = URL(fileURLWithPath: "PendingAudio/Recording-\(id).m4a")
+        XCTAssertEqual(SpeechAPI.recordingIdentifier(for: restored), SpeechAPI.recordingIdentifier(for: url))
+        XCTAssertNil(SpeechAPI.recordingIdentifier(for: URL(fileURLWithPath: "Imported.m4a")))
+        XCTAssertNil(SpeechAPI.recordingIdentifier(for: URL(fileURLWithPath: "Recording-invalid.m4a")))
     }
 }

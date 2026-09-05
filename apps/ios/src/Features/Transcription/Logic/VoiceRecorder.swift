@@ -6,10 +6,12 @@ import Observation
 final class VoiceRecorder {
     private let engine = AVAudioEngine()
     private let writer = CaptureWriter()
-    private var fileURL: URL?
+    private(set) var fileURL: URL?
     private(set) var isActive = false
     private(set) var isRecording = false
     private(set) var startedAt = Date()
+
+    var audioLevel: Double { isRecording ? writer.audioLevel : 0 }
 
     func activate() async throws {
         guard !isActive else { return }

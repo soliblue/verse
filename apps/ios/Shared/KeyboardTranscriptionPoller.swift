@@ -15,7 +15,7 @@ final class KeyboardTranscriptionPoller {
     private var generation = 0
 
     func poll() {
-        guard task == nil, Date().timeIntervalSince(lastPoll) >= 2 else { return }
+        guard task == nil, Date().timeIntervalSince(lastPoll) >= 0.75 else { return }
         let id = VerseBridge.pendingJobID
         guard !id.isEmpty, !VerseBridge.token.isEmpty,
               let base = URL(string: VerseBridge.baseURL), base.scheme == "https", base.host != nil else { return }

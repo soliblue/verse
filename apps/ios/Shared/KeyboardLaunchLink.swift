@@ -5,14 +5,14 @@ struct KeyboardLaunchLink: View {
     var body: some View {
         if let destination = URL(string: "verse://dictate") {
             Link(destination: destination) {
-                Label("Speak", systemImage: "mic.fill")
-                    .font(.system(size: 23, weight: .semibold))
+                Image(systemName: "power")
+                    .font(.system(size: 21, weight: .medium))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .foregroundStyle(Color(red: 0.12, green: 0.16, blue: 0.10))
-                    .background(Color(red: 1, green: 0.97, blue: 0.85), in: Capsule())
+                    .foregroundStyle(Color(red: 0.89, green: 0.29, blue: 0.04))
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("keyboard-open-dictation")
+            .accessibilityLabel("Activate dictation")
             .accessibilityHint("Opens Verse and starts recording")
         }
     }

@@ -1,6 +1,8 @@
 import argparse
 import json
 import subprocess
+import sys
+import time
 from pathlib import Path
 
 
@@ -16,25 +18,30 @@ def inspect_audio(path):
     return float(duration) if duration else None
 
 
+def transcribe(model, audio, output, language, maximum_duration):
+    started = time.monotonic()
+    decoded = output.with_suffix(".wav")
+    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-xerror", "-protocol_whitelist", "file,pipe", "-format_whitelist", FORMATS, "-i", str(audio), "-map", "0:a:0", "-vn", "-t", str(maximum_duration + 1), "-ac", "1", "-ar", "16000", "-y", str(decoded)], check=True, timeout=120, capture_output=True)
+    duration = inspect_audio(decoded)
+    if not duration or duration > maximum_duration:
+        raise ValueError("Audio must contain between 0 and 3600 seconds")
+    segments, info = model.transcribe(str(decoded), language=None if language == "auto" else language, vad_filter=True, beam_size=5)
+    rows = [dict(start=segment.start, end=segment.end, text=segment.text.strip()) for segment in segments]
+    temporary = output.with_suffix(".pending")
+    temporary.write_text(json.dumps(dict(text=" ".join(row["text"] for row in rows), segments=rows, detected_language=info.language, duration_seconds=duration, inference_seconds=round(time.monotonic() - started, 3))))
+    temporary.replace(output)
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("audio", type=Path)
-    parser.add_argument("output", type=Path)
     parser.add_argument("model", type=Path)
-    parser.add_argument("language")
-    parser.add_argument("duration", type=int)
     parser.add_argument("threads", type=int)
     args = parser.parse_args()
-    decoded = args.output.with_suffix(".wav")
-    subprocess.run(["ffmpeg", "-nostdin", "-v", "error", "-xerror", "-protocol_whitelist", "file,pipe", "-format_whitelist", FORMATS, "-i", str(args.audio), "-map", "0:a:0", "-vn", "-t", str(args.duration + 1), "-ac", "1", "-ar", "16000", "-y", str(decoded)], check=True, timeout=120, capture_output=True)
-    duration = inspect_audio(decoded)
-    if not duration or duration > args.duration:
-        raise ValueError("Audio must contain between 0 and 3600 seconds")
     from faster_whisper import WhisperModel
     model = WhisperModel(str(args.model), device="cpu", compute_type="int8", cpu_threads=args.threads, num_workers=1, local_files_only=True)
-    segments, info = model.transcribe(str(decoded), language=None if args.language == "auto" else args.language, vad_filter=True, beam_size=5)
-    rows = [dict(start=segment.start, end=segment.end, text=segment.text.strip()) for segment in segments]
-    args.output.write_text(json.dumps(dict(text=" ".join(row["text"] for row in rows), segments=rows, detected_language=info.language, duration_seconds=duration)))
+    for line in sys.stdin:
+        request = json.loads(line)
+        transcribe(model, Path(request["audio"]), Path(request["output"]), request["language"], request["maximum_duration"])
 
 
 if __name__ == "__main__":

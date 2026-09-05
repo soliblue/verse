@@ -72,6 +72,11 @@ enum VerseBridge {
         set { write(String(newValue), key: "isRecording") }
     }
 
+    static var audioLevel: Double {
+        get { min(1, max(0, Double(read("audioLevel") ?? "0") ?? 0)) }
+        set { write(String(newValue.isFinite ? min(1, max(0, newValue)) : 0), key: "audioLevel") }
+    }
+
     static var transcriptID: String {
         get { read("transcriptID") ?? "" }
         set { write(newValue, key: "transcriptID") }
@@ -98,7 +103,7 @@ enum VerseBridge {
     }
 
     static var model: String {
-        get { read("model") ?? "small" }
+        get { read("model") ?? "medium" }
         set { write(newValue, key: "model") }
     }
 

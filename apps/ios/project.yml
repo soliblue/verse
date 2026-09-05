@@ -41,7 +41,7 @@ targets:
         INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.productivity
         INFOPLIST_KEY_UIApplicationSceneManifest_Generation: true
         INFOPLIST_KEY_UILaunchScreen_Generation: true
-        MARKETING_VERSION: 0.2.0
+        MARKETING_VERSION: 0.3.0
         PRODUCT_BUNDLE_IDENTIFIER: soli.verse
         PRODUCT_NAME: Verse
         SWIFT_APPROACHABLE_CONCURRENCY: true
@@ -60,7 +60,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: soli.verse.controls
         GENERATE_INFOPLIST_FILE: true
-        MARKETING_VERSION: 0.2.0
+        MARKETING_VERSION: 0.3.0
         CURRENT_PROJECT_VERSION: 1
         APPLICATION_EXTENSION_API_ONLY: true
         SKIP_INSTALL: true
@@ -79,7 +79,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: soli.verse.keyboard
         CODE_SIGN_ENTITLEMENTS: Verse.entitlements
         GENERATE_INFOPLIST_FILE: true
-        MARKETING_VERSION: 0.2.0
+        MARKETING_VERSION: 0.3.0
         CURRENT_PROJECT_VERSION: 1
         APPLICATION_EXTENSION_API_ONLY: true
         SKIP_INSTALL: true
@@ -97,7 +97,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: soli.verse.share
         CODE_SIGN_ENTITLEMENTS: Verse.entitlements
         GENERATE_INFOPLIST_FILE: true
-        MARKETING_VERSION: 0.2.0
+        MARKETING_VERSION: 0.3.0
         CURRENT_PROJECT_VERSION: 1
         APPLICATION_EXTENSION_API_ONLY: true
         SKIP_INSTALL: true

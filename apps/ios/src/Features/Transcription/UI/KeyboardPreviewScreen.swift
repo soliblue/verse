@@ -10,7 +10,7 @@ struct KeyboardPreviewScreen: View {
                 .padding()
             Spacer()
             KeyboardControllerPreview()
-                .frame(height: 260)
+                .frame(height: 270)
         }
         .background(Color.white)
     }

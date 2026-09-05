@@ -27,6 +27,7 @@ final class TranscriptionStore {
     private var activity: Activity<DictationActivityAttributes>?
     private var activityTask: Task<Void, Never>?
     private var sessionGeneration = 0
+    private var recordingUpload: RecordingUpload?
 
     init() {
         if VerseBridge.token.isEmpty {
@@ -34,6 +35,7 @@ final class TranscriptionStore {
         }
         VerseBridge.sessionExpiresAt = 0
         VerseBridge.isRecording = false
+        VerseBridge.audioLevel = 0
         VerseBridge.acknowledgedCommandID = VerseBridge.commandID
         if demo {
             items = [.preview]
@@ -74,6 +76,7 @@ final class TranscriptionStore {
     }
 
     func reportFailure(_ failure: Error) async {
+        VerseBridge.audioLevel = 0
         error = failure.localizedDescription
         VerseBridge.errorText = failure.localizedDescription
         VerseBridge.statusText = ""
@@ -133,6 +136,7 @@ final class TranscriptionStore {
                 throw SpeechFailure("Dictation session ended.")
             }
             try recorder.begin()
+            if let url = recorder.fileURL { recordingUpload = RecordingUpload(url: url) }
             VerseBridge.isRecording = true
             VerseBridge.errorText = ""
             await updateActivity("recording")
@@ -221,8 +225,10 @@ final class TranscriptionStore {
         VerseBridge.sessionExpiresAt = 0
         VerseBridge.sessionHeartbeatAt = 0
         let result = Result { try recorder.finish() }
+        if case .failure = result { recordingUpload?.cancel(); recordingUpload = nil }
         recorder.deactivate()
         VerseBridge.isRecording = false
+        VerseBridge.audioLevel = 0
         await endActivity()
         let url = try result.get()
         if let url { try await upload(url, keyboard: true) }
@@ -231,7 +237,9 @@ final class TranscriptionStore {
     func finishRecording() async throws {
         let keyboard = keyboardExpiresAt != nil
         let result = Result { try recorder.finish() }
+        if case .failure = result { recordingUpload?.cancel(); recordingUpload = nil }
         VerseBridge.isRecording = false
+        VerseBridge.audioLevel = 0
         if keyboardExpiresAt == nil { recorder.deactivate() }
         await updateActivity("transcribing")
         let url = try result.get()
@@ -262,7 +270,12 @@ final class TranscriptionStore {
             endUploadBackgroundTask()
             loadPendingAudio()
         }
-        let item = try await api.upload(url)
+        let streaming = recordingUpload?.url == url ? recordingUpload : nil
+        let prepared = try await streaming?.finish()
+        let item: Transcription
+        if let prepared { item = prepared }
+        else { item = try await api.upload(url) }
+        if streaming != nil { recordingUpload = nil }
         items.insert(item, at: 0)
         VerseBridge.statusText = "Transcribing…"
         VerseBridge.pendingJobID = item.id
@@ -290,6 +303,7 @@ final class TranscriptionStore {
     }
 
     private func tick() {
+        if recorder.isRecording { VerseBridge.audioLevel = recorder.audioLevel }
         if keyboardExpiresAt != nil, Date().timeIntervalSince1970 - VerseBridge.sessionHeartbeatAt >= 1 {
             VerseBridge.sessionHeartbeatAt = Date().timeIntervalSince1970
         }

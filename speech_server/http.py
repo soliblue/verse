@@ -12,6 +12,7 @@ from uuid import uuid4
 from speech_server.engine import inspect_audio
 from speech_server.store import Store
 from speech_server.worker import Worker
+from speech_server.uploads import CHUNK_BYTES, UploadError, Uploads
 
 
 LANGUAGES = ["auto", "en", "de", "ar", "fr", "es", "it", "pt", "nl", "tr", "ru", "uk", "zh", "ja", "ko", "hi", "pl", "sv", "da", "no", "fi", "el", "he", "fa", "ur", "id", "vi", "th"]
@@ -37,6 +38,8 @@ class Server(ThreadingHTTPServer):
         self.reservation_lock = threading.Lock()
         self.reserved_bytes = 0
         self.reserved_jobs = 0
+        self.uploads = Uploads(config)
+        self.staging_lock = threading.Lock()
         super().__init__(address, Handler)
 
     def process_request(self, request, client_address):
@@ -71,6 +74,10 @@ class Handler(BaseHTTPRequestHandler):
             self.route()
         except APIError as error:
             self.respond(error.status, {"error": str(error)})
+        except UploadError as error:
+            self.respond(400, {"error": str(error)})
+        except json.JSONDecodeError:
+            self.respond(400, {"error": "Invalid JSON"})
         except (BrokenPipeError, ConnectionResetError):
             self.close_connection = True
         except Exception:
@@ -96,8 +103,48 @@ class Handler(BaseHTTPRequestHandler):
             raise APIError(401, "Enter your device token in Settings")
         if path == "/v1/config" and self.command == "GET":
             config = self.server.config
-            self.respond(200, dict(default_model=config.default_model, models=list(config.models), languages=LANGUAGES, max_upload_bytes=config.maximum_upload, max_duration_seconds=config.maximum_duration))
+            self.respond(200, dict(default_model=config.default_model, models=list(config.models), languages=LANGUAGES, max_upload_bytes=config.maximum_upload, max_duration_seconds=config.maximum_duration, upload_chunk_bytes=CHUNK_BYTES))
             return
+        match = re.fullmatch(r"/v1/uploads/([a-f0-9]{32})(?:/(\d+|finish))?", path)
+        if match:
+            identifier, action = match.groups()
+            with self.server.staging_lock:
+                if self.command == "DELETE" and action is None:
+                    self.server.uploads.remove(identifier)
+                    self.respond(204)
+                    return
+                if self.command == "POST" and action is not None:
+                    length = self.headers.get("Content-Length", "")
+                    limit = 128 * 1024 if action == "finish" else CHUNK_BYTES
+                    if self.headers.get("Transfer-Encoding") or not length.isdigit() or not 0 < int(length) <= limit:
+                        raise APIError(400, "Invalid upload size")
+                    data = self.rfile.read(int(length))
+                    if len(data) != int(length):
+                        raise APIError(400, "The upload was interrupted")
+                    if action != "finish":
+                        model = parse_qs(parsed.query).get("model", [self.server.config.default_model])[0]
+                        if model not in self.server.config.models:
+                            raise APIError(400, "Unsupported model")
+                        if self.server.store.get(identifier) is not None:
+                            raise APIError(409, "Recording already submitted")
+                        with self.server.reservation_lock:
+                            digest = self.server.uploads.put(identifier, int(action), data, self.server.reserved_bytes)
+                        if action == "0":
+                            self.server.worker.warmup(model)
+                        self.respond(200, {"sha256": digest})
+                        return
+                    existing = self.server.store.get(identifier)
+                    if existing is not None:
+                        self.respond(202, existing)
+                        return
+                    manifest = json.loads(data)
+                    if not isinstance(manifest, dict):
+                        raise APIError(400, "Invalid recording manifest")
+                    audio = self.server.uploads.assemble(identifier, manifest)
+                    with audio.open("rb") as stream:
+                        self.upload(parse_qs(parsed.query), stream, audio.stat().st_size, identifier)
+                    self.server.uploads.remove(identifier)
+                    return
         if path == "/v1/transcriptions":
             if self.command == "GET":
                 self.respond(200, {"transcriptions": self.server.store.list()})
@@ -106,7 +153,17 @@ class Handler(BaseHTTPRequestHandler):
                 if not self.server.upload_lock.acquire(blocking=False):
                     raise APIError(429, "Another upload is in progress. Try again shortly.")
                 try:
-                    self.upload(parse_qs(parsed.query))
+                    query = parse_qs(parsed.query)
+                    identifier = query.get("upload_id", [None])[0]
+                    if identifier is not None and not re.fullmatch(r"[a-f0-9]{32}", identifier):
+                        raise APIError(400, "Invalid upload identifier")
+                    with self.server.staging_lock:
+                        existing = self.server.store.get(identifier) if identifier else None
+                        if existing is not None:
+                            self.close_connection = True
+                            self.respond(202, existing)
+                        else:
+                            self.upload(query, identifier=identifier)
                 finally:
                     self.server.upload_lock.release()
                 return
@@ -138,11 +195,11 @@ class Handler(BaseHTTPRequestHandler):
                 return
         raise APIError(404, "Not found")
 
-    def upload(self, query):
+    def upload(self, query, source=None, size=None, identifier=None):
         config = self.server.config
         if self.headers.get("Transfer-Encoding"):
             raise APIError(400, "Use a fixed Content-Length")
-        length = self.headers.get("Content-Length", "")
+        length = str(size) if size is not None else self.headers.get("Content-Length", "")
         if not length.isdigit() or int(length) == 0:
             raise APIError(400, "Upload an audio file")
         if int(length) > config.maximum_upload:
@@ -155,7 +212,7 @@ class Handler(BaseHTTPRequestHandler):
             pending = sum(job["state"] in ("queued", "transcribing") for job in self.server.store.list())
             if pending + self.server.reserved_jobs >= 20:
                 raise APIError(429, "The transcription queue is full")
-            used = sum(entry.stat().st_size for entry in config.audio.iterdir() if entry.is_file())
+            used = sum(entry.stat().st_size for entry in config.audio.rglob("*") if entry.is_file())
             if used + self.server.reserved_bytes + int(length) > config.maximum_storage:
                 raise APIError(507, "Recording storage is full. Delete old recordings first.")
             if shutil.disk_usage(config.audio).free < int(length) + 512 * 1024 * 1024:
@@ -163,14 +220,14 @@ class Handler(BaseHTTPRequestHandler):
             self.server.reserved_bytes += int(length)
             self.server.reserved_jobs += 1
         filename = Path(query.get("filename", ["Recording.m4a"])[0]).name[:200]
-        job_id = uuid4().hex
+        job_id = identifier or uuid4().hex
         path = config.audio / job_id
         remaining = int(length)
         try:
             with path.open("xb") as stream:
                 path.chmod(0o600)
                 while remaining:
-                    block = self.rfile.read(min(1024 * 1024, remaining))
+                    block = (source or self.rfile).read(min(1024 * 1024, remaining))
                     if not block:
                         raise APIError(400, "The upload was interrupted")
                     stream.write(block)

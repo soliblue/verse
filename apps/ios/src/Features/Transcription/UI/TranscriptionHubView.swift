@@ -135,24 +135,19 @@ struct TranscriptionHubView: View {
                 settingsPresented = true
             }
         } label: {
-            VStack(spacing: 3) {
+            ZStack {
                 if store.isUploading || store.isStartingRecording {
                     ProgressView().tint(ink)
                 } else {
                     Image(systemName: store.recorder.isRecording ? "stop.fill" : "mic.fill")
                         .font(.system(size: 39, weight: .medium))
                 }
-                if store.recorder.isRecording {
-                    Text(store.recorder.startedAt, style: .timer).font(.subheadline.monospacedDigit())
-                } else {
-                    Text(store.isUploading ? "Uploading" : (store.isStartingRecording ? "Starting" : "Speak"))
-                        .font(.system(size: 21, weight: .heavy, design: .rounded))
-                }
             }
             .foregroundStyle(ink).frame(width: 100, height: 100).contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(store.recorder.isRecording ? "Stop recording" : "Record")
+        .accessibilityValue(store.isUploading ? "Uploading" : (store.isStartingRecording ? "Starting" : (store.recorder.isRecording ? "Recording" : "Ready")))
         .disabled(store.isUploading || store.isStartingRecording)
     }
 }

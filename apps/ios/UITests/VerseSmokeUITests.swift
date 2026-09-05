@@ -7,7 +7,7 @@ final class VerseSmokeUITests: XCTestCase {
         app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--keyboard-cold-ui-testing"]
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["keyboard-open-dictation"].firstMatch.waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["keyboard-launch-fallback"].exists)
+        XCTAssertTrue(app.buttons["q"].exists)
         XCTAssertFalse(app.buttons["keyboard-record"].exists)
         screenshot("keyboard-cold-controller")
     }
@@ -17,22 +17,42 @@ final class VerseSmokeUITests: XCTestCase {
         app.launchArguments = ["--ui-testing", "--keyboard-ui-testing"]
         app.launch()
         XCTAssertTrue(app.buttons["keyboard-record"].waitForExistence(timeout: 8))
-        XCTAssertTrue(app.staticTexts["Ready"].exists)
+        XCTAssertTrue(app.buttons["Transcription language"].exists)
+        XCTAssertTrue(app.buttons["Transcription model"].exists)
         XCTAssertTrue(app.buttons["Delete"].exists)
         XCTAssertTrue(app.buttons["Return"].exists)
         XCTAssertFalse(app.buttons["Open Verse"].exists)
+        XCTAssertTrue(app.buttons["q"].exists)
+        app.buttons["Shift"].tap()
+        XCTAssertTrue(app.buttons["Q"].exists)
+        app.buttons["Numbers"].tap()
+        XCTAssertTrue(app.buttons["1"].exists)
+        app.buttons["More symbols"].tap()
+        XCTAssertTrue(app.buttons["["].exists)
+        app.buttons["Letters"].tap()
         screenshot("keyboard-controller")
     }
 
     func testTranscriptionHub() {
         let app = launch()
         XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 8))
+        XCTAssertFalse(app.staticTexts["Speak"].exists)
+        XCTAssertFalse(app.staticTexts["Uploading"].exists)
+        XCTAssertFalse(app.staticTexts["Starting"].exists)
         XCTAssertTrue(app.buttons["Import audio"].exists)
         XCTAssertTrue(app.buttons["Activate keyboard"].exists)
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         XCTAssertFalse(app.staticTexts["Articles"].exists)
         XCTAssertFalse(app.staticTexts["Calendar"].exists)
         screenshot("hub")
+    }
+
+    func testDarkKeyboardLayout() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--keyboard-dark-ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.buttons["q"].waitForExistence(timeout: 8))
+        screenshot("keyboard-dark-controller")
     }
 
     func testTranscriptCanBeReadAndCopied() {

@@ -10,7 +10,8 @@ Environment=VERSE_ROOT=__ROOT__
 EnvironmentFile=__ROOT__/server/.env
 Environment=VERSE_WHISPER_MODELS=__MODELS__
 Environment=VERSE_WHISPER_MODELS_ALLOWED=small,medium,large-v3
-Environment=VERSE_WHISPER_DEFAULT_MODEL=small
+Environment=VERSE_WHISPER_DEFAULT_MODEL=medium
+Environment=VERSE_WHISPER_THREADS=4
 ExecStart=__PYTHON__ -m speech_server
 Restart=on-failure
 RestartSec=5

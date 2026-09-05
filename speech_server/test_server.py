@@ -113,8 +113,8 @@ class SpeechTests(unittest.TestCase):
 
     def test_worker_timeout_terminates_subprocess(self):
         job = self.server.store.create("a.wav", "medium", "auto", 1)
-        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"])
-        with patch("speech_server.config.Config.model_path", return_value=Path("model")), patch("speech_server.worker.subprocess.Popen", return_value=process), patch("speech_server.worker.time.monotonic", side_effect=[0, 10000]):
+        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)"], stdin=subprocess.PIPE, text=True)
+        with patch("speech_server.config.Config.model_path", return_value=Path("model")), patch("speech_server.worker.subprocess.Popen", return_value=process), patch("speech_server.worker.time.monotonic", side_effect=[0, 0, 10000]):
             self.server.worker.process(job)
         self.assertIsNotNone(process.poll())
         result = self.server.store.get(job["id"])

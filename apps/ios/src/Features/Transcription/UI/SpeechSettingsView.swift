@@ -8,40 +8,62 @@ struct SpeechSettingsView: View {
     @State private var token = VerseBridge.token
     @State private var model = VerseBridge.model
     @State private var language = VerseBridge.language
-    @State private var connectionStatus = ""
+    @State private var connected = false
     @State private var checking = false
     @State private var sessionDuration = VerseBridge.sessionDuration
     @State private var microphoneAllowed = AVAudioApplication.shared.recordPermission == .granted
     @AppStorage("verse.completionNotifications") private var notifications = false
+    private let cream = Color(red: 1, green: 0.95, blue: 0.79)
+    private let green = Color(red: 0, green: 0.39, blue: 0.22)
+    private let ink = Color(red: 0.12, green: 0.16, blue: 0.10)
 
     var body: some View {
         NavigationStack {
             Form {
                 Section {
-                    SecureField("Device token", text: $token)
-                        .textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
-                        .onChange(of: token) { _, value in VerseBridge.token = value.trimmingCharacters(in: .whitespacesAndNewlines) }
-                    Button(checking ? "Checking…" : "Check connection") {
-                        checking = true
-                        store.perform {
-                            defer { checking = false }
-                            try await store.checkConnection()
-                            connectionStatus = "Connected"
+                    HStack {
+                        SecureField("Device token", text: $token)
+                            .textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
+                            .onChange(of: token) { _, value in
+                                VerseBridge.token = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                                connected = false
+                            }
+                        Button {
+                            checking = true
+                            connected = false
+                            store.perform {
+                                defer { checking = false }
+                                try await store.checkConnection()
+                                connected = true
+                            }
+                        } label: {
+                            Group {
+                                if checking {
+                                    ProgressView()
+                                } else {
+                                    Image(systemName: connected ? "checkmark.circle.fill" : "arrow.clockwise")
+                                }
+                            }
+                            .frame(width: 44, height: 44)
                         }
-                    }.disabled(checking)
-                    if !connectionStatus.isEmpty { Label(connectionStatus, systemImage: "checkmark.circle").foregroundStyle(.secondary) }
+                        .buttonStyle(.borderless)
+                        .disabled(checking)
+                        .accessibilityLabel("Check connection")
+                        .accessibilityValue(checking ? "Checking" : (connected ? "Connected" : "Not checked"))
+                    }
                     if let error = store.error { Text(error).font(.footnote).foregroundStyle(.red) }
-                } footer: { Text("Connected to verse.soli.blue. Your token stays in this device’s Keychain.") }
+                }
+                .listRowBackground(cream)
 
                 Section {
                     Picker("Model", selection: $model) {
-                        Text("Small · faster").tag("small")
-                        Text("Medium · balanced").tag("medium")
-                        Text("Large · more accurate").tag("large-v3")
+                        Text("Small").tag("small")
+                        Text("Medium").tag("medium")
+                        Text("Large").tag("large-v3")
                     }
                     .onChange(of: model) { _, value in VerseBridge.model = value }
                     Picker("Language", selection: $language) {
-                        Text("Detect automatically").tag("auto")
+                        Text("Automatic").tag("auto")
                         Text("English").tag("en")
                         Text("Arabic").tag("ar")
                         Text("German").tag("de")
@@ -57,7 +79,16 @@ struct SpeechSettingsView: View {
                         Text("Hindi").tag("hi")
                     }
                     .onChange(of: language) { _, value in VerseBridge.language = value }
-                } footer: { Text("Whisper runs on your private server. Larger models take longer. Recordings and transcripts stay there until you delete them.") }
+                    Toggle("Notify when ready", isOn: $notifications)
+                        .onChange(of: notifications) { _, enabled in
+                            if enabled {
+                                store.perform {
+                                    notifications = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
+                                }
+                            }
+                        }
+                }
+                .listRowBackground(cream)
 
                 Section {
                     if !microphoneAllowed {
@@ -67,12 +98,14 @@ struct SpeechSettingsView: View {
                             }
                         }
                     }
-                    if #available(iOS 18.0, *) {
-                        Text("Add Verse’s Dictate control in Control Center. Or assign the Toggle dictation shortcut to your Action Button. Tap once to speak, again to transcribe, without opening Verse.")
-                    }
-                    Text("Add Verse in iPhone Settings → General → Keyboard → Keyboards → Add New Keyboard. Then enable Allow Full Access for Verse.")
-                    Button("Open iPhone Settings") {
+                    Button {
                         if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                    } label: {
+                        HStack {
+                            Label("iPhone Settings", systemImage: "keyboard")
+                            Spacer()
+                            Image(systemName: "arrow.up.right").font(.footnote)
+                        }
                     }
                     Picker("Keep microphone ready", selection: $sessionDuration) {
                         Text("5 minutes").tag(300.0)
@@ -80,28 +113,22 @@ struct SpeechSettingsView: View {
                         Text("60 minutes").tag(3600.0)
                     }
                     .onChange(of: sessionDuration) { _, value in VerseBridge.sessionDuration = value }
-                    Button("Start keyboard session") {
-                        store.perform { try await store.activateKeyboard(); dismiss() }
-                    }
-                } header: { Text("Keyboard") } footer: {
-                    Text("The microphone stays on while the session is ready; only speech between Speak and Stop is saved. End the session from its Live Activity to turn the microphone off. Select the Verse keyboard to receive text automatically. Secure fields may require Apple’s keyboard. Background controls require iOS 18 or later and Live Activities enabled.")
                 }
-
-                Section {
-                    Toggle("Completion notification", isOn: $notifications)
-                        .onChange(of: notifications) { _, enabled in
-                            if enabled {
-                                store.perform {
-                                    notifications = try await UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound])
-                                }
-                            }
-                        }
-                } footer: { Text("Notifies when Verse can check a finished job in the background. If iOS suspends the app, the result appears when you reopen it.") }
+                .listRowBackground(cream)
             }
+            .scrollContentBackground(.hidden)
+            .background { Image("CitrusPaper").resizable().scaledToFill().ignoresSafeArea() }
+            .foregroundStyle(ink)
+            .tint(green)
             .scrollDismissesKeyboard(.interactively)
             .navigationTitle("Settings")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { dismiss() } } }
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button { dismiss() } label: { Image(systemName: "checkmark") }
+                        .accessibilityLabel("Done")
+                }
+            }
         }
     }
 }

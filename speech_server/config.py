@@ -16,6 +16,7 @@ class Config:
     job_timeout: int = 7200
     cpu_threads: int = 4
     maximum_storage: int = 5 * 1024 * 1024 * 1024
+    model_idle_timeout: int = 300
 
     @classmethod
     def environment(cls):
@@ -32,6 +33,7 @@ class Config:
             job_timeout=int(os.environ.get("VERSE_WHISPER_TIMEOUT", "7200")),
             cpu_threads=int(os.environ.get("VERSE_WHISPER_THREADS", "4")),
             maximum_storage=int(os.environ.get("VERSE_AUDIO_STORAGE_BYTES", str(5 * 1024 * 1024 * 1024))),
+            model_idle_timeout=int(os.environ.get("VERSE_WHISPER_IDLE_TIMEOUT", "300")),
         )
         if config.default_model not in config.models:
             raise ValueError("Default model must be allowed")

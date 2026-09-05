@@ -7,58 +7,35 @@ final class KeyboardViewController: UIInputViewController {
     var isPreview = false
     var previewsColdStart = false
     #endif
-    private let status = UILabel()
-    private let preview = UITextView()
+    private let language = UIButton(type: .system)
+    private let model = UIButton(type: .system)
+    private let waveform = KeyboardAudioWaveView()
     private let record = UIButton(type: .system)
     private let launch = UIHostingController(rootView: KeyboardLaunchLink())
-    private let fallback = UILabel()
     private let insert = UIButton(type: .system)
-    private let nextKeyboardButton = UIButton(type: .system)
+    private let keyboard = KeyboardTypingView()
     private var timer: Timer?
     private var insertedID = ""
     private let poller = KeyboardTranscriptionPoller()
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        let ink = UIColor(red: 0.12, green: 0.16, blue: 0.10, alpha: 1)
-        let cream = UIColor(red: 1, green: 0.97, blue: 0.85, alpha: 1)
-        view.backgroundColor = UIColor(red: 0.988, green: 0.902, blue: 0.259, alpha: 1)
-        view.tintColor = ink
         view.clipsToBounds = true
-        let paper = UIImageView(image: UIImage(named: "CitrusPaper"))
-        paper.contentMode = .scaleAspectFill
-        paper.isAccessibilityElement = false
-        paper.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(paper)
-        let citrus = UIImageView(image: UIImage(named: "Citrus"))
-        citrus.contentMode = .scaleAspectFit
-        citrus.clipsToBounds = true
-        citrus.layer.cornerRadius = 80
-        citrus.isAccessibilityElement = false
-        citrus.translatesAutoresizingMaskIntoConstraints = false
-        view.addSubview(citrus)
-        status.font = .systemFont(ofSize: 14, weight: .semibold)
-        status.textColor = UIColor(red: 0, green: 0.40, blue: 0.22, alpha: 1)
-        status.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
-        preview.font = .systemFont(ofSize: 23, weight: .medium)
-        preview.textColor = ink
-        preview.backgroundColor = .clear
-        preview.isEditable = false
-        preview.isSelectable = false
-        preview.textContainerInset = .zero
-        preview.textContainer.lineFragmentPadding = 0
-        preview.accessibilityLabel = "Transcript or recording guidance"
-        var recordStyle = UIButton.Configuration.filled()
-        recordStyle.baseBackgroundColor = cream
-        recordStyle.baseForegroundColor = ink
-        recordStyle.cornerStyle = .capsule
-        recordStyle.imagePadding = 10
-        recordStyle.titleTextAttributesTransformer = UIConfigurationTextAttributesTransformer { attributes in
-            var result = attributes
-            result.font = .systemFont(ofSize: 23, weight: .semibold)
-            return result
+        language.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
+        language.accessibilityLabel = "Transcription language"
+        model.setImage(UIImage(systemName: "cpu"), for: .normal)
+        model.accessibilityLabel = "Transcription model"
+        for button in [language, model] {
+            button.showsMenuAsPrimaryAction = true
+            button.widthAnchor.constraint(equalToConstant: 44).isActive = true
         }
-        record.configuration = recordStyle
+        updateMenus()
+        waveform.backgroundColor = .clear
+        waveform.isAccessibilityElement = false
+        var configuration = UIButton.Configuration.plain()
+        configuration.baseForegroundColor = UIColor(red: 0.89, green: 0.29, blue: 0.04, alpha: 1)
+        configuration.cornerStyle = .capsule
+        record.configuration = configuration
         record.accessibilityIdentifier = "keyboard-record"
         record.addTarget(self, action: #selector(toggleRecording), for: .touchUpInside)
         let recordingControl = UIView()
@@ -67,11 +44,11 @@ final class KeyboardViewController: UIInputViewController {
         addChild(launch)
         launch.view.backgroundColor = .clear
         launch.view.translatesAutoresizingMaskIntoConstraints = false
-        launch.view.isHidden = true
         recordingControl.addSubview(launch.view)
         launch.didMove(toParent: self)
         NSLayoutConstraint.activate([
-            record.leadingAnchor.constraint(equalTo: recordingControl.leadingAnchor),
+            recordingControl.widthAnchor.constraint(equalToConstant: 44),
+            record.widthAnchor.constraint(equalToConstant: 44),
             record.trailingAnchor.constraint(equalTo: recordingControl.trailingAnchor),
             record.topAnchor.constraint(equalTo: recordingControl.topAnchor),
             record.bottomAnchor.constraint(equalTo: recordingControl.bottomAnchor),
@@ -80,103 +57,93 @@ final class KeyboardViewController: UIInputViewController {
             launch.view.topAnchor.constraint(equalTo: recordingControl.topAnchor),
             launch.view.bottomAnchor.constraint(equalTo: recordingControl.bottomAnchor)
         ])
-        fallback.text = "Or use Dictate with Verse in Control Center."
-        fallback.font = .systemFont(ofSize: 12, weight: .medium)
-        fallback.textColor = status.textColor
-        fallback.isHidden = true
-        fallback.accessibilityIdentifier = "keyboard-launch-fallback"
-        insert.setTitle("Insert", for: .normal)
-        insert.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
+        insert.setImage(UIImage(systemName: "text.badge.plus"), for: .normal)
         insert.accessibilityLabel = "Insert transcript"
         insert.addTarget(self, action: #selector(insertTranscript), for: .touchUpInside)
-        nextKeyboardButton.setImage(UIImage(systemName: "globe"), for: .normal)
-        nextKeyboardButton.accessibilityLabel = "Next keyboard"
-        nextKeyboardButton.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
-        let delete = UIButton(type: .system)
-        delete.setImage(UIImage(systemName: "delete.left"), for: .normal)
-        delete.accessibilityLabel = "Delete"
-        delete.addTarget(self, action: #selector(deleteCharacter), for: .touchUpInside)
-        let enter = UIButton(type: .system)
-        enter.setImage(UIImage(systemName: "return"), for: .normal)
-        enter.accessibilityLabel = "Return"
-        enter.addTarget(self, action: #selector(insertReturn), for: .touchUpInside)
-        for button in [nextKeyboardButton, delete, enter] {
-            button.backgroundColor = cream
-            button.layer.cornerRadius = 22
-            let width = button.widthAnchor.constraint(equalToConstant: 44)
-            width.priority = .defaultHigh
-            width.isActive = true
-            button.heightAnchor.constraint(equalToConstant: 48).isActive = true
-        }
-        let waveform = UIImageView(image: UIImage(systemName: "waveform"))
-        waveform.tintColor = UIColor(red: 0.89, green: 0.29, blue: 0.04, alpha: 1)
-        waveform.contentMode = .scaleAspectFit
-        waveform.preferredSymbolConfiguration = UIImage.SymbolConfiguration(pointSize: 27, weight: .regular)
-        waveform.isAccessibilityElement = false
-        waveform.widthAnchor.constraint(equalToConstant: 36).isActive = true
-        let heading = UIStackView(arrangedSubviews: [status, insert, waveform])
-        heading.spacing = 8
-        let insertWidth = insert.widthAnchor.constraint(equalToConstant: 60)
-        insertWidth.priority = .defaultHigh
-        insertWidth.isActive = true
-        let row = UIStackView(arrangedSubviews: [nextKeyboardButton, delete, recordingControl, enter])
-        row.spacing = 10
-        row.alignment = .center
-        recordingControl.heightAnchor.constraint(equalToConstant: 62).isActive = true
-        let stack = UIStackView(arrangedSubviews: [heading, preview, fallback, row])
+        insert.widthAnchor.constraint(equalToConstant: 44).isActive = true
+        keyboard.insertText = { [weak self] text in self?.textDocumentProxy.insertText(text) }
+        keyboard.deleteBackward = { [weak self] in self?.textDocumentProxy.deleteBackward() }
+        keyboard.globeButton.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
+        let waveformSpace = UIView()
+        waveform.translatesAutoresizingMaskIntoConstraints = false
+        waveformSpace.addSubview(waveform)
+        NSLayoutConstraint.activate([
+            waveform.leadingAnchor.constraint(equalTo: waveformSpace.leadingAnchor),
+            waveform.trailingAnchor.constraint(equalTo: waveformSpace.trailingAnchor),
+            waveform.topAnchor.constraint(equalTo: waveformSpace.topAnchor),
+            waveform.bottomAnchor.constraint(equalTo: waveformSpace.bottomAnchor)
+        ])
+        let toolbar = UIStackView(arrangedSubviews: [language, model, waveformSpace, insert, recordingControl])
+        toolbar.spacing = 2
+        toolbar.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        let stack = UIStackView(arrangedSubviews: [toolbar, keyboard])
         stack.axis = .vertical
-        stack.spacing = 14
+        stack.spacing = 9
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
         NSLayoutConstraint.activate([
-            view.heightAnchor.constraint(equalToConstant: 260),
-            paper.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            paper.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            paper.topAnchor.constraint(equalTo: view.topAnchor),
-            paper.bottomAnchor.constraint(equalTo: view.bottomAnchor),
-            citrus.widthAnchor.constraint(equalToConstant: 160),
-            citrus.heightAnchor.constraint(equalToConstant: 160),
-            citrus.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: 50),
-            citrus.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: 90),
-            heading.heightAnchor.constraint(equalToConstant: 32),
-            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 22),
-            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -22),
-            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 18),
-            stack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -24)
+            view.heightAnchor.constraint(equalToConstant: 270),
+            stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 5),
+            stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -5),
+            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 7),
+            stack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -7)
         ])
+        updateAppearance()
     }
 
-    override func viewWillLayoutSubviews() {
-        super.viewWillLayoutSubviews()
+    override func textDidChange(_ textInput: UITextInput?) { updateAppearance() }
+
+    private func updateAppearance() {
+        var dark = textDocumentProxy.keyboardAppearance == .dark || (textDocumentProxy.keyboardAppearance == .default && traitCollection.userInterfaceStyle == .dark)
         #if DEBUG
-        if isPreview {
-            nextKeyboardButton.isHidden = true
-            return
-        }
+        if isPreview { dark = ProcessInfo.processInfo.arguments.contains("--keyboard-dark-ui-testing") }
         #endif
-        nextKeyboardButton.isHidden = !needsInputModeSwitchKey
+        view.backgroundColor = dark ? UIColor(white: 0.10, alpha: 1) : UIColor(red: 0.82, green: 0.83, blue: 0.85, alpha: 1)
+        view.tintColor = dark ? .white : .black
+        keyboard.updateAppearance(dark: dark)
+    }
+
+    private func updateMenus() {
+        language.setTitle(VerseBridge.language == "auto" ? "AUTO" : VerseBridge.language.uppercased(), for: .normal)
+        language.accessibilityValue = VerseBridge.language
+        language.menu = UIMenu(children: [
+            ("auto", "Automatic"), ("en", "English"), ("ar", "Arabic"), ("de", "German"),
+            ("fr", "French"), ("es", "Spanish"), ("it", "Italian"), ("pt", "Portuguese"),
+            ("tr", "Turkish"), ("zh", "Chinese"), ("ja", "Japanese"), ("ko", "Korean"),
+            ("ru", "Russian"), ("hi", "Hindi")
+        ].map { code, name in
+            UIAction(title: name, state: VerseBridge.language == code ? .on : .off) { [weak self] _ in
+                VerseBridge.language = code
+                self?.updateMenus()
+            }
+        })
+        model.accessibilityValue = VerseBridge.model
+        model.menu = UIMenu(children: [("small", "Small"), ("medium", "Medium"), ("large-v3", "Large")].map { code, name in
+            UIAction(title: name, state: VerseBridge.model == code ? .on : .off) { [weak self] _ in
+                VerseBridge.model = code
+                self?.updateMenus()
+            }
+        })
     }
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
+        updateAppearance()
+        updateMenus()
         #if DEBUG
         if isPreview {
-            status.text = previewsColdStart ? "Microphone off" : "Ready"
-            preview.text = previewsColdStart ? "Opens Verse to start the microphone." : "On my way.\nSee you in ten."
-            record.setTitle("Speak", for: .normal)
-            record.setImage(UIImage(systemName: "mic.fill"), for: .normal)
+            record.setImage(UIImage(systemName: "waveform"), for: .normal)
+            record.accessibilityLabel = "Record"
             record.isHidden = previewsColdStart
             launch.view.isHidden = !previewsColdStart
-            fallback.isHidden = !previewsColdStart
             insert.isHidden = true
+            waveform.isHidden = true
             return
         }
         #endif
         insertedID = VerseBridge.lastInsertedTranscriptID
         refresh()
-        timer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in
-            self?.refresh()
-        }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in self?.refresh() }
     }
 
     override func viewDidDisappear(_ animated: Bool) {
@@ -189,13 +156,15 @@ final class KeyboardViewController: UIInputViewController {
     private func refresh() {
         if hasFullAccess { poller.poll() }
         let active = sessionIsActive
-        let canLaunch = !active && hasFullAccess
-        record.isHidden = canLaunch
-        launch.view.isHidden = !canLaunch
-        fallback.isHidden = !canLaunch
         let recording = active && VerseBridge.isRecording
         let commandPending = active && VerseBridge.commandID != VerseBridge.acknowledgedCommandID
         let processing = isProcessing
+        language.isEnabled = !recording && !processing && !commandPending
+        model.isEnabled = language.isEnabled
+        waveform.update(level: VerseBridge.audioLevel, recording: recording)
+        let canLaunch = !active && !processing
+        record.isHidden = canLaunch
+        launch.view.isHidden = !canLaunch
         if hasFullAccess, !recording, !processing,
            DictationInsertionPolicy.canAutomaticallyInsert(
             transcriptID: VerseBridge.transcriptID, text: VerseBridge.transcriptText,
@@ -208,38 +177,13 @@ final class KeyboardViewController: UIInputViewController {
             VerseBridge.insertionTranscriptID = ""
         }
         let hasTranscript = DictationInsertionPolicy.canInsert(transcriptID: VerseBridge.transcriptID, text: VerseBridge.transcriptText, insertedID: insertedID)
-        record.setTitle(!active ? "Speak" : (recording ? "Stop" : (processing ? "Working…" : "Speak")), for: .normal)
-        record.setImage(UIImage(systemName: recording ? "stop.fill" : "mic.fill"), for: .normal)
-        record.isEnabled = hasFullAccess && (!active || (recording || !processing) && !commandPending)
+        record.configuration?.showsActivityIndicator = processing || commandPending
+        record.setImage(processing || commandPending ? nil : UIImage(systemName: recording ? "stop.fill" : "waveform"), for: .normal)
+        record.accessibilityLabel = recording ? "Stop recording" : (processing ? "Transcribing" : "Record")
+        record.isEnabled = hasFullAccess && active && (recording || !processing) && !commandPending
         insert.isEnabled = hasFullAccess && hasTranscript && !VerseBridge.isRecording && !processing && !commandPending
         insert.isHidden = !hasTranscript
-        let message: String
-        if !hasFullAccess {
-            status.text = "Setup needed"
-            message = "Enable Full Access for Verse in Settings → Keyboards."
-        } else if !VerseBridge.errorText.isEmpty {
-            status.text = "Something went wrong"
-            message = VerseBridge.errorText
-        } else if recording {
-            status.text = "Listening…"
-            message = "Tap Stop when you’re done."
-        } else if processing {
-            status.text = VerseBridge.statusText.isEmpty ? "Transcribing…" : VerseBridge.statusText
-            message = "Turning speech into text."
-        } else if hasTranscript {
-            status.text = "Ready to insert"
-            message = VerseBridge.transcriptText
-        } else if !active {
-            status.text = "Microphone off"
-            message = "Opens Verse to start the microphone."
-        } else {
-            status.text = "Ready"
-            message = "Tap Speak to start."
-        }
-        if preview.text != message {
-            preview.text = message
-            preview.setContentOffset(.zero, animated: false)
-        }
+        record.accessibilityHint = VerseBridge.errorText.isEmpty ? "" : VerseBridge.errorText
     }
 
     private var sessionIsActive: Bool {
@@ -269,14 +213,6 @@ final class KeyboardViewController: UIInputViewController {
         VerseBridge.lastInsertedTranscriptID = insertedID
         VerseBridge.insertionTranscriptID = ""
         refresh()
-    }
-
-    @objc private func deleteCharacter() {
-        textDocumentProxy.deleteBackward()
-    }
-
-    @objc private func insertReturn() {
-        textDocumentProxy.insertText("\n")
     }
 }
 #endif
