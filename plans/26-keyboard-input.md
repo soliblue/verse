@@ -40,3 +40,6 @@ Make fast typing reliable and approximate the current iPhone keyboard: character
 - Poll completion writes also run off the typing thread, retaining the live job-ID check and insertion publication order.
 - Insertion keeps both persistent and local transcript guards so an older bridge snapshot cannot insert twice.
 - Native verification pending. Synthetic simulator animation is not evidence of microphone handoff or physical-device frame rate.
+- First CI run [33992363217](https://github.com/soliblue/verse/actions/runs/33992363217) compiled all iOS targets and passed backend, RMS, insertion, and waveform tests. It exposed Swift's isolated-deinitializer crash during synchronous input-engine teardown and an unbound test input view. No TestFlight upload was started.
+- Explicit nonisolated teardown fixes the engine lifetime path; the fixture now binds the controller's concrete input view through UIKit. Unit summaries are exported before UI tests finish.
+- The crash stack matches [Swift issue 87316](https://github.com/swiftlang/swift/issues/87316). The regression test retains synchronous teardown rather than hiding it behind an async test.

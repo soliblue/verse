@@ -4,6 +4,16 @@ import XCTest
 
 @MainActor
 final class KeyboardTypingTests: XCTestCase {
+    func testEngineDeallocatesSynchronously() {
+        weak var releasedEngine: KeyboardInputEngine?
+        autoreleasepool {
+            let engine = KeyboardInputEngine()
+            releasedEngine = engine
+            withExtendedLifetime(engine) { XCTAssertNotNil(releasedEngine) }
+        }
+        XCTAssertNil(releasedEngine)
+    }
+
     func testTypingShiftNumbersAndDelete() throws {
         let keyboard = makeKeyboard()
         var text = ""

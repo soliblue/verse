@@ -56,6 +56,7 @@ private final class KeyboardFixtureController: UIViewController {
             controller.previewTextInput = { [weak field] text in field?.insertText(text) }
             controller.previewDeleteBackward = { [weak field] in field?.deleteBackward() }
             field.fixtureKeyboard = controller
+            field.inputView = controller.view
             keyboard = controller
         }
     }

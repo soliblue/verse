@@ -40,7 +40,7 @@ final class KeyboardViewController: UIInputViewController {
     private var controlsState = ""
 
     override func loadView() {
-        view = UIInputView(frame: .zero, inputViewStyle: .keyboard)
+        inputView = UIInputView(frame: .zero, inputViewStyle: .keyboard)
     }
 
     override func viewDidLoad() {
@@ -145,6 +145,10 @@ final class KeyboardViewController: UIInputViewController {
 
     override func textDidChange(_ textInput: UITextInput?) {
         updateAppearance()
+        updateTypingContext()
+    }
+
+    override func selectionDidChange(_ textInput: UITextInput?) {
         updateTypingContext()
     }
 

@@ -96,6 +96,23 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 
+      - name: Export native unit summary
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        run: |
+          if [ -d "$RUNNER_TEMP/verse-unit-tests.xcresult" ]; then
+            xcrun xcresulttool get test-results summary \
+              --path "$RUNNER_TEMP/verse-unit-tests.xcresult" \
+              > "$RUNNER_TEMP/verse-unit-summary.json"
+          fi
+
+      - name: Upload native unit summary
+        if: ${{ !cancelled() && steps.build.outcome == 'success' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: verse-native-unit-summary
+          path: ${{ runner.temp }}/verse-unit-summary.json
+          if-no-files-found: ignore
+
       - name: Run UI tests
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
         timeout-minutes: 10

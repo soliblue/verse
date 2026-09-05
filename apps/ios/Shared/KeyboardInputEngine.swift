@@ -49,6 +49,8 @@ final class KeyboardInputEngine {
     private var nextOrder = 0
     private var inputs: [Input] = []
 
+    nonisolated deinit {}
+
     var isUppercase: Bool {
         capsLocked || heldShift || ((shiftOverride ?? automaticUppercase) && shiftOwner == nil)
     }
