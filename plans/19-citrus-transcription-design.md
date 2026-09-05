@@ -6,7 +6,7 @@ Implement the selected second visual direction in the existing native app and ke
 
 ## Status
 
-Code and asset prepared. Native build and visual verification blocked on unavailable Xcode. No commit, push, or distribution performed in this iteration.
+Code and asset released in internal TestFlight build 18 with background dictation. Native build and hub UI checks passed in GitHub CI. Keyboard visual verification remains a physical-device check.
 
 ## Contracts and decisions
 
@@ -23,6 +23,7 @@ Code and asset prepared. Native build and visual verification blocked on unavail
 - 2026-09-05: Added original citrus artwork to shared assets, cream microphone controls, integrated history, and compact keyboard with conditional globe. Preserved recording state machine and insertion behavior.
 - 2026-09-05: Image tool did not produce alpha despite repeated requests. Final raster uses a matching lemon field, native circular clipping, no rotation. Inspect edges in simulator before acceptance.
 - 2026-09-05: `git diff --check` passed. Xcode simulator discovery failed with `spawn xcrun ENOENT`. Design QA remains blocked pending GitHub native build and screenshots.
+- 2026-09-05: GitHub CI 33984258269 supplied the native hub screenshot and passed native build, 29 unit tests and 3 UI tests. The hub visibly uses the original citrus illustration, cream controls and no slogan. See plan 20 for TestFlight release status.
 
 ## Image provenance
 
