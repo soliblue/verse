@@ -4,6 +4,16 @@ import XCTest
 
 @MainActor
 final class KeyboardRenderingTests: XCTestCase {
+    func testPollerDeallocatesSynchronously() {
+        weak var releasedPoller: KeyboardTranscriptionPoller?
+        autoreleasepool {
+            let poller = KeyboardTranscriptionPoller()
+            releasedPoller = poller
+            withExtendedLifetime(poller) { XCTAssertNotNil(releasedPoller) }
+        }
+        XCTAssertNil(releasedPoller)
+    }
+
     func testKeyboardDeclaresHeightBeforeHosting() throws {
         let controller = KeyboardViewController()
         controller.isPreview = true

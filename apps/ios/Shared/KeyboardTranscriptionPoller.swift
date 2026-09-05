@@ -14,6 +14,8 @@ final class KeyboardTranscriptionPoller {
     private var lastPoll = Date.distantPast
     private var generation = 0
 
+    nonisolated deinit {}
+
     func poll(state: [String: String]) {
         guard task == nil, Date().timeIntervalSince(lastPoll) >= 0.75 else { return }
         let id = state["pendingJobID"] ?? ""

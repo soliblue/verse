@@ -160,7 +160,7 @@ jobs:
           sleep 2
           xcrun simctl io "$SMOKE_UDID" recordVideo --codec=h264 "$RUNNER_TEMP/verse-smoke/keyboard-wave-synthetic-10hz.mov" &
           RECORD_PID=$!
-          sleep 5
+          sleep 10
           kill -INT "$RECORD_PID"
           wait "$RECORD_PID"
           xcrun xcresulttool export attachments \
