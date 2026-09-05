@@ -5,7 +5,7 @@ final class KeyboardViewController: UIInputViewController {
     private let preview = UITextView()
     private let record = UIButton(type: .system)
     private let insert = UIButton(type: .system)
-    private let next = UIButton(type: .system)
+    private let nextKeyboardButton = UIButton(type: .system)
     private var timer: Timer?
     private var insertedID = ""
     private let poller = KeyboardTranscriptionPoller()
@@ -51,9 +51,9 @@ final class KeyboardViewController: UIInputViewController {
         insert.titleLabel?.font = .systemFont(ofSize: 15, weight: .semibold)
         insert.accessibilityLabel = "Insert transcript"
         insert.addTarget(self, action: #selector(insertTranscript), for: .touchUpInside)
-        next.setImage(UIImage(systemName: "globe"), for: .normal)
-        next.accessibilityLabel = "Next keyboard"
-        next.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
+        nextKeyboardButton.setImage(UIImage(systemName: "globe"), for: .normal)
+        nextKeyboardButton.accessibilityLabel = "Next keyboard"
+        nextKeyboardButton.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
         let delete = UIButton(type: .system)
         delete.setImage(UIImage(systemName: "delete.left"), for: .normal)
         delete.accessibilityLabel = "Delete"
@@ -62,7 +62,7 @@ final class KeyboardViewController: UIInputViewController {
         enter.setImage(UIImage(systemName: "return"), for: .normal)
         enter.accessibilityLabel = "Return"
         enter.addTarget(self, action: #selector(insertReturn), for: .touchUpInside)
-        for button in [next, delete, enter] {
+        for button in [nextKeyboardButton, delete, enter] {
             button.backgroundColor = cream
             button.layer.cornerRadius = 22
             let width = button.widthAnchor.constraint(equalToConstant: 44)
@@ -74,7 +74,7 @@ final class KeyboardViewController: UIInputViewController {
         let insertWidth = insert.widthAnchor.constraint(equalToConstant: 60)
         insertWidth.priority = .defaultHigh
         insertWidth.isActive = true
-        let row = UIStackView(arrangedSubviews: [next, delete, record, enter])
+        let row = UIStackView(arrangedSubviews: [nextKeyboardButton, delete, record, enter])
         row.spacing = 10
         row.alignment = .center
         record.heightAnchor.constraint(equalToConstant: 54).isActive = true
@@ -99,7 +99,7 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
-        next.isHidden = !needsInputModeSwitchKey
+        nextKeyboardButton.isHidden = !needsInputModeSwitchKey
     }
 
     override func viewWillAppear(_ animated: Bool) {
