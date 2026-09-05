@@ -7,12 +7,13 @@ struct TranscriptionHubView: View {
     @State private var settingsPresented = false
     @State private var importing = false
     @State private var returningToKeyboard = false
+    @State private var path: [String] = []
     private let cream = Color(red: 1, green: 0.95, blue: 0.79)
     private let green = Color(red: 0, green: 0.39, blue: 0.22)
     private let ink = Color(red: 0.12, green: 0.16, blue: 0.10)
 
     var body: some View {
-        NavigationStack {
+        NavigationStack(path: $path) {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(spacing: 0) {
@@ -63,6 +64,11 @@ struct TranscriptionHubView: View {
                 .onOpenURL { url in
                     if url.scheme == "verse" {
                         returningToKeyboard = url.host == "dictate"
+                        if returningToKeyboard {
+                            path.removeAll()
+                            settingsPresented = false
+                            importing = false
+                        }
                         store.perform {
                             if url.host == "dictate" {
                                 try await store.startKeyboardDictation()

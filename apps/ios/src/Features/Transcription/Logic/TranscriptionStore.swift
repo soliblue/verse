@@ -159,6 +159,7 @@ final class TranscriptionStore {
         let generation = sessionGeneration
         try await activateKeyboard()
         guard generation == sessionGeneration else { throw SpeechFailure("Dictation session ended.") }
+        guard !recorder.isRecording else { return }
         VerseBridge.insertionTranscriptID = ""
         try await toggleRecording()
     }
