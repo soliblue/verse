@@ -1,3 +1,4 @@
+#if !VERSE_WIDGET
 import Foundation
 
 @MainActor
@@ -61,3 +62,4 @@ final class KeyboardTranscriptionPoller {
         task = nil
     }
 }
+#endif

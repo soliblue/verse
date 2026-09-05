@@ -124,6 +124,9 @@ jobs:
           xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing
           sleep 5
           xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/transcriptions-light.png"
+          xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing
+          sleep 3
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/keyboard-controller-fixture.png"
 
       - name: Upload simulator evidence
         if: always()

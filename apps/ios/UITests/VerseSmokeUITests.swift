@@ -2,6 +2,18 @@ import XCTest
 
 @MainActor
 final class VerseSmokeUITests: XCTestCase {
+    func testActualKeyboardControllerLayout() {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.buttons["keyboard-record"].waitForExistence(timeout: 8))
+        XCTAssertTrue(app.staticTexts["Ready"].exists)
+        XCTAssertTrue(app.buttons["Delete"].exists)
+        XCTAssertTrue(app.buttons["Return"].exists)
+        XCTAssertFalse(app.buttons["Open Verse"].exists)
+        screenshot("keyboard-controller")
+    }
+
     func testTranscriptionHub() {
         let app = launch()
         XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 8))

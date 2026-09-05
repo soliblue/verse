@@ -147,15 +147,20 @@ final class TranscriptionStore {
             guard AVAudioApplication.shared.recordPermission == .granted else {
                 throw SpeechFailure("Open Verse once and allow microphone access before using dictation controls.")
             }
-            guard !isUploading, VerseBridge.pendingJobID.isEmpty else {
-                throw SpeechFailure("Wait for your last transcription to finish.")
-            }
-            let generation = sessionGeneration
-            try await activateKeyboard()
-            guard generation == sessionGeneration else { throw SpeechFailure("Dictation session ended.") }
-            VerseBridge.insertionTranscriptID = ""
-            try await toggleRecording()
+            try await startKeyboardDictation()
         }
+    }
+
+    func startKeyboardDictation() async throws {
+        guard !recorder.isRecording, !isStartingRecording else { return }
+        guard !isUploading, VerseBridge.pendingJobID.isEmpty else {
+            throw SpeechFailure("Wait for your last transcription to finish.")
+        }
+        let generation = sessionGeneration
+        try await activateKeyboard()
+        guard generation == sessionGeneration else { throw SpeechFailure("Dictation session ended.") }
+        VerseBridge.insertionTranscriptID = ""
+        try await toggleRecording()
     }
 
     func activateKeyboard() async throws {

@@ -6,119 +6,42 @@ struct TranscriptionHubView: View {
     @Environment(\.scenePhase) private var scenePhase
     @State private var settingsPresented = false
     @State private var importing = false
-    private let lemon = Color(red: 0.988, green: 0.902, blue: 0.259)
-    private let cream = Color(red: 1, green: 0.97, blue: 0.85)
+    @State private var returningToKeyboard = false
+    private let cream = Color(red: 1, green: 0.95, blue: 0.79)
+    private let green = Color(red: 0, green: 0.39, blue: 0.22)
     private let ink = Color(red: 0.12, green: 0.16, blue: 0.10)
 
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                List {
-                    VStack(spacing: 4) {
-                        HStack {
-                            Text("verse")
-                                .font(.system(size: 36, weight: .heavy, design: .rounded).italic())
-                                .foregroundStyle(Color(red: 0, green: 0.43, blue: 0.23))
-                            Spacer()
-                            Button { importing = true } label: {
-                                Image(systemName: "square.and.arrow.down")
-                                    .frame(width: 48, height: 48).background(cream, in: Circle())
-                            }
-                            .accessibilityLabel("Import audio")
-                            Button { settingsPresented = true } label: {
-                                Image(systemName: "slider.horizontal.3")
-                                    .frame(width: 48, height: 48).background(cream, in: Circle())
-                            }
-                            .accessibilityLabel("Settings")
-                        }
-                        .font(.title3)
-                        .buttonStyle(.plain)
+                ScrollView {
+                    VStack(spacing: 0) {
+                        masthead.padding(.horizontal, 24).padding(.top, 8)
                         ZStack {
-                            Image("Citrus")
-                                .resizable().scaledToFit()
-                                .clipShape(Circle())
-                                .accessibilityHidden(true)
+                            Image("CitrusHero").resizable().scaledToFit().accessibilityHidden(true)
                             recordingControls
                         }
-                        .frame(height: min(geometry.size.width - 32, geometry.size.height * 0.52))
-                    }
-                    .padding(.vertical, 12)
-                    .listRowInsets(EdgeInsets(top: 0, leading: 20, bottom: 0, trailing: 20))
-                    .listRowBackground(lemon)
-                    .listRowSeparator(.hidden)
-                    if !store.isConfigured {
-                        Button { settingsPresented = true } label: {
-                            Label("Add your device token", systemImage: "key")
-                        }
-                    }
-                    if let expiry = store.keyboardExpiresAt {
-                        HStack {
-                            Label("Keyboard ready", systemImage: "keyboard")
-                            Spacer()
-                            Text(expiry, style: .timer).monospacedDigit().foregroundStyle(.secondary)
-                            Button("End") { store.perform { try await store.endSession() } }
-                        }
-                        .font(.subheadline)
-                    }
-                    if !store.pendingAudio.isEmpty {
-                        Section("Not uploaded") {
-                            ForEach(store.pendingAudio, id: \.self) { url in
-                                Button {
-                                    store.perform { try await store.upload(url) }
-                                } label: { Label("Retry recording", systemImage: "arrow.clockwise") }
-                                .disabled(store.isUploading)
-                                .swipeActions {
-                                    Button("Delete", role: .destructive) { store.perform { try store.discardPending(url) } }
-                                        .disabled(store.isUploading)
-                                }
+                        .frame(width: min(geometry.size.width, 520), height: min(geometry.size.width, 520))
+                        if returningToKeyboard && store.recorder.isRecording {
+                            VStack(spacing: 5) {
+                                Text("Listening. Swipe back to your app.").font(.headline)
+                                Text("Swipe right along the bottom edge. Tap Stop in the keyboard when done.")
+                                    .font(.subheadline)
                             }
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 24).padding(.bottom, 16)
+                            .accessibilityIdentifier("dictation-return-guidance")
                         }
+                        sessionStatus.padding(.horizontal, 24)
+                        TranscriptionHistoryView(store: store)
+                            .padding(.horizontal, 20).padding(.bottom, 24)
                     }
-                    HStack {
-                        Text("Recent").font(.headline)
-                        Spacer()
-                        Button {
-                            store.perform { try await store.activateKeyboard() }
-                        } label: {
-                            Image(systemName: "keyboard").frame(width: 44, height: 44)
-                        }
-                        .accessibilityLabel("Activate keyboard")
-                        .disabled(store.recorder.isRecording || store.isUploading || store.isStartingRecording)
-                    }
-                    .listRowBackground(cream)
-                    if store.items.isEmpty && store.pendingAudio.isEmpty {
-                        Text("Your recordings will appear here.")
-                            .font(.body).foregroundStyle(ink.opacity(0.7))
-                            .padding(.vertical, 20)
-                            .listRowBackground(cream)
-                    }
-                    ForEach(store.items) { item in
-                        NavigationLink(value: item.id) {
-                            VStack(alignment: .leading, spacing: 8) {
-                                Text(item.title).font(.body).lineLimit(3).foregroundStyle(.primary)
-                                HStack(spacing: 8) {
-                                    Text(item.date, format: .dateTime.month(.abbreviated).day().hour().minute())
-                                    if item.isPending {
-                                        ProgressView().controlSize(.mini)
-                                        Text(item.state == "queued" ? "Queued" : "Transcribing")
-                                    } else if item.state == "failed" {
-                                        Text("Failed").foregroundStyle(.red)
-                                    }
-                                }
-                                .font(.caption).foregroundStyle(.secondary)
-                            }
-                            .padding(.vertical, 8)
-                        }
-                        .swipeActions {
-                            Button("Delete", role: .destructive) { store.perform { try await store.delete(item) } }
-                        }
-                        .listRowBackground(cream)
-                    }
+                    .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
-                .listStyle(.plain)
-                .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.interactively)
-                .background(lemon.ignoresSafeArea())
+                .background {
+                    Image("CitrusPaper").resizable().scaledToFill().ignoresSafeArea()
+                }
                 .foregroundStyle(ink)
                 .toolbar(.hidden, for: .navigationBar)
                 .navigationDestination(for: String.self) { id in TranscriptDetailView(store: store, id: id) }
@@ -135,16 +58,64 @@ struct TranscriptionHubView: View {
                 } message: { Text(store.error ?? "") }
                 .onChange(of: scenePhase) { _, phase in
                     if phase == .active { store.perform { try await store.refresh() } }
+                    if phase == .background { returningToKeyboard = false }
                 }
                 .onOpenURL { url in
                     if url.scheme == "verse" {
-                        store.perform { try await store.activateKeyboard() }
+                        returningToKeyboard = url.host == "dictate"
+                        store.perform {
+                            if url.host == "dictate" {
+                                try await store.startKeyboardDictation()
+                            } else {
+                                try await store.activateKeyboard()
+                            }
+                        }
                     } else if url.isFileURL {
                         store.perform { try await store.importAudio(url) }
                     }
                 }
                 .accessibilityIdentifier("transcription-hub")
             }
+        }
+    }
+
+    private var masthead: some View {
+        HStack {
+            Text("verse")
+                .font(.custom("AvenirNext-HeavyItalic", size: 39, relativeTo: .largeTitle))
+                .tracking(-2).rotationEffect(.degrees(-8)).foregroundStyle(green)
+            Spacer()
+            Button { importing = true } label: {
+                Image(systemName: "music.note")
+                    .foregroundStyle(Color(red: 0.93, green: 0.31, blue: 0.07))
+                    .frame(width: 44, height: 44).background(cream, in: Circle())
+            }
+            .accessibilityLabel("Import audio")
+            Button { settingsPresented = true } label: {
+                Image(systemName: "gearshape.fill").foregroundStyle(green)
+                    .frame(width: 44, height: 44).background(cream, in: Circle())
+            }
+            .accessibilityLabel("Settings")
+        }
+        .font(.system(size: 21, weight: .semibold)).buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private var sessionStatus: some View {
+        if !store.isConfigured {
+            Button { settingsPresented = true } label: {
+                Label("Add your device token", systemImage: "key")
+            }
+            .padding(.bottom, 16)
+        }
+        if let expiry = store.keyboardExpiresAt {
+            HStack {
+                Label("Keyboard ready", systemImage: "keyboard")
+                Spacer()
+                Text(expiry, style: .timer).monospacedDigit()
+                Button("End") { store.perform { try await store.endSession() } }
+            }
+            .font(.caption).padding(.bottom, 16)
         }
     }
 
@@ -156,24 +127,21 @@ struct TranscriptionHubView: View {
                 settingsPresented = true
             }
         } label: {
-            VStack(spacing: 8) {
+            VStack(spacing: 3) {
                 if store.isUploading || store.isStartingRecording {
                     ProgressView().tint(ink)
                 } else {
                     Image(systemName: store.recorder.isRecording ? "stop.fill" : "mic.fill")
-                        .font(.system(size: 36, weight: .medium))
+                        .font(.system(size: 39, weight: .medium))
                 }
                 if store.recorder.isRecording {
-                    Text(store.recorder.startedAt, style: .timer)
-                        .font(.subheadline.monospacedDigit())
+                    Text(store.recorder.startedAt, style: .timer).font(.subheadline.monospacedDigit())
                 } else {
                     Text(store.isUploading ? "Uploading" : (store.isStartingRecording ? "Starting" : "Speak"))
-                        .font(.headline)
+                        .font(.system(size: 21, weight: .heavy, design: .rounded))
                 }
             }
-            .foregroundStyle(ink)
-            .frame(width: 120, height: 120)
-            .background(cream, in: Circle())
+            .foregroundStyle(ink).frame(width: 100, height: 100).contentShape(Circle())
         }
         .buttonStyle(.plain)
         .accessibilityLabel(store.recorder.isRecording ? "Stop recording" : "Record")
