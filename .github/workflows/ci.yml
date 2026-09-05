@@ -130,6 +130,9 @@ jobs:
           xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --keyboard-cold-ui-testing
           sleep 3
           xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/keyboard-cold-controller-fixture.png"
+          xcrun xcresulttool export attachments \
+            --path "$RUNNER_TEMP/verse-ui-tests.xcresult" \
+            --output-path "$RUNNER_TEMP/verse-smoke/ui-tests"
 
       - name: Upload simulator evidence
         if: always()
@@ -137,7 +140,7 @@ jobs:
         with:
           name: verse-ios-evidence
           path: |
-            ${{ runner.temp }}/verse-smoke/*.png
+            ${{ runner.temp }}/verse-smoke/**/*.png
             ${{ runner.temp }}/verse-*-tests.xcresult
           if-no-files-found: ignore
 
