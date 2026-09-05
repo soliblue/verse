@@ -1,6 +1,6 @@
 # Transcription speed and minimal controls
 
-Status: implementation and verification in progress for one combined private update.
+Status: released privately as version 0.3.0, build 20. Final CI passed; real-device handoff checks remain with the operator.
 
 ## Goal
 
@@ -38,6 +38,8 @@ Reduce time after stopping a recording without replacing Medium with a less reli
 - 2026-09-05: Backend deployed with Medium default and four threads. Twenty backend tests passed. Synthetic end-to-end staging, idempotent finalize, actual Medium inference, and test-job deletion passed on loopback and public HTTPS. Public warm run returned after 6.825s for 5.906s of synthetic audio. Old Python urllib user agent was blocked upstream; named Verse smoke client succeeded. No authentication or tunnel changes.
 - 2026-09-05: Warmup failure now stays inside the worker boundary so a transient spawn failure cannot strand later jobs. Twenty-one backend tests pass. Native CI 33988622050 passed 34 unit tests and six UI tests. Inspected actual light/dark keyboard, cold power control, icon-only hub, Settings, and transcript screenshots; representative evidence saved in assets/release-03.
 - 2026-09-05: Final source commit abd8b52 adds native globe-key visibility and collapsible hidden recovery-control sizing. CI and private TestFlight run 33989160786 are running for version 0.3.0. No second TestFlight build has been requested.
+- 2026-09-05: Private TestFlight run 33989160786 succeeded. App Store Connect confirms build 20, version 0.3.0, processing VALID, internal state IN_BETA_TESTING, group Internal. Exactly one new binary uploaded for this iteration. Final source CI 33989117909 is completing UI checks after successful compile and unit tests.
+- 2026-09-05: Final source CI 33989117909 passed backend, native unit tests, UI tests, and screenshot export. Backend remains healthy. Release complete; phone-specific checks above are explicitly not claimed as tested here.
 
 ## Device checks after installation
 
