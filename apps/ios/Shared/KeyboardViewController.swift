@@ -77,18 +77,20 @@ final class KeyboardViewController: UIInputViewController {
         ])
         let toolbar = UIStackView(arrangedSubviews: [language, model, waveformSpace, insert, recordingControl])
         toolbar.spacing = 2
-        toolbar.heightAnchor.constraint(equalToConstant: 40).isActive = true
+        toolbar.isLayoutMarginsRelativeArrangement = true
+        toolbar.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 11, bottom: 0, trailing: 11)
+        toolbar.heightAnchor.constraint(equalToConstant: 44).isActive = true
         let stack = UIStackView(arrangedSubviews: [toolbar, keyboard])
         stack.axis = .vertical
-        stack.spacing = 9
+        stack.spacing = 4
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
         NSLayoutConstraint.activate([
-            view.heightAnchor.constraint(equalToConstant: 270),
+            view.heightAnchor.constraint(equalToConstant: 250),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 5),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -5),
-            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 7),
-            stack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -7)
+            stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 0),
+            stack.bottomAnchor.constraint(equalTo: view.bottomAnchor, constant: -6)
         ])
         updateAppearance()
     }
@@ -154,6 +156,7 @@ final class KeyboardViewController: UIInputViewController {
         insertedID = VerseBridge.lastInsertedTranscriptID
         refresh()
         timer = Timer.scheduledTimer(withTimeInterval: 0.4, repeats: true) { [weak self] _ in self?.refresh() }
+        if let timer { RunLoop.main.add(timer, forMode: .common) }
     }
 
     override func viewDidDisappear(_ animated: Bool) {

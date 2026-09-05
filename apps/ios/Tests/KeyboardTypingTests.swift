@@ -35,6 +35,18 @@ final class KeyboardTypingTests: XCTestCase {
         XCTAssertEqual(text, "AB")
     }
 
+    func testWaveformUsesLayersAndResetsAfterRecording() {
+        let waveform = KeyboardAudioWaveView(frame: CGRect(x: 0, y: 0, width: 100, height: 44))
+        waveform.layoutIfNeeded()
+        waveform.update(level: 1, recording: true)
+        XCTAssertFalse(waveform.isHidden)
+        XCTAssertEqual(waveform.layer.sublayers?.count, 11)
+        XCTAssertEqual(waveform.layer.sublayers?.last?.bounds.height, 28)
+        waveform.update(level: 0, recording: false)
+        XCTAssertTrue(waveform.isHidden)
+        XCTAssertTrue(waveform.layer.sublayers?.allSatisfy { $0.bounds.height == 3 } == true)
+    }
+
     private func tap(_ label: String, in view: UIView) throws {
         let button = try XCTUnwrap(buttons(in: view).first { $0.accessibilityLabel == label })
         button.sendActions(for: .touchUpInside)
