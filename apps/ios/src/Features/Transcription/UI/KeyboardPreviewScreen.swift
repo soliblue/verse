@@ -119,7 +119,9 @@ private final class KeyboardFixtureController: UIViewController {
     private func updateLayoutState() {
         let root = keyboard?.viewIfLoaded
         let parent = keyboard?.parent.map { String(describing: type(of: $0)) } ?? "nil"
-        let state = "focus=\(field.isFirstResponder)\nguide=\(view.keyboardLayoutGuide.layoutFrame)\nroot=\(root.map { NSStringFromCGRect($0.frame) } ?? "nil") window=\(root?.window != nil)\ninput=\(field.inputView.map { NSStringFromCGRect($0.frame) } ?? "nil") same=\(field.inputView === root)\nparent=\(parent) selfSizing=\(keyboard?.inputView?.allowsSelfSizing ?? false)"
+        let rootFrame = root.map { NSCoder.string(for: $0.frame) } ?? "nil"
+        let inputFrame = field.inputView.map { NSCoder.string(for: $0.frame) } ?? "nil"
+        let state = "focus=\(field.isFirstResponder)\nguide=\(view.keyboardLayoutGuide.layoutFrame)\nroot=\(rootFrame) window=\(root?.window != nil)\ninput=\(inputFrame) same=\(field.inputView === root)\nparent=\(parent) selfSizing=\(keyboard?.inputView?.allowsSelfSizing ?? false)"
         if layoutState.text != state { layoutState.text = state }
     }
 
