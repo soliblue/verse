@@ -159,6 +159,16 @@ final class VerseSmokeUITests: XCTestCase {
         screenshot("voice-panel-ready")
     }
 
+    func testVoicePanelSwitchesFromSystemKeyboard() {
+        assertRepeatedKeyboardSwitches()
+        screenshot("voice-panel-controller-switch-light")
+    }
+
+    func testDarkVoicePanelSwitchesFromSystemKeyboard() {
+        assertRepeatedKeyboardSwitches(["--keyboard-dark-ui-testing", "--keyboard-cold-ui-testing"])
+        screenshot("voice-panel-controller-switch-dark")
+    }
+
     func testColdVoicePanelOffersAppActivation() {
         let app = launchVoicePanel(["--keyboard-cold-ui-testing"])
         assertVoicePanel(in: app)
@@ -260,6 +270,31 @@ final class VerseSmokeUITests: XCTestCase {
         app.launchArguments = ["--ui-testing", "--keyboard-ui-testing"] + arguments
         app.launch()
         return app
+    }
+
+    private func assertRepeatedKeyboardSwitches(_ arguments: [String] = []) {
+        let app = launchVoicePanel(["--keyboard-switch-ui-testing"] + arguments)
+        let field = app.textViews["keyboard-preview-text"]
+        let content = element("keyboard-content", in: app)
+        XCTAssertTrue(field.waitForExistence(timeout: 8))
+        XCTAssertEqual(field.value as? String, "Keep this text.")
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 8))
+        XCTAssertFalse(content.exists)
+        for showVerse in [true, false, true] {
+            app.buttons["keyboard-fixture-switch"].tap()
+            if showVerse {
+                let settled = XCTNSPredicateExpectation(predicate: NSPredicate { _, _ in
+                    content.exists && abs(content.frame.height - 260) <= 1
+                }, object: nil)
+                XCTAssertEqual(XCTWaiter.wait(for: [settled], timeout: 8), .completed)
+                assertVoicePanel(in: app)
+                XCTAssertEqual(content.frame.minY, field.frame.maxY + 16, accuracy: 6)
+            } else {
+                XCTAssertTrue(content.waitForNonExistence(timeout: 8))
+                XCTAssertTrue(app.keyboards.firstMatch.exists)
+            }
+            XCTAssertEqual(field.value as? String, "Keep this text.")
+        }
     }
 
     private func assertVoicePanel(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {

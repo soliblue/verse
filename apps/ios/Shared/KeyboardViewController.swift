@@ -52,12 +52,13 @@ final class KeyboardViewController: UIInputViewController {
         let root = KeyboardInputView(frame: CGRect(x: 0, y: 0, width: 0, height: Self.contentHeight), inputViewStyle: .keyboard)
         root.autoresizingMask = .flexibleWidth
         root.allowsSelfSizing = true
+        root.clipsToBounds = true
+        root.heightAnchor.constraint(equalToConstant: Self.contentHeight).isActive = true
         inputView = root
     }
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        view.clipsToBounds = false
         view.accessibilityIdentifier = "keyboard-content"
         language.titleLabel?.font = .systemFont(ofSize: 13, weight: .semibold)
         language.accessibilityLabel = "Transcription language"
@@ -77,13 +78,22 @@ final class KeyboardViewController: UIInputViewController {
         citrus.clipsToBounds = true
         citrus.isUserInteractionEnabled = false
         citrus.accessibilityIdentifier = "keyboard-citrus"
+        recordingControl.clipsToBounds = true
         recordingControl.addSubview(citrus)
         record.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         recordingControl.addSubview(record)
         addChild(launch)
+        launch.safeAreaRegions = []
+        launch.view.frame = recordingControl.bounds
         launch.view.backgroundColor = .clear
-        launch.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        launch.view.translatesAutoresizingMaskIntoConstraints = false
         recordingControl.addSubview(launch.view)
+        NSLayoutConstraint.activate([
+            launch.view.leadingAnchor.constraint(equalTo: recordingControl.leadingAnchor),
+            launch.view.trailingAnchor.constraint(equalTo: recordingControl.trailingAnchor),
+            launch.view.topAnchor.constraint(equalTo: recordingControl.topAnchor),
+            launch.view.bottomAnchor.constraint(equalTo: recordingControl.bottomAnchor)
+        ])
         launch.didMove(toParent: self)
         controlSlot.widthAnchor.constraint(equalToConstant: 44).isActive = true
         insert.setImage(UIImage(systemName: "text.badge.plus"), for: .normal)
@@ -144,7 +154,6 @@ final class KeyboardViewController: UIInputViewController {
         view.addSubview(stack)
         view.addSubview(recordingControl)
         NSLayoutConstraint.activate([
-            view.heightAnchor.constraint(equalToConstant: Self.contentHeight),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor),
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor),
             stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 0),
@@ -186,7 +195,7 @@ final class KeyboardViewController: UIInputViewController {
         recordingControl.frame = centered ? voice.convert(voice.actionFrame, to: view) : controlSlot.convert(controlSlot.bounds, to: view)
         citrus.frame = recordingControl.bounds
         record.frame = recordingControl.bounds
-        launch.view.frame = recordingControl.bounds
+        recordingControl.layoutIfNeeded()
         citrus.layer.cornerRadius = recordingControl.bounds.width / 2
     }
 
@@ -463,6 +472,10 @@ private final class KeyboardInputView: UIInputView {
     override func systemLayoutSizeFitting(_ targetSize: CGSize) -> CGSize {
         let width = targetSize.width > 0 && targetSize.width.isFinite ? targetSize.width : hostWidth
         return CGSize(width: width, height: KeyboardViewController.contentHeight)
+    }
+
+    override func systemLayoutSizeFitting(_ targetSize: CGSize, withHorizontalFittingPriority horizontalFittingPriority: UILayoutPriority, verticalFittingPriority: UILayoutPriority) -> CGSize {
+        systemLayoutSizeFitting(targetSize)
     }
 
     private var hostWidth: CGFloat {

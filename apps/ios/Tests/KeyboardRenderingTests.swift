@@ -32,6 +32,61 @@ final class KeyboardRenderingTests: XCTestCase {
         XCTAssertEqual(root.systemLayoutSizeFitting(.zero), CGSize(width: 402, height: KeyboardViewController.contentHeight))
     }
 
+    func testActivationIsBoundedBeforeFirstLayoutAndAfterAttachment() throws {
+        for width in [CGFloat(320), 402, 440] {
+            let controller = KeyboardViewController()
+            controller.isPreview = true
+            controller.previewsColdStart = true
+            controller.loadViewIfNeeded()
+            let root = try XCTUnwrap(controller.inputView)
+            let activation = try XCTUnwrap(controller.children.first?.view)
+            let container = try XCTUnwrap(activation.superview)
+            XCTAssertTrue(root.clipsToBounds)
+            XCTAssertTrue(container.clipsToBounds)
+            XCTAssertEqual(activation.frame, container.bounds)
+            XCTAssertFalse(activation.translatesAutoresizingMaskIntoConstraints)
+            let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 874))
+            window.addSubview(root)
+            defer { root.removeFromSuperview(); window.isHidden = true }
+            XCTAssertEqual(activation.frame, container.bounds)
+            XCTAssertEqual(root.bounds.height, 260)
+            controller.viewWillAppear(false)
+            root.layoutIfNeeded()
+            controller.viewDidLayoutSubviews()
+            XCTAssertEqual(activation.frame, container.bounds)
+            XCTAssertEqual(activation.bounds.size, CGSize(width: 176, height: 176))
+            XCTAssertTrue(root.bounds.contains(activation.convert(activation.bounds, to: root)))
+        }
+    }
+
+    func testEverySizingProposalKeepsKeyboardHeight() throws {
+        let (window, controller) = installedController()
+        defer { controller.view.removeFromSuperview(); window.isHidden = true }
+        let root = try XCTUnwrap(controller.inputView)
+        for size in [CGSize.zero, CGSize(width: 440, height: 956), CGSize(width: 874, height: 402)] {
+            let expected = CGSize(width: size.width > 0 ? size.width : 402, height: 260)
+            XCTAssertEqual(root.systemLayoutSizeFitting(size), expected)
+            for priority in [UILayoutPriority.fittingSizeLevel, .required] {
+                XCTAssertEqual(root.systemLayoutSizeFitting(size, withHorizontalFittingPriority: .required, verticalFittingPriority: priority), expected)
+            }
+        }
+    }
+
+    func testClippingKeepsTopRowKeyPreviewVisible() throws {
+        let (window, controller) = installedController(typing: true)
+        defer { controller.view.removeFromSuperview(); window.isHidden = true }
+        let root = try XCTUnwrap(controller.inputView)
+        let typing = try XCTUnwrap(descendant(in: root, identifiedBy: "keyboard-typing-surface") as? KeyboardTypingView)
+        let key = try XCTUnwrap(descendant(in: typing, identifiedBy: "keyboard-key-q"))
+        typing.beginTouch(id: 1, at: CGPoint(x: key.frame.midX, y: key.frame.midY), time: 1)
+        defer { typing.cancelTouch(id: 1) }
+        let popup = try XCTUnwrap(descendant(in: typing, identifiedBy: "keyboard-key-preview"))
+        let frame = popup.convert(popup.bounds, to: root)
+        XCTAssertTrue(root.clipsToBounds)
+        XCTAssertTrue(root.bounds.contains(frame))
+        XCTAssertGreaterThanOrEqual(frame.minY, 4)
+    }
+
     func testVoiceIsDefaultAndUsesTheSystemKeyboardBacking() throws {
         let (window, controller) = installedController()
         defer { controller.view.removeFromSuperview(); window.isHidden = true }

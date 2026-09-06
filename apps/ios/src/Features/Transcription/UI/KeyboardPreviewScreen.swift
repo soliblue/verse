@@ -14,20 +14,25 @@ private final class KeyboardFixtureController: UIViewController {
     private let field = KeyboardFixtureTextView()
     private let arguments = ProcessInfo.processInfo.arguments
     private let layoutState = UILabel()
+    private let switchButton = UIButton(type: .system)
     private var keyboard: KeyboardViewController?
     private var waveformTimer: Timer?
     private var popupTimer: Timer?
+    private var switchTimer: Timer?
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        let system = arguments.contains("--system-keyboard-ui-testing")
+        let switching = arguments.contains("--keyboard-switch-ui-testing")
+        let system = arguments.contains("--system-keyboard-ui-testing") || switching
         let dark = arguments.contains("--keyboard-dark-ui-testing")
         overrideUserInterfaceStyle = dark ? .dark : .light
         view.backgroundColor = .systemBackground
         let title = UILabel()
         title.text = arguments.contains("--keyboard-wave-ui-testing") ? "Synthetic waveform · 10 Hz levels" : (system ? "iOS keyboard reference" : "Verse keyboard fixture")
+        if switching { title.text = "Controller-hosted keyboard switch fixture" }
         title.font = .systemFont(ofSize: 17, weight: .medium)
         title.textColor = .secondaryLabel
+        title.numberOfLines = 0
         title.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(title)
         layoutState.accessibilityIdentifier = "keyboard-fixture-state"
@@ -47,6 +52,7 @@ private final class KeyboardFixtureController: UIViewController {
         view.addSubview(field)
         NSLayoutConstraint.activate([
             title.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+            title.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
             title.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 20),
             layoutState.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
             layoutState.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -20),
@@ -56,7 +62,7 @@ private final class KeyboardFixtureController: UIViewController {
             field.heightAnchor.constraint(equalToConstant: 100),
             field.bottomAnchor.constraint(equalTo: view.keyboardLayoutGuide.topAnchor, constant: -16)
         ])
-        if !system {
+        if !system || switching {
             field.autocapitalizationType = .none
             field.autocorrectionType = .no
             field.spellCheckingType = .no
@@ -67,9 +73,24 @@ private final class KeyboardFixtureController: UIViewController {
             controller.previewsProcessing = arguments.contains("--keyboard-processing-ui-testing")
             controller.previewTextInput = { [weak field] text in field?.insertText(text) }
             controller.previewDeleteBackward = { [weak field] in field?.deleteBackward() }
-            field.fixtureKeyboard = controller
-            field.inputView = controller.view
             keyboard = controller
+            if !system {
+                field.fixtureKeyboard = controller
+                field.inputView = controller.view
+            }
+        }
+        if switching {
+            field.text = "Keep this text."
+            switchButton.accessibilityIdentifier = "keyboard-fixture-switch"
+            switchButton.setTitle("Show Verse input", for: .normal)
+            switchButton.addAction(UIAction { [weak self] _ in self?.switchInput() }, for: .touchUpInside)
+            switchButton.translatesAutoresizingMaskIntoConstraints = false
+            view.addSubview(switchButton)
+            NSLayoutConstraint.activate([
+                switchButton.leadingAnchor.constraint(equalTo: view.leadingAnchor, constant: 20),
+                switchButton.topAnchor.constraint(equalTo: layoutState.bottomAnchor, constant: 12),
+                switchButton.heightAnchor.constraint(equalToConstant: 44)
+            ])
         }
     }
 
@@ -77,6 +98,16 @@ private final class KeyboardFixtureController: UIViewController {
         super.viewDidAppear(animated)
         field.becomeFirstResponder()
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) { [weak self] in self?.updateLayoutState() }
+        if arguments.contains("--keyboard-switch-video-ui-testing") {
+            var switches = 0
+            let timer = Timer(timeInterval: 2, repeats: true) { [weak self] timer in
+                self?.switchInput()
+                switches += 1
+                if switches == 3 { timer.invalidate() }
+            }
+            RunLoop.main.add(timer, forMode: .common)
+            switchTimer = timer
+        }
         if arguments.contains("--keyboard-wave-ui-testing") {
             let start = ProcessInfo.processInfo.systemUptime
             let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
@@ -111,6 +142,8 @@ private final class KeyboardFixtureController: UIViewController {
         waveformTimer = nil
         popupTimer?.invalidate()
         popupTimer = nil
+        switchTimer?.invalidate()
+        switchTimer = nil
     }
 
     override func viewDidLayoutSubviews() {
@@ -123,8 +156,18 @@ private final class KeyboardFixtureController: UIViewController {
         let parent = keyboard?.parent.map { String(describing: type(of: $0)) } ?? "nil"
         let rootFrame = root.map { NSCoder.string(for: $0.frame) } ?? "nil"
         let inputFrame = field.inputView.map { NSCoder.string(for: $0.frame) } ?? "nil"
-        let state = "focus=\(field.isFirstResponder)\nguide=\(view.keyboardLayoutGuide.layoutFrame)\nroot=\(rootFrame) window=\(root?.window != nil)\ninput=\(inputFrame) same=\(field.inputView === root)\nparent=\(parent) selfSizing=\(keyboard?.inputView?.allowsSelfSizing ?? false)"
+        let state = "focus=\(field.isFirstResponder)\nguide=\(view.keyboardLayoutGuide.layoutFrame)\nroot=\(rootFrame) window=\(root?.window != nil)\ninput=\(inputFrame) same=\(field.inputView === root)\nparent=\(parent) selfSizing=\((root as? UIInputView)?.allowsSelfSizing ?? false)"
         if layoutState.text != state { layoutState.text = state }
+    }
+
+    private func switchInput() {
+        guard let keyboard else { return }
+        let showVerse = field.fixtureKeyboard == nil
+        field.fixtureKeyboard = showVerse ? keyboard : nil
+        field.inputView = showVerse ? keyboard.view : nil
+        field.reloadInputViews()
+        switchButton.setTitle(showVerse ? "Show iOS keyboard" : "Show Verse input", for: .normal)
+        updateLayoutState()
     }
 
     private func descendant(in root: UIView, matching predicate: (UIView) -> Bool) -> UIView? {

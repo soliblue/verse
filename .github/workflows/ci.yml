@@ -173,6 +173,15 @@ jobs:
           sleep 10
           kill -INT "$RECORD_PID"
           wait "$RECORD_PID"
+          xcrun simctl terminate "$SMOKE_UDID" soli.verse
+          xcrun simctl io "$SMOKE_UDID" recordVideo --codec=h264 "$RUNNER_TEMP/verse-smoke/voice-switch-controller-fixture.mov" &
+          RECORD_PID=$!
+          sleep 1
+          xcrun simctl launch "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --keyboard-cold-ui-testing --keyboard-switch-ui-testing --keyboard-switch-video-ui-testing
+          sleep 10
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/voice-switch-controller-fixture.png"
+          kill -INT "$RECORD_PID"
+          wait "$RECORD_PID"
           xcrun xcresulttool export attachments \
             --path "$RUNNER_TEMP/verse-ui-tests.xcresult" \
             --output-path "$RUNNER_TEMP/verse-smoke/ui-tests"
