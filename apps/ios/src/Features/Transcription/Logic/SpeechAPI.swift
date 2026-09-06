@@ -46,7 +46,7 @@ struct SpeechAPI {
         try await decode(Configuration.self, request: request("/v1/config"))
     }
 
-    func upload(_ url: URL, selection: SpeechSelection = .current) async throws -> Transcription {
+    func upload(_ url: URL, selection: SpeechSelection = .current, origin: TranscriptionOrigin? = nil) async throws -> Transcription {
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         guard size > 0, size <= 52_428_800 else {
             throw SpeechFailure("Choose an audio file smaller than 50 MB.")
@@ -58,7 +58,7 @@ struct SpeechAPI {
             URLQueryItem(name: "model", value: selection.model),
             URLQueryItem(name: "language", value: selection.language),
             URLQueryItem(name: "filename", value: url.lastPathComponent),
-            URLQueryItem(name: "origin", value: TranscriptionOrigin.pendingAudio(url).rawValue)
+            URLQueryItem(name: "origin", value: (origin ?? TranscriptionOrigin.pendingAudio(url)).rawValue)
         ]
         if let identifier { parts.queryItems?.append(URLQueryItem(name: "upload_id", value: identifier)) }
         var request = try request("/v1/transcriptions" + (parts.string ?? ""))
@@ -72,7 +72,7 @@ struct SpeechAPI {
 
     static func recordingIdentifier(for url: URL) -> String? {
         let name = url.deletingPathExtension().lastPathComponent
-        guard let prefix = ["Recording-keyboard-", "Recording-app-", "Recording-"].first(where: { name.hasPrefix($0) }),
+        guard let prefix = ["Recording-keyboard-", "Recording-app-", "Recording-", "Rerun-"].first(where: { name.hasPrefix($0) }),
               let uuid = UUID(uuidString: String(name.dropFirst(prefix.count))) else { return nil }
         return uuid.uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     }
@@ -81,6 +81,7 @@ struct SpeechAPI {
         var request = try request("/v1/transcriptions/\(id)")
         request.httpMethod = "DELETE"
         let (data, response) = try await URLSession.shared.data(for: request)
+        if (response as? HTTPURLResponse)?.statusCode == 404 { return }
         try validate(response, data: data)
     }
 

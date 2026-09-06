@@ -4,20 +4,18 @@ import UniformTypeIdentifiers
 struct TranscriptionHubView: View {
     @Bindable var store: TranscriptionStore
     @Environment(\.scenePhase) private var scenePhase
-    @State private var settingsPresented = false
+    @State private var sheet: Sheet?
     @State private var importing = false
     @State private var returningToKeyboard = false
-    @State private var path: [String] = []
     private let cream = Color(red: 1, green: 0.95, blue: 0.79)
     private let green = Color(red: 0, green: 0.39, blue: 0.22)
     private let ink = Color(red: 0.12, green: 0.16, blue: 0.10)
 
     var body: some View {
-        NavigationStack(path: $path) {
+        NavigationStack {
             GeometryReader { geometry in
                 ScrollView {
                     VStack(spacing: 0) {
-                        masthead.padding(.horizontal, 24).padding(.top, 8)
                         ZStack {
                             Image("CitrusHero").resizable().scaledToFit()
                                 .mask { Rectangle().padding(.vertical, 16).blur(radius: 12) }
@@ -36,8 +34,10 @@ struct TranscriptionHubView: View {
                             .accessibilityIdentifier("dictation-return-guidance")
                         }
                         sessionStatus.padding(.horizontal, 24)
-                        TranscriptionHistoryView(store: store, minimumHeight: max(190, geometry.size.height - min(geometry.size.width, 520) - 150))
-                            .padding(.horizontal, 20).padding(.bottom, 24)
+                        TranscriptionHistoryView(store: store, minimumHeight: max(190, geometry.size.height - min(geometry.size.width, 520) - 120)) { id in
+                            sheet = .transcript(id)
+                        }
+                        .padding(.horizontal, 10).padding(.bottom, 16)
                     }
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)
                 }
@@ -47,10 +47,28 @@ struct TranscriptionHubView: View {
                 }
                 .foregroundStyle(ink)
                 .toolbar(.hidden, for: .navigationBar)
-                .navigationDestination(for: String.self) { id in TranscriptDetailView(store: store, id: id) }
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    masthead
+                        .padding(.horizontal, 20).padding(.vertical, 6)
+                        .background {
+                            Image("CitrusPaper").resizable().scaledToFill().ignoresSafeArea(edges: .top)
+                        }
+                }
                 .refreshable { store.perform { try await store.refresh() } }
                 .task { store.perform { try await store.refresh() } }
-                .sheet(isPresented: $settingsPresented) { SpeechSettingsView(store: store) }
+                .sheet(item: $sheet) { destination in
+                    switch destination {
+                    case .settings:
+                        SpeechSettingsView(store: store)
+                    case .transcript(let id):
+                        TranscriptDetailView(store: store, id: id)
+                            .presentationDetents([.medium, .large])
+                            .presentationDragIndicator(.visible)
+                            .presentationBackground {
+                                Image("CitrusPaper").resizable().scaledToFill()
+                            }
+                    }
+                }
                 .fileImporter(isPresented: $importing, allowedContentTypes: [.audio, .movie, .mpeg4Audio], allowsMultipleSelection: false) { result in
                     store.perform {
                         if let url = try result.get().first { try await store.importAudio(url) }
@@ -70,8 +88,7 @@ struct TranscriptionHubView: View {
                     if url.scheme == "verse" {
                         returningToKeyboard = url.host == "dictate"
                         if returningToKeyboard {
-                            path.removeAll()
-                            settingsPresented = false
+                            sheet = nil
                             importing = false
                         }
                         store.perform {
@@ -102,25 +119,26 @@ struct TranscriptionHubView: View {
                     .frame(width: 44, height: 44).background(cream, in: Circle())
             }
             .accessibilityLabel("Import audio")
-            Button { settingsPresented = true } label: {
+            Button { sheet = .settings } label: {
                 Image(systemName: "gearshape.fill").foregroundStyle(green)
                     .frame(width: 44, height: 44).background(cream, in: Circle())
             }
             .accessibilityLabel("Settings")
         }
         .font(.system(size: 21, weight: .semibold)).buttonStyle(.plain)
+        .accessibilityIdentifier("home-toolbar")
     }
 
     @ViewBuilder
     private var sessionStatus: some View {
         if VerseBridge.onDeviceTranscriptionEnabled, !store.localEngine.installedModelIDs.contains(VerseBridge.localModel) {
-            Button { settingsPresented = true } label: {
+            Button { sheet = .settings } label: {
                 Label("Download a transcription model", systemImage: "arrow.down.circle")
             }
             .padding(.bottom, 16)
         }
         if !store.isConfigured {
-            Button { settingsPresented = true } label: {
+            Button { sheet = .settings } label: {
                 Label("Add your device token", systemImage: "key")
             }
             .padding(.bottom, 16)
@@ -141,7 +159,7 @@ struct TranscriptionHubView: View {
             if store.isConfigured {
                 store.perform { try await store.toggleRecording() }
             } else {
-                settingsPresented = true
+                sheet = .settings
             }
         } label: {
             ZStack {
@@ -158,5 +176,17 @@ struct TranscriptionHubView: View {
         .accessibilityLabel(store.recorder.isRecording ? "Stop recording" : "Record")
         .accessibilityValue(store.isUploading ? "Uploading" : (store.isStartingRecording ? "Starting" : (store.recorder.isRecording ? "Recording" : "Ready")))
         .disabled(store.isUploading || store.isStartingRecording)
+    }
+
+    private enum Sheet: Identifiable {
+        case settings
+        case transcript(String)
+
+        var id: String {
+            switch self {
+            case .settings: "settings"
+            case .transcript(let id): "transcript-" + id
+            }
+        }
     }
 }

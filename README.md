@@ -4,20 +4,20 @@ A private iPhone transcription app. Record a message, import audio, or dictate t
 
 ## iPhone
 
-- Record, copy, share, play back, and delete recordings.
-- Download an on-device model in Settings: Tiny, Base, Small, Medium, Large v3, or Large v3 Turbo. Medium is selected by default; nothing downloads automatically.
+- Record, copy, share, play back, and delete recordings. Open any transcript in a yellow half-sheet, switch between its versions, or transcribe the same audio with another model.
+- One model list offers Local Tiny, Base, Small, Medium, Large v3, and Large v3 Turbo, plus Cloud Small, Medium, and Large v3 on your VPS. Local Medium is selected by default. Choosing an unavailable Local model starts its download; progress, cancellation, and swipe-to-remove stay in that list.
 - Choose a language or let Whisper detect it. Downloaded models work offline, without a server token.
-- Turn off on-device transcription to use the preconfigured VPS and enter your device token.
+- Choose a Cloud model to use the preconfigured VPS and enter your device token.
 - Recordings, original transcripts, and history remain on the iPhone for local jobs. Failed work stays available for retry with its original processing settings.
-- Optional Original, Casual, Polished, and Custom writing styles use Apple's on-device text model. Original skips rewriting. Custom accepts your own instruction.
+- The optional Apple Intelligence switch enables Original, Casual, Polished, and Custom writing styles using Apple's on-device text model. Original skips rewriting. Custom accepts your own instruction.
 
 Download a model or configure Server, then allow microphone access. Add Verse in iPhone Settings → General → Keyboard → Keyboards, enable Full Access, and allow Live Activities for Verse.
 
-Writing styles require iOS 26+, compatible hardware, and Apple Intelligence enabled with its model ready. Verse hides the style picker when unavailable and explains the next step. Enable it in iPhone Settings → Apple Intelligence & Siri. Unsupported languages, unavailable models, and failed rewrites keep the original transcript. Rewriting is optional and adds processing time.
+Writing styles require iOS 26+, compatible hardware, and Apple Intelligence enabled with its model ready. When unavailable, the switch stays off and tapping highlights the linked setup instructions. Enable it in iPhone Settings → Apple Intelligence & Siri. Unsupported languages, unavailable models, and failed rewrites keep the original transcript. Rewriting is optional and adds processing time.
 
 For on-device file transcription, use Import audio inside Verse. The share extension uses the VPS; when on-device mode is selected, it asks before sending anything. No audio silently falls back from local processing to the server.
 
-Verse opens a voice-only panel by default: citrus to activate or record, a live waveform and stop control while recording, and language/model controls above. It uses the native keyboard backdrop throughout. The letter keyboard is optional under Settings → Typing keyboard.
+Verse opens a voice-only panel by default: citrus to activate or record, a live waveform and stop control while recording, and language/model controls above. It uses the native keyboard backdrop throughout. The letter keyboard is optional under Settings → Typing keyboard. Before its first use, the switch highlights setup instructions until the actual Verse keyboard confirms Full Access. This confirmation records the last observed setup, not continuous knowledge of iOS keyboard settings.
 
 On iOS 18 or later, add the Verse dictation control in Control Center, or assign the Toggle dictation shortcut to your Action Button. While typing in another app, trigger the control once to record and again to transcribe. Select the Verse keyboard to receive the result. Fresh dictations insert automatically once; older results offer an Insert button. Siri also supports “Dictate with Verse”.
 

@@ -14,6 +14,9 @@ final class TranscriptionTests: XCTestCase {
         XCTAssertEqual(item.text, "Hello")
         XCTAssertEqual(item.detectedLanguage, "en")
         XCTAssertNil(item.origin)
+        XCTAssertEqual(item.recordingKey, "abc")
+        XCTAssertEqual(item.modelLabel, "Cloud · Small")
+        XCTAssertEqual(item.selection.style, .original)
         XCTAssertNil(item.completionNotificationBody(enabled: true, appIsActive: false))
         XCTAssertFalse(item.isPending)
         XCTAssertGreaterThan(item.date.timeIntervalSince1970, 0)
@@ -46,6 +49,29 @@ final class TranscriptionTests: XCTestCase {
         XCTAssertEqual(SpeechAPI.recordingIdentifier(for: restored), SpeechAPI.recordingIdentifier(for: url))
         XCTAssertNil(SpeechAPI.recordingIdentifier(for: URL(fileURLWithPath: "Imported.m4a")))
         XCTAssertNil(SpeechAPI.recordingIdentifier(for: URL(fileURLWithPath: "Recording-invalid.m4a")))
+        let rerun = URL(fileURLWithPath: "PendingAudio/Rerun-\(id).m4a")
+        XCTAssertEqual(SpeechAPI.recordingIdentifier(for: rerun), "abcd123456784abc9123123456789abc")
+    }
+
+    func testRecordingVersionsRemainGroupedAndKeepTheirOwnModelAndOriginal() throws {
+        let original = notificationItem(origin: .app)
+        var local = Transcription(id: "local-version", filename: original.filename, state: "completed", model: "turbo",
+                                  language: "ar", detectedLanguage: "ar", text: "Original words", durationSeconds: 4,
+                                  error: nil, createdAt: "2026-09-06T10:00:00Z", updatedAt: "2026-09-06T10:00:00Z",
+                                  origin: .app, engine: "on-device", recordingID: original.id,
+                                  customPrompt: "Keep it informal.")
+        local = local.applying(.init(original: "Original words", text: "Casual words", style: .custom, fallback: nil))
+        let other = Transcription.preview
+        let restored = try JSONDecoder().decode([Transcription].self, from: JSONEncoder().encode([original, local, other]))
+        let recordings = Transcription.recordings(from: restored)
+        XCTAssertEqual(recordings.map(\.id), [local.id, other.id])
+        XCTAssertEqual(Transcription.versions(for: original.id, in: restored).map(\.id), [local.id, original.id])
+        XCTAssertEqual(Transcription.versions(for: local.id, in: restored).map(\.id), [local.id, original.id])
+        XCTAssertEqual(local.modelLabel, "Local · Large v3 Turbo")
+        XCTAssertEqual(local.originalText, "Original words")
+        XCTAssertEqual(local.selection, SpeechSelection(onDevice: true, model: "turbo", language: "ar", style: .custom, customPrompt: "Keep it informal."))
+        XCTAssertEqual(original.modelLabel, "Cloud · Medium")
+        XCTAssertEqual(original.text, "Hello, see you at eight.\nBis später!")
     }
 
     func testPendingOriginAndIdentifierSurviveRecordingRetry() {

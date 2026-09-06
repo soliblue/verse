@@ -19,6 +19,7 @@ final class TranscriptionStore {
     var isUploading = false
     var isRefreshing = false
     var isStartingRecording = false
+    private(set) var rerunningRecordingID: String?
     var keyboardExpiresAt: Date?
     var pendingAudio: [URL] = []
     private var timer: Timer?
@@ -32,6 +33,7 @@ final class TranscriptionStore {
     private var sessionGeneration = 0
     private var recordingUpload: RecordingUpload?
     private var recordingSelection: SpeechSelection?
+    private var deletingRecordingIDs = Set<String>()
 
     init() {
         if VerseBridge.token.isEmpty {
@@ -45,11 +47,15 @@ final class TranscriptionStore {
             VerseBridge.onDeviceTranscriptionEnabled = true
             VerseBridge.localModel = "medium"
             VerseBridge.writingStyle = "original"
+            VerseBridge.writingEnabled = false
             VerseBridge.customWritingPrompt = ""
-            items = [.preview]
+            VerseBridge.typingKeyboardEnabled = false
+            if ProcessInfo.processInfo.arguments.contains("--history-ui-testing") { items = Transcription.previewHistory }
+            else if ProcessInfo.processInfo.arguments.contains("--versions-ui-testing") { items = Transcription.previewVersions }
+            else { items = [.preview] }
             return
         }
-        items = library.load()
+        items = library.load().filter { !VerseBridge.isDeleted($0.id) }
         if VerseBridge.pendingJobID.hasPrefix("local-") {
             VerseBridge.pendingJobID = ""
             VerseBridge.pendingInsertionJobID = ""
@@ -77,6 +83,10 @@ final class TranscriptionStore {
     }
 
     var isConfigured: Bool { demo || VerseBridge.onDeviceTranscriptionEnabled || !VerseBridge.token.isEmpty }
+    var isRerunning: Bool { rerunningRecordingID != nil }
+    var recordings: [Transcription] { Transcription.recordings(from: items) }
+
+    func versions(for id: String) -> [Transcription] { Transcription.versions(for: id, in: items) }
 
     func perform(_ operation: @escaping @MainActor () async throws -> Void) {
         Task {
@@ -109,12 +119,10 @@ final class TranscriptionStore {
                 remote[index] = item.applying(await TranscriptDelivery.prepare(id: item.id, text: item.text ?? "", language: item.detectedLanguage))
             }
         }
-        let received = Set(remote.map(\.id))
-        remote += items.filter { !$0.isLocal && previous[$0.id] == nil && !received.contains($0.id) }
         remote.removeAll { VerseBridge.isDeleted($0.id) }
-        items = TranscriptionLibrary.merging(server: remote, cached: items)
+        items = TranscriptionLibrary.merging(server: remote, cached: items.filter { !VerseBridge.isDeleted($0.id) })
         try library.save(items)
-        for item in remote where item.state == "completed" && previous[item.id] != "completed" && (previous[item.id] != nil || item.id == pendingID) {
+        for item in items where item.state == "completed" && previous[item.id] != "completed" && (previous[item.id] != nil || item.id == pendingID) {
             await notify(item)
         }
         let jobID = keyboardJobID.isEmpty ? VerseBridge.pendingJobID : keyboardJobID
@@ -134,6 +142,7 @@ final class TranscriptionStore {
 
     func toggleRecording(origin: TranscriptionOrigin = .app) async throws {
         guard !isStartingRecording else { return }
+        guard !isRerunning else { throw SpeechFailure("Wait for this transcription to finish.") }
         guard isConfigured else { throw SpeechFailure("Add your device token in Settings first.") }
         guard !isUploading || recorder.isRecording else { throw SpeechFailure("Wait for this recording to upload.") }
         if recorder.isRecording {
@@ -183,7 +192,7 @@ final class TranscriptionStore {
 
     func startKeyboardDictation() async throws {
         guard !recorder.isRecording, !isStartingRecording else { return }
-        guard !isUploading, VerseBridge.pendingJobID.isEmpty else {
+        guard !isUploading, !isRerunning, VerseBridge.pendingJobID.isEmpty else {
             throw SpeechFailure("Wait for your last transcription to finish.")
         }
         let generation = sessionGeneration
@@ -276,6 +285,7 @@ final class TranscriptionStore {
     }
 
     func importAudio(_ url: URL) async throws {
+        guard !isRerunning else { throw SpeechFailure("Wait for this transcription to finish.") }
         let access = url.startAccessingSecurityScopedResource()
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
@@ -288,65 +298,95 @@ final class TranscriptionStore {
         try await upload(destination)
     }
 
-    func upload(_ url: URL) async throws {
+    @discardableResult
+    func upload(_ url: URL) async throws -> Transcription {
         guard !isUploading, !recorder.isRecording else { throw SpeechFailure("Finish the current recording first.") }
-        let selection = library.selection(for: url) ?? recordingSelection ?? .current
+        let savedPending = library.pendingTranscription(for: url)
+        if url.lastPathComponent.hasPrefix("Rerun-") {
+            guard savedPending?.isRerun == true else { throw SpeechFailure("Run this transcription again from the original recording.") }
+        }
+        let selection = savedPending?.selection ?? recordingSelection ?? .current
         try library.saveSelection(selection, for: url)
+        let pending = library.pendingTranscription(for: url) ?? PendingTranscription(selection: selection)
+        let isRerun = pending.isRerun
+        if let recordingID = pending.recordingID {
+            guard !deletingRecordingIDs.contains(recordingID), items.contains(where: { $0.recordingKey == recordingID }) else {
+                throw SpeechFailure("This recording is no longer in your library.")
+            }
+        }
         recordingSelection = nil
         try validateSelection(selection)
+        let ownsRerun = isRerun && rerunningRecordingID == nil
+        if ownsRerun { rerunningRecordingID = pending.recordingID }
         isUploading = true
-        VerseBridge.statusText = selection.onDevice ? "Transcribing…" : "Uploading…"
+        if !isRerun { VerseBridge.statusText = selection.onDevice ? "Transcribing…" : "Uploading…" }
         uploadBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Upload recording") { [weak self] in
             Task { @MainActor in self?.endUploadBackgroundTask() }
         }
         defer {
             isUploading = false
+            if ownsRerun { rerunningRecordingID = nil }
             endUploadBackgroundTask()
             loadPendingAudio()
         }
         if selection.onDevice {
-            try await transcribeLocally(url, selection: selection)
-            return
+            return try await transcribeLocally(url, pending: pending)
         }
         let streaming = recordingUpload?.url == url ? recordingUpload : nil
         let prepared = try await streaming?.finish()
         var item: Transcription
         if let prepared { item = prepared }
-        else { item = try await api.upload(url, selection: selection) }
+        else { item = try await api.upload(url, selection: selection, origin: pending.origin) }
         if streaming != nil { recordingUpload = nil }
+        item.recordingID = pending.recordingID
+        item.origin = pending.origin ?? item.origin ?? TranscriptionOrigin.pendingAudio(url)
+        item.filename = pending.filename ?? item.filename
+        item.localAudioName = try library.keepAudio(url, id: item.recordingKey, existingName: pending.localAudioName)
+        item.customPrompt = selection.customPrompt
+        item.writingStyle = selection.style.rawValue
         VerseBridge.saveOptions(selection, for: item.id)
         if item.state == "completed" {
             item = item.applying(await TranscriptDelivery.prepare(id: item.id, text: item.text ?? "", language: item.detectedLanguage))
         }
         items.removeAll { $0.id == item.id }
         items.insert(item, at: 0)
-        VerseBridge.statusText = "Transcribing…"
-        VerseBridge.pendingJobID = item.id
-        if TranscriptionOrigin.pendingAudio(url) == .keyboard {
-            keyboardJobID = item.id
-            VerseBridge.pendingInsertionJobID = item.id
+        if !isRerun {
+            VerseBridge.statusText = "Transcribing…"
+            VerseBridge.pendingJobID = item.id
+            if TranscriptionOrigin.pendingAudio(url) == .keyboard {
+                keyboardJobID = item.id
+                VerseBridge.pendingInsertionJobID = item.id
+            }
         }
         try library.save(items)
         try library.removePending(url)
         if !item.isPending {
-            VerseBridge.publishTranscriptionResult(id: item.id, statusCode: 200, state: item.state, text: item.text, error: item.error)
-            keyboardJobID = ""
+            if !isRerun {
+                VerseBridge.publishTranscriptionResult(id: item.id, statusCode: 200, state: item.state, text: item.text, error: item.error)
+                keyboardJobID = ""
+            }
             await notify(item)
         }
+        return item
     }
 
-    private func transcribeLocally(_ url: URL, selection: SpeechSelection) async throws {
+    private func transcribeLocally(_ url: URL, pending: PendingTranscription) async throws -> Transcription {
+        let selection = pending.selection
         let id = TranscriptionLibrary.localID(for: url)
         if let existing = items.first(where: { $0.id == id && $0.state == "completed" }) {
-            VerseBridge.pendingJobID = id
-            VerseBridge.publishTranscriptionResult(id: id, statusCode: 200, state: existing.state, text: existing.text, error: nil)
+            if !pending.isRerun {
+                VerseBridge.pendingJobID = id
+                VerseBridge.publishTranscriptionResult(id: id, statusCode: 200, state: existing.state, text: existing.text, error: nil)
+            }
             try library.removePending(url)
-            return
+            return existing
         }
-        let origin = TranscriptionOrigin.pendingAudio(url)
+        let origin = pending.origin ?? TranscriptionOrigin.pendingAudio(url)
         VerseBridge.saveOptions(selection, for: id)
-        VerseBridge.pendingJobID = id
-        if origin == .keyboard { VerseBridge.pendingInsertionJobID = id }
+        if !pending.isRerun {
+            VerseBridge.pendingJobID = id
+            if origin == .keyboard { VerseBridge.pendingInsertionJobID = id }
+        }
         defer {
             if VerseBridge.pendingJobID == id {
                 VerseBridge.pendingJobID = ""
@@ -357,19 +397,58 @@ final class TranscriptionStore {
         let result = try await localEngine.transcribe(url: url, model: selection.model, language: selection.language)
         let output = await TranscriptDelivery.prepare(id: id, text: result.text, language: result.language)
         try Task.checkCancellation()
-        let filename = try library.keepAudio(url, id: id)
+        let filename = try library.keepAudio(url, id: pending.recordingID ?? id, existingName: pending.localAudioName)
         let now = ISO8601DateFormatter().string(from: Date())
-        let item = Transcription(id: id, filename: url.lastPathComponent, state: "completed", model: selection.model,
+        let item = Transcription(id: id, filename: pending.filename ?? url.lastPathComponent, state: "completed", model: selection.model,
                                  language: selection.language, detectedLanguage: result.language, text: result.text,
                                  durationSeconds: result.duration, error: nil, createdAt: now, updatedAt: now,
-                                 origin: origin, engine: "on-device", localAudioName: filename).applying(output)
+                                 origin: origin, engine: "on-device", localAudioName: filename,
+                                 recordingID: pending.recordingID, customPrompt: selection.customPrompt).applying(output)
         let updated = [item] + items.filter { $0.id != id }
         try library.save(updated)
         items = updated
-        VerseBridge.publishTranscriptionResult(id: id, statusCode: 200, state: item.state, text: item.text, error: nil)
+        if !pending.isRerun {
+            VerseBridge.publishTranscriptionResult(id: id, statusCode: 200, state: item.state, text: item.text, error: nil)
+        }
         try library.removePending(url)
         await notify(item)
         await updateActivity(recorder.isRecording ? "recording" : "ready")
+        return item
+    }
+
+    @discardableResult
+    func transcribeAgain(_ item: Transcription, selection: SpeechSelection) async throws -> Transcription {
+        guard !isRerunning, !isUploading, !isStartingRecording, !recorder.isRecording else {
+            throw SpeechFailure("Finish the current recording first.")
+        }
+        guard !deletingRecordingIDs.contains(item.recordingKey), items.contains(where: { $0.recordingKey == item.recordingKey }) else {
+            throw SpeechFailure("This recording is no longer in your library.")
+        }
+        rerunningRecordingID = item.recordingKey
+        defer { rerunningRecordingID = nil }
+        if demo {
+            let now = ISO8601DateFormatter().string(from: Date())
+            let version = Transcription(id: "preview-\(UUID().uuidString)", filename: item.filename,
+                                        state: "completed", model: selection.model, language: selection.language,
+                                        detectedLanguage: item.detectedLanguage, text: item.originalText ?? item.text,
+                                        durationSeconds: item.durationSeconds, error: nil, createdAt: now, updatedAt: now,
+                                        origin: item.origin, engine: selection.onDevice ? "on-device" : nil,
+                                        writingStyle: selection.style.rawValue, recordingID: item.recordingKey,
+                                        customPrompt: selection.customPrompt)
+            items.insert(version, at: 0)
+            return version
+        }
+        try validateSelection(selection)
+        let source = try await audio(for: item)
+        try Task.checkCancellation()
+        let name = try library.keepAudio(source, id: item.recordingKey, existingName: item.localAudioName)
+        for index in items.indices where items[index].recordingKey == item.recordingKey && items[index].localAudioName == nil {
+            items[index].localAudioName = name
+        }
+        try library.save(items)
+        let pending = try library.prepareRerun(audio: source, item: item, selection: selection, localAudioName: name)
+        defer { loadPendingAudio() }
+        return try await upload(pending)
     }
 
     private func validateSelection(_ selection: SpeechSelection) throws {
@@ -383,27 +462,38 @@ final class TranscriptionStore {
     }
 
     func audio(for item: Transcription) async throws -> URL {
+        if let archived = try? library.audio(for: item) { return archived }
+        if let archived = versions(for: item.id).compactMap({ try? library.audio(for: $0) }).first { return archived }
         if item.isLocal { return try library.audio(for: item) }
         return try await api.audio(item.id)
     }
 
     func delete(_ item: Transcription) async throws {
-        if !demo {
-            if item.isLocal { try library.deleteAudio(for: item) }
-            else { try await api.delete(item.id) }
+        let key = item.recordingKey
+        guard rerunningRecordingID != key, !deletingRecordingIDs.contains(key) else {
+            throw SpeechFailure("Wait for this transcription to finish.")
         }
-        VerseBridge.invalidateTranscription(item.id)
-        items.removeAll { $0.id == item.id }
-        if VerseBridge.pendingJobID == item.id {
-            VerseBridge.pendingJobID = ""
-            VerseBridge.statusText = ""
+        deletingRecordingIDs.insert(key)
+        defer { deletingRecordingIDs.remove(key) }
+        for version in versions(for: item.id) {
+            if !demo, !version.isLocal { try await api.delete(version.id) }
+            VerseBridge.invalidateTranscription(version.id)
+            items.removeAll { $0.id == version.id }
+            if VerseBridge.pendingJobID == version.id {
+                VerseBridge.pendingJobID = ""
+                VerseBridge.statusText = ""
+            }
+            if keyboardJobID == version.id { keyboardJobID = "" }
+            if VerseBridge.transcriptID == version.id {
+                VerseBridge.transcriptID = ""
+                VerseBridge.transcriptText = ""
+            }
+            if !demo {
+                try library.save(items)
+                try library.deleteAudio(for: version, retaining: items)
+            }
         }
-        if keyboardJobID == item.id { keyboardJobID = "" }
-        if VerseBridge.transcriptID == item.id {
-            VerseBridge.transcriptID = ""
-            VerseBridge.transcriptText = ""
-        }
-        try library.save(items)
+        for url in pendingAudio where library.pendingTranscription(for: url)?.recordingID == key { try discardPending(url) }
     }
 
     private func tick() {

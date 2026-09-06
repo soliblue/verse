@@ -25,6 +25,11 @@ enum VerseBridge {
         set { write(newValue, key: "writingStyle") }
     }
 
+    static var writingEnabled: Bool {
+        get { read("writingEnabled").map { $0 == "true" } ?? (writingStyle != "original") }
+        set { write(String(newValue), key: "writingEnabled") }
+    }
+
     static var customWritingPrompt: String {
         get { read("customWritingPrompt") ?? "" }
         set { write(String(newValue.prefix(500)), key: "customWritingPrompt") }
@@ -103,6 +108,11 @@ enum VerseBridge {
     static var typingKeyboardEnabled: Bool {
         get { read("typingKeyboardEnabled") == "true" }
         set { write(String(newValue), key: "typingKeyboardEnabled") }
+    }
+
+    static var keyboardSetupConfirmed: Bool {
+        get { read("keyboardSetupConfirmed") == "true" }
+        set { write(String(newValue), key: "keyboardSetupConfirmed") }
     }
 
     static var recordingStartedAt: Double {

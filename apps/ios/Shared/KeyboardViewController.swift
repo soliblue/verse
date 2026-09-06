@@ -47,6 +47,7 @@ final class KeyboardViewController: UIInputViewController {
     private var bridge: [String: String] = [:]
     private var darkAppearance: Bool?
     private var controlsState = ""
+    private var reportedFullAccess: Bool?
 
     override func loadView() {
         let root = KeyboardInputView(frame: CGRect(x: 0, y: 0, width: 0, height: Self.contentHeight), inputViewStyle: .keyboard)
@@ -298,6 +299,7 @@ final class KeyboardViewController: UIInputViewController {
             return
         }
         #endif
+        reportKeyboardSetup()
         insertedID = ""
         controlsState = ""
         insert.isEnabled = false
@@ -322,6 +324,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func refresh() {
+        reportKeyboardSetup()
         guard snapshotTask == nil else { return }
         snapshotTask = Task { [weak self] in
             let values = await Task.detached(priority: .userInitiated) { VerseBridge.snapshot() }.value
@@ -334,6 +337,15 @@ final class KeyboardViewController: UIInputViewController {
             if hasFullAccess { poller.poll(state: values) }
             render()
         }
+    }
+
+    private func reportKeyboardSetup() {
+        #if DEBUG
+        guard !isPreview else { return }
+        #endif
+        guard reportedFullAccess != hasFullAccess else { return }
+        reportedFullAccess = hasFullAccess
+        VerseBridge.keyboardSetupConfirmed = hasFullAccess
     }
 
     private func value(_ key: String) -> String { bridge[key] ?? "" }

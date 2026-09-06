@@ -46,10 +46,19 @@ final class LocalSpeechEngine {
     @ObservationIgnored private var downloadTask: Task<Void, Never>?
     @ObservationIgnored private var preparation: (id: String, token: UUID, task: Task<Void, Error>)?
     @ObservationIgnored private var loadedModelID: String?
+    #if DEBUG
+    @ObservationIgnored private var fixtureInstalledModels: Set<String> = []
+    #endif
 
     init(directory: URL? = nil) {
         self.directory = directory ?? FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("SpeechModels", isDirectory: true)
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing"),
+           let argument = ProcessInfo.processInfo.arguments.first(where: { $0.hasPrefix("--installed-models=") }) {
+            fixtureInstalledModels = Set(argument.dropFirst("--installed-models=".count).split(separator: ",").map(String.init))
+        }
+        #endif
         refreshInstalled()
     }
 
@@ -58,6 +67,13 @@ final class LocalSpeechEngine {
     var isBusy: Bool { isPreparing || isTranscribing }
 
     func refreshInstalled() {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            installedModelIDs = fixtureInstalledModels
+            VerseBridge.localInstalledModels = installedModelIDs.sorted().joined(separator: ",")
+            return
+        }
+        #endif
         installedModelIDs = Set(Self.modelChoices.filter { model in
             let folder = modelDirectory(model)
             let tokenizer = tokenizerDirectory(model)
@@ -79,6 +95,26 @@ final class LocalSpeechEngine {
         error = nil
         downloadingModelID = modelID
         downloadProgress = 0
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            downloadTask = Task { [weak self] in
+                guard let self else { return }
+                for step in 1...10 {
+                    try? await Task.sleep(for: .milliseconds(200))
+                    guard !Task.isCancelled else { break }
+                    downloadProgress = Double(step) / 10
+                    if step == 4, ProcessInfo.processInfo.arguments.contains("--hold-model-download") {
+                        while !Task.isCancelled { try? await Task.sleep(for: .milliseconds(200)) }
+                    }
+                }
+                if !Task.isCancelled { fixtureInstalledModels.insert(modelID); refreshInstalled() }
+                downloadingModelID = nil
+                downloadProgress = 0
+                downloadTask = nil
+            }
+            return
+        }
+        #endif
         downloadTask = Task { [weak self] in
             guard let self else { return }
             let operation = Task {
@@ -125,6 +161,14 @@ final class LocalSpeechEngine {
     func delete(_ modelID: String) async throws {
         guard !isBusy, downloadingModelID == nil else { throw SpeechFailure("Wait for the current model operation to finish.") }
         guard let model = Self.modelChoices.first(where: { $0.id == modelID }) else { return }
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            fixtureInstalledModels.remove(modelID)
+            installedModelIDs = fixtureInstalledModels
+            VerseBridge.localInstalledModels = installedModelIDs.sorted().joined(separator: ",")
+            return
+        }
+        #endif
         defer { refreshInstalled() }
         await worker.unload()
         loadedModelID = nil

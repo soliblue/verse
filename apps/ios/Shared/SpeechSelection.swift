@@ -1,5 +1,26 @@
 import Foundation
 
+struct SpeechModelChoice: Identifiable, Hashable, Sendable {
+    let onDevice: Bool
+    let model: String
+
+    var id: String { (onDevice ? "local." : "cloud.") + model }
+    var title: String { (onDevice ? "Local " : "Cloud ") + name }
+    var name: String {
+        switch model {
+        case "large-v3": return "Large v3"
+        case "turbo": return "Large v3 Turbo"
+        default: return model.capitalized
+        }
+    }
+
+    static let all = ["tiny", "base", "small", "medium", "large-v3", "turbo"].map {
+        Self(onDevice: true, model: $0)
+    } + ["small", "medium", "large-v3"].map {
+        Self(onDevice: false, model: $0)
+    }
+}
+
 struct SpeechSelection: Codable, Equatable, Sendable {
     var onDevice: Bool
     var model: String
@@ -7,11 +28,20 @@ struct SpeechSelection: Codable, Equatable, Sendable {
     var style: TranscriptStyle
     var customPrompt: String
 
+    var modelChoice: SpeechModelChoice { .init(onDevice: onDevice, model: model) }
+
+    func replacingModel(_ choice: SpeechModelChoice) -> Self {
+        var result = self
+        result.onDevice = choice.onDevice
+        result.model = choice.model
+        return result
+    }
+
     static var current: Self {
         Self(onDevice: VerseBridge.onDeviceTranscriptionEnabled,
              model: VerseBridge.onDeviceTranscriptionEnabled ? VerseBridge.localModel : VerseBridge.model,
              language: VerseBridge.language,
-             style: TranscriptStyle(rawValue: VerseBridge.writingStyle) ?? .original,
+             style: VerseBridge.writingEnabled ? TranscriptStyle(rawValue: VerseBridge.writingStyle) ?? .original : .original,
              customPrompt: VerseBridge.customWritingPrompt)
     }
 }

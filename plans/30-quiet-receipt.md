@@ -1,0 +1,6 @@
+# Quiet Receipt
+
+1. Keep the citrus artwork, pin the compact home toolbar, and widen the receipt history. Show the actual Local or Cloud model on every result. Open transcripts in a native yellow half-sheet that expands for longer text.
+2. Use one model list in Settings and for retranscription. Selecting an undownloaded local model starts its download explicitly. Keep download progress, cancellation, and removal in that list. Unavailable Apple Intelligence and unconfirmed keyboard setup stay off; tapping highlights the linked setup text.
+3. Group alternate results by recording, preserve the original audio and all versions, and retain engine, model, language, and writing choices through retries. A redo never changes global defaults or inserts keyboard text. Preserve server streaming, authentication, private history, and local-only processing unless Cloud is explicitly selected.
+4. Run backend checks, native CI and UI screenshots. Verify sheet sizing, pinned toolbar, model selection and download states, version switching, and setup controls. Commit and push, then verify processing and internal availability in the existing TestFlight app. No public submission or infrastructure changes.

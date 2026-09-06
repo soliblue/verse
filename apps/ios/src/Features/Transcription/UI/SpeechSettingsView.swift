@@ -6,53 +6,38 @@ struct SpeechSettingsView: View {
     let store: TranscriptionStore
     @Environment(\.dismiss) private var dismiss
     @Environment(\.scenePhase) private var scenePhase
-    @State private var onDevice = VerseBridge.onDeviceTranscriptionEnabled
-    @State private var localModel = VerseBridge.localModel
+    @State private var selectedModel = SpeechSelection.current.modelChoice
+    @State private var modelsPresented = false
+    @State private var writingEnabled = VerseBridge.writingEnabled
     @State private var style = TranscriptStyle(rawValue: VerseBridge.writingStyle) ?? .original
     @State private var customPrompt = VerseBridge.customWritingPrompt
-    @State private var removingModel = false
     @State private var token = VerseBridge.token
-    @State private var model = VerseBridge.model
     @State private var language = VerseBridge.language
     @State private var connected = false
     @State private var checking = false
     @State private var sessionDuration = VerseBridge.sessionDuration
     @State private var typingKeyboard = VerseBridge.typingKeyboardEnabled
+    @State private var keyboardConfirmed = VerseBridge.keyboardSetupConfirmed
     @State private var microphoneAllowed = AVAudioApplication.shared.recordPermission == .granted
     @AppStorage("verse.completionNotifications") private var notifications = false
-    private let cream = Color(red: 1, green: 0.95, blue: 0.79)
     private let green = Color(red: 0, green: 0.39, blue: 0.22)
     private let ink = Color(red: 0.12, green: 0.16, blue: 0.10)
 
     var body: some View {
         NavigationStack {
             Form {
-                Section("Transcription") {
-                    Picker("Transcribe with", selection: $onDevice) {
-                        Text("iPhone").tag(true)
-                        Text("Server").tag(false)
+                Section {
+                    Button { modelsPresented = true } label: {
+                        HStack {
+                            Text("Model").foregroundStyle(ink)
+                            Spacer()
+                            Text(selectedModel.title)
+                            Image(systemName: "chevron.right").font(.caption.weight(.semibold))
+                        }
+                        .frame(minHeight: 28)
                     }
-                    .pickerStyle(.segmented)
-                    .accessibilityIdentifier("transcription-engine")
-                    .onChange(of: onDevice) { _, value in VerseBridge.onDeviceTranscriptionEnabled = value }
+                    .accessibilityIdentifier("speech-model-picker")
                     .disabled(busy)
-                    if onDevice {
-                        Picker("Model", selection: $localModel) {
-                            ForEach(LocalSpeechEngine.modelChoices) { choice in Text(choice.name).tag(choice.id) }
-                        }
-                        .accessibilityIdentifier("local-model-picker")
-                        .onChange(of: localModel) { _, value in VerseBridge.localModel = value }
-                        .disabled(busy)
-                        modelDownload
-                    } else {
-                        Picker("Model", selection: $model) {
-                            Text("Small").tag("small")
-                            Text("Medium").tag("medium")
-                            Text("Large").tag("large-v3")
-                        }
-                        .onChange(of: model) { _, value in VerseBridge.model = value }
-                        .disabled(busy)
-                    }
                     Picker("Language", selection: $language) {
                         Text("Automatic").tag("auto")
                         Text("English").tag("en")
@@ -72,10 +57,16 @@ struct SpeechSettingsView: View {
                     .onChange(of: language) { _, value in VerseBridge.language = value }
                     .disabled(busy)
                 }
-                .listRowBackground(cream)
+                .listRowBackground(Color.clear)
 
                 Section {
-                    if store.writing.availability.isAvailable {
+                    SetupToggle(
+                        title: "Apple Intelligence", identifier: "apple-intelligence",
+                        isOn: $writingEnabled, isAvailable: store.writing.availability.isAvailable,
+                        helper: store.writing.availability.isAvailable ? nil : store.writing.availability.message
+                    )
+                    .onChange(of: writingEnabled) { _, value in VerseBridge.writingEnabled = value }
+                    if store.writing.availability.isAvailable, writingEnabled {
                         Picker("Style", selection: $style) {
                             ForEach(TranscriptStyle.allCases, id: \.self) { value in Text(value.title).tag(value) }
                         }
@@ -91,57 +82,43 @@ struct SpeechSettingsView: View {
                                     VerseBridge.customWritingPrompt = customPrompt
                                 }
                         }
-                    } else {
-                        Label(store.writing.availability.title, systemImage: "wand.and.stars")
-                            .accessibilityIdentifier("writing-unavailable")
-                        if store.writing.availability.canOpenSettings {
-                            Button("Open Settings", systemImage: "arrow.up.right") { openSettings() }
-                                .accessibilityIdentifier("apple-intelligence-settings")
-                        }
                     }
-                } header: {
-                    Text("Writing")
-                } footer: {
-                    Text(store.writing.availability.message)
                 }
-                .listRowBackground(cream)
+                .listRowBackground(Color.clear)
                 .disabled(busy)
 
-                if !onDevice {
-                    Section("Server") {
-                    HStack {
-                        SecureField("Device token", text: $token)
-                            .textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
-                            .onChange(of: token) { _, value in
-                                VerseBridge.token = value.trimmingCharacters(in: .whitespacesAndNewlines)
-                                connected = false
-                            }
-                        Button {
-                            checking = true
-                            connected = false
-                            store.perform {
-                                defer { checking = false }
-                                try await store.checkConnection()
-                                connected = true
-                            }
-                        } label: {
-                            Group {
-                                if checking {
-                                    ProgressView()
-                                } else {
-                                    Image(systemName: connected ? "checkmark.circle.fill" : "arrow.clockwise")
+                if !selectedModel.onDevice {
+                    Section {
+                        HStack {
+                            SecureField("Device token", text: $token)
+                                .textContentType(.password).autocorrectionDisabled().textInputAutocapitalization(.never)
+                                .onChange(of: token) { _, value in
+                                    VerseBridge.token = value.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    connected = false
                                 }
+                            Button {
+                                checking = true
+                                connected = false
+                                store.perform {
+                                    defer { checking = false }
+                                    try await store.checkConnection()
+                                    connected = true
+                                }
+                            } label: {
+                                Group {
+                                    if checking { ProgressView() }
+                                    else { Image(systemName: connected ? "checkmark.circle.fill" : "arrow.clockwise") }
+                                }
+                                .frame(width: 44, height: 44)
                             }
-                            .frame(width: 44, height: 44)
+                            .buttonStyle(.borderless)
+                            .disabled(checking)
+                            .accessibilityLabel("Check connection")
+                            .accessibilityValue(checking ? "Checking" : (connected ? "Connected" : "Not checked"))
                         }
-                        .buttonStyle(.borderless)
-                        .disabled(checking)
-                        .accessibilityLabel("Check connection")
-                        .accessibilityValue(checking ? "Checking" : (connected ? "Connected" : "Not checked"))
+                        if let error = store.error { Text(error).font(.footnote).foregroundStyle(.red) }
                     }
-                    if let error = store.error { Text(error).font(.footnote).foregroundStyle(.red) }
-                    }
-                    .listRowBackground(cream)
+                    .listRowBackground(Color.clear)
                 }
 
                 Section {
@@ -154,25 +131,18 @@ struct SpeechSettingsView: View {
                             }
                         }
                 }
-                .listRowBackground(cream)
+                .listRowBackground(Color.clear)
 
                 Section {
-                    Toggle("Typing keyboard", isOn: $typingKeyboard)
-                        .onChange(of: typingKeyboard) { _, enabled in VerseBridge.typingKeyboardEnabled = enabled }
+                    SetupToggle(
+                        title: "Typing keyboard", identifier: "typing-keyboard",
+                        isOn: $typingKeyboard, isAvailable: keyboardConfirmed,
+                        helper: keyboardConfirmed ? "Manage Verse in iPhone Settings." : "Add Verse in iPhone Settings, allow Full Access, then open it once."
+                    )
+                    .onChange(of: typingKeyboard) { _, value in VerseBridge.typingKeyboardEnabled = value }
                     if !microphoneAllowed {
                         Button("Allow microphone") {
-                            store.perform {
-                                microphoneAllowed = await AVAudioApplication.requestRecordPermission()
-                            }
-                        }
-                    }
-                    Button {
-                        openSettings()
-                    } label: {
-                        HStack {
-                            Label("iPhone Settings", systemImage: "keyboard")
-                            Spacer()
-                            Image(systemName: "arrow.up.right").font(.footnote)
+                            store.perform { microphoneAllowed = await AVAudioApplication.requestRecordPermission() }
                         }
                     }
                     Picker("Keep microphone ready", selection: $sessionDuration) {
@@ -182,7 +152,7 @@ struct SpeechSettingsView: View {
                     }
                     .onChange(of: sessionDuration) { _, value in VerseBridge.sessionDuration = value }
                 }
-                .listRowBackground(cream)
+                .listRowBackground(Color.clear)
             }
             .scrollContentBackground(.hidden)
             .background { Image("CitrusPaper").resizable().scaledToFill().ignoresSafeArea() }
@@ -197,64 +167,79 @@ struct SpeechSettingsView: View {
                         .accessibilityLabel("Done")
                 }
             }
-            .task { store.writing.refreshAvailability() }
-            .onChange(of: scenePhase) { _, phase in
-                if phase == .active {
-                    store.writing.refreshAvailability()
-                    microphoneAllowed = AVAudioApplication.shared.recordPermission == .granted
+            .sheet(isPresented: $modelsPresented) {
+                SpeechModelPicker(engine: store.localEngine, selection: SpeechSelection.current) { selection in
+                    selectedModel = selection.modelChoice
+                    VerseBridge.onDeviceTranscriptionEnabled = selection.onDevice
+                    if selection.onDevice { VerseBridge.localModel = selection.model }
+                    else { VerseBridge.model = selection.model }
                 }
             }
-            .onChange(of: store.localEngine.installedModelIDs) { _, value in
-                VerseBridge.localInstalledModels = value.sorted().joined(separator: ",")
-            }
-            .confirmationDialog("Remove this downloaded model? Your recordings stay saved.", isPresented: $removingModel, titleVisibility: .visible) {
-                Button("Remove model", role: .destructive) { store.perform { try await store.localEngine.delete(localModel) } }
+            .task { refreshAvailability() }
+            .onChange(of: scenePhase) { _, phase in
+                if phase == .active { refreshAvailability() }
             }
         }
+        .presentationBackground { Image("CitrusPaper").resizable().scaledToFill() }
     }
 
     private var busy: Bool { store.recorder.isRecording || store.isUploading || store.isStartingRecording }
 
-    @ViewBuilder
-    private var modelDownload: some View {
-        if let downloading = store.localEngine.downloadingModelID {
-            HStack {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("Downloading \(LocalSpeechEngine.modelChoices.first { $0.id == downloading }?.name ?? downloading)")
-                        .font(.subheadline)
-                    ProgressView(value: store.localEngine.downloadProgress)
-                }
-                Button { store.localEngine.cancelDownload() } label: { Image(systemName: "xmark.circle.fill").frame(width: 44, height: 44) }
-                    .buttonStyle(.borderless).accessibilityLabel("Cancel model download")
-            }
-        } else if store.localEngine.installedModelIDs.contains(localModel) {
-            HStack {
-                Label("Ready on this iPhone", systemImage: "checkmark.circle")
-                    .font(.subheadline)
-                Spacer()
-                Button { removingModel = true } label: { Image(systemName: "trash").frame(width: 44, height: 44) }
-                    .buttonStyle(.borderless).accessibilityLabel("Remove downloaded model")
-                    .disabled(busy || store.localEngine.isBusy)
-            }
-        } else if let selected = LocalSpeechEngine.modelChoices.first(where: { $0.id == localModel }) {
-            Button {
-                store.localEngine.download(localModel)
-            } label: {
-                HStack {
-                    Label("Download \(selected.name)", systemImage: "arrow.down.circle")
-                    Spacer()
-                    Text("~\(selected.approximateDownload)").font(.caption).foregroundStyle(.secondary)
-                }
-            }
-            .accessibilityIdentifier("download-local-model")
-            .disabled(busy || store.localEngine.isBusy)
+    private func refreshAvailability() {
+        store.writing.refreshAvailability()
+        microphoneAllowed = AVAudioApplication.shared.recordPermission == .granted
+        keyboardConfirmed = VerseBridge.keyboardSetupConfirmed
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            keyboardConfirmed = ProcessInfo.processInfo.arguments.contains("--keyboard-setup-confirmed")
         }
-        if let error = store.localEngine.error { Text(error).font(.footnote).foregroundStyle(.red) }
-        Text("Recordings and files imported in Verse stay on this iPhone. The share extension uses your server.")
-            .font(.footnote).foregroundStyle(.secondary)
+        #endif
     }
+}
 
-    private func openSettings() {
-        if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+private struct SetupToggle: View {
+    let title: String
+    let identifier: String
+    @Binding var isOn: Bool
+    let isAvailable: Bool
+    let helper: String?
+    @State private var pulse: UUID?
+    @State private var highlighted = false
+    private let green = Color(red: 0, green: 0.39, blue: 0.22)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Toggle(title, isOn: Binding(
+                get: { isAvailable && isOn },
+                set: { value in
+                    if isAvailable { isOn = value }
+                    else { pulse = UUID() }
+                }
+            ))
+            .accessibilityIdentifier(identifier + "-toggle")
+            .accessibilityHint(isAvailable ? "" : "Setup required. Tap to highlight the instructions below.")
+            if let helper {
+                Button {
+                    if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
+                } label: {
+                    Text(helper)
+                        .font(.footnote)
+                        .multilineTextAlignment(.leading)
+                        .foregroundStyle(highlighted ? green : Color.secondary)
+                        .shadow(color: highlighted ? green.opacity(0.3) : .clear, radius: 5)
+                }
+                .buttonStyle(.plain)
+                .accessibilityIdentifier(identifier + "-setup")
+                .accessibilityValue(highlighted ? "Highlighted" : "")
+            }
+        }
+        .padding(.vertical, 3)
+        .task(id: pulse) {
+            guard pulse != nil else { return }
+            withAnimation(.easeInOut(duration: 0.15)) { highlighted = true }
+            try? await Task.sleep(for: .seconds(1))
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.3)) { highlighted = false }
+        }
     }
 }

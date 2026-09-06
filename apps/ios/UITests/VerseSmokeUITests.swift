@@ -250,7 +250,7 @@ final class VerseSmokeUITests: XCTestCase {
     func testSettingsDismissWithoutExtraNavigation() {
         let app = launch()
         app.buttons["Settings"].tap()
-        XCTAssertTrue(app.segmentedControls.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["speech-model-picker"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["Done"].exists)
         XCTAssertFalse(app.staticTexts["Appearance"].exists)
         screenshot("settings")

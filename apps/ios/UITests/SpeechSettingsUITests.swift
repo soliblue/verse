@@ -2,16 +2,41 @@ import XCTest
 
 @MainActor
 final class SpeechSettingsUITests: XCTestCase {
-    func testLocalModelsDefaultToMediumWithoutDownloading() {
+    func testModelsShareOneListAndDefaultToLocalMedium() {
         let app = settings(availability: "available")
-        XCTAssertTrue(app.segmentedControls.buttons["iPhone"].isSelected)
-        XCTAssertTrue(app.buttons["Download Medium"].exists || app.buttons["download-local-model"].exists)
-        XCTAssertTrue(app.buttons["local-model-picker"].exists)
-        screenshot("settings-local-medium")
+        XCTAssertTrue(app.buttons["speech-model-picker"].label.contains("Local Medium"))
+        XCTAssertFalse(app.segmentedControls.firstMatch.exists)
+        XCTAssertFalse(app.staticTexts["Ready on this iPhone"].exists)
+        app.buttons["speech-model-picker"].tap()
+        let medium = app.buttons["model-choice-local.medium"]
+        XCTAssertTrue(medium.waitForExistence(timeout: 5))
+        XCTAssertEqual(medium.value as? String, "Not downloaded")
+        XCTAssertTrue(app.buttons["model-choice-local.turbo"].exists)
+        XCTAssertTrue(app.buttons["model-choice-cloud.medium"].exists)
+        screenshot("quiet-receipt-model-list")
+        app.buttons["model-choice-cloud.medium"].tap()
+        XCTAssertTrue(app.buttons["speech-model-picker"].waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["speech-model-picker"].label.contains("Cloud Medium"))
     }
 
-    func testAvailableWritingOffersCustomPrompt() {
+    func testSelectingMissingLocalModelStartsDownloadInItsRow() {
+        let app = settings(availability: "available", arguments: ["--hold-model-download"])
+        app.buttons["speech-model-picker"].tap()
+        app.buttons["model-choice-local.medium"].tap()
+        let progress = app.descendants(matching: .any)["model-progress-local.medium"].firstMatch
+        XCTAssertTrue(progress.waitForExistence(timeout: 5))
+        XCTAssertEqual(app.buttons["model-choice-local.medium"].value as? String, "Downloading")
+        XCTAssertTrue(app.buttons["Cancel model download"].exists)
+        screenshot("quiet-receipt-model-downloading")
+        app.buttons["Cancel model download"].tap()
+        let cancelled = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Not downloaded"), object: app.buttons["model-choice-local.medium"])
+        XCTAssertEqual(XCTWaiter.wait(for: [cancelled], timeout: 3), .completed)
+    }
+
+    func testAvailableWritingOffersCustomPromptAfterEnabling() {
         let app = settings(availability: "available")
+        XCTAssertFalse(app.buttons["writing-style-picker"].exists)
+        app.switches["apple-intelligence-toggle"].tap()
         let picker = app.buttons["writing-style-picker"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
         picker.tap()
@@ -21,40 +46,71 @@ final class SpeechSettingsUITests: XCTestCase {
         prompt.tap()
         prompt.typeText("Keep it short and friendly.")
         XCTAssertEqual(prompt.value as? String, "Keep it short and friendly.")
-        screenshot("settings-custom-writing")
+        screenshot("quiet-receipt-custom-writing")
     }
 
-    func testDisabledAppleIntelligenceHidesStyles() {
+    func testDisabledAppleIntelligenceStaysOffAndHighlightsSetup() {
         let app = settings(availability: "appleIntelligenceNotEnabled")
-        XCTAssertTrue(app.staticTexts["Apple Intelligence is off"].exists)
+        let toggle = app.switches["apple-intelligence-toggle"]
+        XCTAssertEqual(toggle.value as? String, "0")
         XCTAssertFalse(app.buttons["writing-style-picker"].exists)
-        XCTAssertFalse(app.textFields["custom-writing-prompt"].exists)
-        XCTAssertTrue(app.buttons["apple-intelligence-settings"].exists)
-        screenshot("settings-intelligence-disabled")
+        XCTAssertFalse(app.buttons["Open Settings"].exists)
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "0")
+        assertHighlighted(app.buttons["apple-intelligence-setup"])
+        screenshot("quiet-receipt-intelligence-disabled")
+    }
+
+    func testKeyboardNeedsConfirmedSetupAndUsesSameFeedback() {
+        let app = settings(availability: "appleIntelligenceNotEnabled")
+        let toggle = app.switches["typing-keyboard-toggle"]
+        if !toggle.isHittable { app.swipeUp() }
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        XCTAssertEqual(toggle.value as? String, "0")
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "0")
+        assertHighlighted(app.buttons["typing-keyboard-setup"])
+        XCTAssertFalse(app.buttons["iPhone Settings"].exists)
+        screenshot("quiet-receipt-keyboard-setup")
+    }
+
+    func testConfirmedKeyboardCanEnableOptionalTyping() {
+        let app = settings(availability: "available", arguments: ["--keyboard-setup-confirmed"])
+        let toggle = app.switches["typing-keyboard-toggle"]
+        if !toggle.isHittable { app.swipeUp() }
+        XCTAssertTrue(toggle.waitForExistence(timeout: 5))
+        toggle.tap()
+        XCTAssertEqual(toggle.value as? String, "1")
     }
 
     func testOlderIOSHidesStylesAndExplainsRequirement() {
         let app = settings(availability: "requiresUpdate")
-        XCTAssertTrue(app.staticTexts["iOS update needed"].exists)
+        XCTAssertEqual(app.switches["apple-intelligence-toggle"].value as? String, "0")
         XCTAssertFalse(app.buttons["writing-style-picker"].exists)
-        XCTAssertTrue(app.staticTexts["Writing styles need iOS 26 or later. Transcription still works."].exists)
-        screenshot("settings-ios-update")
+        XCTAssertTrue(app.buttons["apple-intelligence-setup"].label.contains("iOS 26"))
+        screenshot("quiet-receipt-ios-update")
     }
 
     func testModelNotReadyHidesStyles() {
         let app = settings(availability: "modelNotReady")
-        XCTAssertTrue(app.staticTexts["Apple Intelligence is getting ready"].exists)
+        XCTAssertEqual(app.switches["apple-intelligence-toggle"].value as? String, "0")
         XCTAssertFalse(app.buttons["writing-style-picker"].exists)
-        screenshot("settings-intelligence-downloading")
+        XCTAssertTrue(app.buttons["apple-intelligence-setup"].label.contains("not ready"))
     }
 
-    private func settings(availability: String) -> XCUIApplication {
+    private func assertHighlighted(_ helper: XCUIElement) {
+        XCTAssertTrue(helper.exists)
+        let highlighted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Highlighted"), object: helper)
+        XCTAssertEqual(XCTWaiter.wait(for: [highlighted], timeout: 2), .completed)
+    }
+
+    private func settings(availability: String, arguments: [String] = []) -> XCUIApplication {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--writing-availability=" + availability]
+        app.launchArguments = ["--ui-testing", "--writing-availability=" + availability] + arguments
         app.launch()
         XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 8))
         app.buttons["Settings"].tap()
-        XCTAssertTrue(app.segmentedControls.firstMatch.waitForExistence(timeout: 5))
+        XCTAssertTrue(app.buttons["speech-model-picker"].waitForExistence(timeout: 5))
         return app
     }
 
