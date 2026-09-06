@@ -60,7 +60,7 @@ final class KeyboardExtensionUITests: XCTestCase {
 
     private func tapSettingsRow(_ label: String, in settings: XCUIApplication, prefix: Bool = false) throws {
         let predicate = NSPredicate(format: prefix ? "label BEGINSWITH %@" : "label == %@", label)
-        let rows = settings.cells.descendants(matching: .staticText).matching(predicate)
+        let rows = settings.cells.descendants(matching: .any).matching(predicate)
         for _ in 0..<4 {
             if rows.firstMatch.waitForExistence(timeout: 1), let row = rows.allElementsBoundByIndex.first(where: { $0.isHittable }) {
                 row.tap()
