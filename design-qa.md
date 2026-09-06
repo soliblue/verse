@@ -1,10 +1,10 @@
 # Voice panel visual verification
 
-final result: blocked
+final result: passed
 
 Source visual truth: `/home/soli/.codex/generated_images/019f5649-2a8e-7f41-9ab5-56f5b5b7bbeb/exec-3e149905-070b-4263-98e8-bda9d1ada2df.png`, Citrus (2) idle and Ribbon (3) recording. The user's latest instruction replaces the mockup's card background with one continuous native keyboard backdrop.
 
-Implementation: [native CI 34020577711](https://github.com/soliblue/verse/actions/runs/34020577711), source `f30b6e8`. Screenshots are in `/tmp/verse-voice-evidence-34020577711/evidence/verse-smoke/`. This is the actual UIKit input controller hosted by a simulator text field, not a web replica. Xcode runs in GitHub because this host is Linux.
+Final implementation: [native CI 34022056346](https://github.com/soliblue/verse/actions/runs/34022056346), source `da168d9`. Screenshots are in `/tmp/verse-voice-evidence-34022056346/evidence/verse-smoke/`. This is the actual UIKit input controller hosted by a simulator text field, not a web replica. Xcode runs in GitHub because this host is Linux.
 
 Viewport: iPhone 17 Pro, iOS 26.2, 402 by 874 points at 3x. Native captures are 1206 by 2622 pixels. The app-owned input area is the bottom 1206 by 780 pixels, normalized to 402 by 260 points. Unit tests also cover 320- and 440-point widths. The extension-only system dock is outside this fixture's evidence.
 
@@ -22,11 +22,13 @@ Fidelity review:
 
 Findings and comparison history:
 
-1. [P1] Cold activation exposed only a 21.33-point accessible target despite a 176-point orange. Native UI regression failed. Added the full circular SwiftUI content shape in `2ce0c81`; the original size assertion remains intact.
-2. [P2] Toolbar circles were cramped compared with the reference. Increased their gap to 8 points in `2ce0c81`.
+1. [P1, fixed] Cold activation exposed only a 21.33-point accessible target despite a 176-point orange. Native UI regression failed. Added the full circular SwiftUI content shape in `2ce0c81`; the original size assertion remains intact.
+2. [P2, fixed] Toolbar circles were cramped compared with the reference. Increased their gap to 8 points in `2ce0c81`.
 
 Second pass: CI 34021395566 passed all 51 unit tests and 17 UI tests. Same-state comparisons are `/tmp/verse-idle-reference-comparison-final.png` and `/tmp/verse-recording-reference-comparison-final.png`, with captures under `/tmp/verse-voice-evidence-34021395566/evidence/verse-smoke/`. The 176-point cold target and 8-point toolbar gap now pass. Light/dark artwork and backgrounds remain clean.
 
-3. [P2] The second capture exposed low contrast in the disabled processing spinner. Its system-resolved colour was too close to the orange button. Added an explicit [native activity-indicator colour transformer](https://developer.apple.com/documentation/uikit/uibuttonconfiguration/activityindicatorcolortransformer) plus a regression test. This last change awaits native verification and another processing capture.
+3. [P2, fixed] The second capture exposed low contrast in the disabled processing spinner. Its system-resolved colour was too close to the orange button. Added an explicit [native activity-indicator colour transformer](https://developer.apple.com/documentation/uikit/uibuttonconfiguration/activityindicatorcolortransformer) plus a regression test. Final before/after evidence is `/tmp/verse-processing-contrast-comparison.png`: the spinner is now white and legible on orange.
 
-Checklist: inspect the revised same-state comparisons, require all native tests to pass, then distribute internally. Actual microphone handoff, host-owned dock blending and physical-device frame rate remain phone checks.
+Third pass: source `da168d9` passes all 52 native unit tests, 17 UI tests and 25 backend tests, with no skips. Final source/capture comparisons are `/tmp/verse-idle-release-comparison.png` and `/tmp/verse-recording-release-comparison.png`. Citrus, toolbar spacing, waveform and native backdrop remain consistent. All earlier P1/P2 findings are resolved; no actionable P0/P1/P2 visual findings remain within the verified fixture.
+
+Checklist: native checks, rendered comparison and internal distribution complete. Apple confirms 0.3.1 build 23 as `VALID` and `IN_BETA_TESTING` for Internal. Actual microphone handoff, host-owned dock blending and physical-device frame rate remain phone checks, not claims established by this fixture.
