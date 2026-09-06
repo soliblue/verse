@@ -59,17 +59,20 @@ final class KeyboardExtensionUITests: XCTestCase {
     }
 
     private func tapSettingsRow(_ label: String, in settings: XCUIApplication, prefix: Bool = false) throws {
-        let row = prefix
-            ? settings.staticTexts.matching(NSPredicate(format: "label BEGINSWITH %@", label)).firstMatch
-            : settings.staticTexts[label].firstMatch
+        let predicate = NSPredicate(format: prefix ? "label BEGINSWITH %@" : "label == %@", label)
+        let rows = settings.cells.descendants(matching: .staticText).matching(predicate)
         for _ in 0..<4 {
-            if row.waitForExistence(timeout: 1), row.isHittable {
+            if rows.firstMatch.waitForExistence(timeout: 1), let row = rows.allElementsBoundByIndex.first(where: { $0.isHittable }) {
                 row.tap()
                 return
             }
             settings.swipeUp()
         }
         capture("real-extension-settings-precondition")
+        let hierarchy = XCTAttachment(string: settings.debugDescription)
+        hierarchy.name = "real-extension-settings-hierarchy"
+        hierarchy.lifetime = .keepAlways
+        add(hierarchy)
         throw XCTSkip("Settings row unavailable: \(label)")
     }
 
