@@ -152,13 +152,23 @@ jobs:
           xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/transcriptions-light.png"
           xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing
           sleep 3
-          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/keyboard-controller-fixture.png"
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/voice-ready-controller-fixture.png"
           xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --keyboard-cold-ui-testing
           sleep 3
-          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/keyboard-cold-controller-fixture.png"
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/voice-cold-controller-fixture.png"
+          xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --keyboard-dark-ui-testing
+          sleep 3
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/voice-dark-controller-fixture.png"
+          xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --keyboard-processing-ui-testing
+          sleep 3
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/voice-processing-controller-fixture.png"
+          xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --typing-keyboard-ui-testing
+          sleep 3
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/keyboard-controller-fixture.png"
           xcrun simctl launch --terminate-running-process "$SMOKE_UDID" soli.verse --ui-testing --keyboard-ui-testing --keyboard-wave-ui-testing
           sleep 2
-          xcrun simctl io "$SMOKE_UDID" recordVideo --codec=h264 "$RUNNER_TEMP/verse-smoke/keyboard-wave-synthetic-10hz.mov" &
+          xcrun simctl io "$SMOKE_UDID" screenshot "$RUNNER_TEMP/verse-smoke/voice-recording-controller-fixture.png"
+          xcrun simctl io "$SMOKE_UDID" recordVideo --codec=h264 "$RUNNER_TEMP/verse-smoke/voice-wave-synthetic-10hz.mov" &
           RECORD_PID=$!
           sleep 10
           kill -INT "$RECORD_PID"

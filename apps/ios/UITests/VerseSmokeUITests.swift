@@ -15,7 +15,7 @@ final class VerseSmokeUITests: XCTestCase {
 
     func testColdKeyboardLinkLayout() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--keyboard-cold-ui-testing"]
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--typing-keyboard-ui-testing", "--keyboard-cold-ui-testing"]
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["keyboard-open-dictation"].firstMatch.waitForExistence(timeout: 8))
         XCTAssertTrue(key("q", in: app).exists)
@@ -25,7 +25,7 @@ final class VerseSmokeUITests: XCTestCase {
 
     func testActualKeyboardControllerLayout() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing"]
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--typing-keyboard-ui-testing"]
         app.launch()
         XCTAssertTrue(app.buttons["keyboard-record"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.buttons["Transcription language"].exists)
@@ -75,7 +75,7 @@ final class VerseSmokeUITests: XCTestCase {
 
     func testDarkKeyboardLayout() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--keyboard-dark-ui-testing"]
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--typing-keyboard-ui-testing", "--keyboard-dark-ui-testing"]
         app.launch()
         XCTAssertTrue(key("q", in: app).waitForExistence(timeout: 8))
         screenshot("keyboard-dark-controller")
@@ -83,7 +83,7 @@ final class VerseSmokeUITests: XCTestCase {
 
     func testKeyboardTypingReachesHostField() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing"]
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--typing-keyboard-ui-testing"]
         app.launch()
         XCTAssertTrue(key("q", in: app).waitForExistence(timeout: 8))
         let field = app.textViews["keyboard-preview-text"]
@@ -103,7 +103,7 @@ final class VerseSmokeUITests: XCTestCase {
 
     func testKeyboardSlideCorrectsBeforeRelease() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing"]
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--typing-keyboard-ui-testing"]
         app.launch()
         XCTAssertTrue(key("q", in: app).waitForExistence(timeout: 8))
         let start = key("q", in: app).coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5))
@@ -114,7 +114,7 @@ final class VerseSmokeUITests: XCTestCase {
 
     func testPressedCharacterPreviewFixture() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--keyboard-popup-ui-testing"]
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--typing-keyboard-ui-testing", "--keyboard-popup-ui-testing"]
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["keyboard-key-preview"].firstMatch.waitForExistence(timeout: 8))
         XCTAssertEqual(app.textViews["keyboard-preview-text"].value as? String, "")
@@ -133,13 +133,86 @@ final class VerseSmokeUITests: XCTestCase {
 
     func testSyntheticWaveformFixture() {
         let app = XCUIApplication()
-        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--keyboard-wave-ui-testing"]
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing", "--typing-keyboard-ui-testing", "--keyboard-wave-ui-testing"]
         app.launch()
         XCTAssertTrue(app.buttons["Stop recording"].waitForExistence(timeout: 8))
         XCTAssertTrue(app.staticTexts["Synthetic waveform · 10 Hz levels"].exists)
         XCTAssertFalse(app.buttons["Transcription language"].isEnabled)
         XCTAssertFalse(app.buttons["Transcription model"].isEnabled)
         screenshot("keyboard-wave-synthetic-10hz")
+    }
+
+    func testVoicePanelIsTheDefaultInputMode() {
+        let app = launchVoicePanel()
+        assertVoicePanel(in: app)
+        let record = app.buttons["keyboard-record"]
+        XCTAssertTrue(record.waitForExistence(timeout: 8))
+        XCTAssertEqual(record.label, "Record")
+        XCTAssertTrue(record.isEnabled)
+        let panel = element("keyboard-voice-panel", in: app)
+        let toolbar = element("keyboard-toolbar", in: app)
+        XCTAssertGreaterThanOrEqual(record.frame.width, 160)
+        XCTAssertEqual(record.frame.midX, panel.frame.midX, accuracy: 1)
+        XCTAssertGreaterThan(record.frame.minY, toolbar.frame.maxY)
+        XCTAssertFalse(element("keyboard-open-dictation", in: app).exists)
+        XCTAssertFalse(app.staticTexts["keyboard-recording-duration"].exists)
+        screenshot("voice-panel-ready")
+    }
+
+    func testColdVoicePanelOffersAppActivation() {
+        let app = launchVoicePanel(["--keyboard-cold-ui-testing"])
+        assertVoicePanel(in: app)
+        let activate = element("keyboard-open-dictation", in: app)
+        XCTAssertTrue(activate.waitForExistence(timeout: 8))
+        XCTAssertEqual(activate.label, "Activate dictation")
+        XCTAssertTrue(activate.isHittable)
+        XCTAssertGreaterThanOrEqual(activate.frame.width, 160)
+        XCTAssertEqual(activate.frame.midX, element("keyboard-voice-panel", in: app).frame.midX, accuracy: 1)
+        XCTAssertFalse(app.buttons["keyboard-record"].exists)
+        screenshot("voice-panel-cold")
+    }
+
+    func testRecordingVoicePanelShowsWaveformAndStop() {
+        let app = launchVoicePanel(["--keyboard-wave-ui-testing"])
+        assertVoicePanel(in: app)
+        let stop = app.buttons["Stop recording"]
+        XCTAssertTrue(stop.waitForExistence(timeout: 8))
+        let duration = app.staticTexts["keyboard-recording-duration"]
+        XCTAssertTrue(duration.waitForExistence(timeout: 5))
+        XCTAssertTrue(duration.label.contains(":"))
+        let toolbar = element("keyboard-toolbar", in: app)
+        XCTAssertEqual(stop.frame.height, 44, accuracy: 1)
+        XCTAssertEqual(stop.frame.minY, toolbar.frame.minY + 8, accuracy: 1)
+        XCTAssertEqual(toolbar.frame.maxX - stop.frame.maxX, 16, accuracy: 1)
+        XCTAssertGreaterThan(duration.frame.minY, toolbar.frame.maxY)
+        XCTAssertFalse(app.buttons["Transcription language"].isEnabled)
+        XCTAssertFalse(app.buttons["Transcription model"].isEnabled)
+        XCTAssertFalse(element("keyboard-open-dictation", in: app).exists)
+        screenshot("voice-panel-recording")
+    }
+
+    func testDarkVoicePanelKeepsTheSameLayout() {
+        let app = launchVoicePanel(["--keyboard-dark-ui-testing"])
+        assertVoicePanel(in: app)
+        let record = app.buttons["keyboard-record"]
+        XCTAssertTrue(record.waitForExistence(timeout: 8))
+        XCTAssertEqual(record.frame.midX, element("keyboard-voice-panel", in: app).frame.midX, accuracy: 1)
+        screenshot("voice-panel-dark")
+    }
+
+    func testProcessingVoicePanelUsesAnIconOnly() {
+        let app = launchVoicePanel(["--keyboard-processing-ui-testing"])
+        assertVoicePanel(in: app)
+        let processing = app.buttons["Transcribing"]
+        XCTAssertTrue(processing.waitForExistence(timeout: 8))
+        XCTAssertFalse(processing.isEnabled)
+        XCTAssertFalse(app.buttons["Transcription language"].isEnabled)
+        XCTAssertFalse(app.buttons["Transcription model"].isEnabled)
+        XCTAssertFalse(app.staticTexts["Transcribing"].exists)
+        XCTAssertFalse(app.staticTexts["keyboard-recording-duration"].exists)
+        XCTAssertFalse(element("keyboard-open-dictation", in: app).exists)
+        XCTAssertEqual(element("keyboard-toolbar", in: app).frame.maxX - processing.frame.maxX, 16, accuracy: 1)
+        screenshot("voice-panel-processing")
     }
 
     func testSystemKeyboardReferenceDark() {
@@ -180,6 +253,40 @@ final class VerseSmokeUITests: XCTestCase {
         app.launchArguments = ["--ui-testing"]
         app.launch()
         return app
+    }
+
+    private func launchVoicePanel(_ arguments: [String] = []) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["--ui-testing", "--keyboard-ui-testing"] + arguments
+        app.launch()
+        return app
+    }
+
+    private func assertVoicePanel(in app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) {
+        let panel = element("keyboard-voice-panel", in: app)
+        XCTAssertTrue(panel.waitForExistence(timeout: 8), file: file, line: line)
+        XCTAssertFalse(key("q", in: app).exists, file: file, line: line)
+        XCTAssertFalse(key("space", in: app).exists, file: file, line: line)
+        XCTAssertFalse(element("keyboard-typing-surface", in: app).exists, file: file, line: line)
+        XCTAssertFalse(app.staticTexts["Speak"].exists, file: file, line: line)
+        XCTAssertFalse(app.staticTexts["Uploading"].exists, file: file, line: line)
+        let content = element("keyboard-content", in: app)
+        let toolbar = element("keyboard-toolbar", in: app)
+        XCTAssertEqual(content.frame.height, 260, accuracy: 1, file: file, line: line)
+        XCTAssertEqual(toolbar.frame.height, 52, accuracy: 1, file: file, line: line)
+        XCTAssertEqual(toolbar.frame.minY, content.frame.minY, accuracy: 1, file: file, line: line)
+        let language = app.buttons["Transcription language"]
+        let model = app.buttons["Transcription model"]
+        XCTAssertTrue(language.exists, file: file, line: line)
+        XCTAssertTrue(model.exists, file: file, line: line)
+        XCTAssertEqual(language.frame.width, 44, accuracy: 1, file: file, line: line)
+        XCTAssertEqual(language.frame.height, 44, accuracy: 1, file: file, line: line)
+        XCTAssertEqual(language.frame.minX - content.frame.minX, 16, accuracy: 1, file: file, line: line)
+        XCTAssertGreaterThanOrEqual(model.frame.minX, language.frame.maxX, file: file, line: line)
+    }
+
+    private func element(_ identifier: String, in app: XCUIApplication) -> XCUIElement {
+        app.descendants(matching: .any)[identifier].firstMatch
     }
 
     private func key(_ name: String, in app: XCUIApplication) -> XCUIElement {

@@ -44,12 +44,12 @@ final class VoiceRecorder {
         isActive = true
     }
 
-    func begin() throws {
+    func begin(origin: TranscriptionOrigin) throws {
         guard isActive, !isRecording else { return }
         let directory = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("PendingAudio", isDirectory: true)
         try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        let url = directory.appendingPathComponent("Recording-\(UUID().uuidString).m4a")
+        let url = directory.appendingPathComponent("Recording-\(origin.rawValue)-\(UUID().uuidString).m4a")
         try writer.begin(url: url, format: engine.inputNode.outputFormat(forBus: 0))
         fileURL = url
         startedAt = Date()

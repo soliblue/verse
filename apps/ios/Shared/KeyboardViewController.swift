@@ -7,19 +7,19 @@ final class KeyboardViewController: UIInputViewController {
     #if DEBUG
     var isPreview = false
     var previewsColdStart = false
+    var previewsTyping = false
+    var previewsProcessing = false
     var previewTextInput: ((String) -> Void)?
     var previewDeleteBackward: (() -> Void)?
 
     func previewWaveform(level: Double) {
-        if waveform.isHidden {
-            record.setImage(UIImage(systemName: "stop.fill"), for: .normal)
-            record.accessibilityLabel = "Stop recording"
+        if !recordingPresentation {
+            bridge["recordingStartedAt"] = String(Date().timeIntervalSince1970 - 8)
+            updatePresentation(active: true, recording: true, busy: false, hasTranscript: false)
             language.isEnabled = false
             model.isEnabled = false
-            launch.view.isHidden = true
-            insert.isHidden = true
         }
-        waveform.update(level: level, recording: true)
+        updateWaveform(level: level, recording: true)
     }
     #endif
     private let language = UIButton(type: .system)
@@ -29,6 +29,15 @@ final class KeyboardViewController: UIInputViewController {
     private let launch = UIHostingController(rootView: KeyboardLaunchLink())
     private let insert = UIButton(type: .system)
     private let keyboard = KeyboardTypingView()
+    private let voice = KeyboardVoicePanel()
+    private let recordingControl = UIView()
+    private let controlSlot = UIView()
+    private let toolbar = UIStackView()
+    private var toolbarHeight: NSLayoutConstraint?
+    private let citrus = UIImageView(image: UIImage(named: "CitrusSlice"))
+    private var typingEnabled = false
+    private var recordingPresentation = false
+    private var busyPresentation = false
     private var timer: Timer?
     private var insertedID = ""
     private let poller = KeyboardTranscriptionPoller()
@@ -62,32 +71,21 @@ final class KeyboardViewController: UIInputViewController {
         updateMenus()
         waveform.backgroundColor = .clear
         waveform.isAccessibilityElement = false
-        var configuration = UIButton.Configuration.plain()
-        configuration.baseForegroundColor = UIColor(red: 0.89, green: 0.29, blue: 0.04, alpha: 1)
-        configuration.cornerStyle = .capsule
-        record.configuration = configuration
-        record.setPreferredSymbolConfiguration(UIImage.SymbolConfiguration(pointSize: 20, weight: .regular), forImageIn: .normal)
         record.accessibilityIdentifier = "keyboard-record"
         record.addTarget(self, action: #selector(toggleRecording), for: .touchUpInside)
-        let recordingControl = UIView()
-        record.translatesAutoresizingMaskIntoConstraints = false
+        citrus.contentMode = .scaleAspectFill
+        citrus.clipsToBounds = true
+        citrus.isUserInteractionEnabled = false
+        citrus.accessibilityIdentifier = "keyboard-citrus"
+        recordingControl.addSubview(citrus)
+        record.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         recordingControl.addSubview(record)
         addChild(launch)
         launch.view.backgroundColor = .clear
-        launch.view.translatesAutoresizingMaskIntoConstraints = false
+        launch.view.autoresizingMask = [.flexibleWidth, .flexibleHeight]
         recordingControl.addSubview(launch.view)
         launch.didMove(toParent: self)
-        NSLayoutConstraint.activate([
-            recordingControl.widthAnchor.constraint(equalToConstant: 44),
-            record.widthAnchor.constraint(equalToConstant: 44),
-            record.trailingAnchor.constraint(equalTo: recordingControl.trailingAnchor),
-            record.topAnchor.constraint(equalTo: recordingControl.topAnchor),
-            record.bottomAnchor.constraint(equalTo: recordingControl.bottomAnchor),
-            launch.view.leadingAnchor.constraint(equalTo: recordingControl.leadingAnchor),
-            launch.view.trailingAnchor.constraint(equalTo: recordingControl.trailingAnchor),
-            launch.view.topAnchor.constraint(equalTo: recordingControl.topAnchor),
-            launch.view.bottomAnchor.constraint(equalTo: recordingControl.bottomAnchor)
-        ])
+        controlSlot.widthAnchor.constraint(equalToConstant: 44).isActive = true
         insert.setImage(UIImage(systemName: "text.badge.plus"), for: .normal)
         insert.accessibilityLabel = "Insert transcript"
         insert.addTarget(self, action: #selector(insertTranscript), for: .touchUpInside)
@@ -115,6 +113,7 @@ final class KeyboardViewController: UIInputViewController {
             updateTypingContext()
         }
         keyboard.globeButton.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
+        voice.globe.addTarget(self, action: #selector(handleInputModeList(from:with:)), for: .allTouchEvents)
         let waveformSpace = UIView()
         waveform.translatesAutoresizingMaskIntoConstraints = false
         waveformSpace.addSubview(waveform)
@@ -124,17 +123,26 @@ final class KeyboardViewController: UIInputViewController {
             waveform.topAnchor.constraint(equalTo: waveformSpace.topAnchor),
             waveform.bottomAnchor.constraint(equalTo: waveformSpace.bottomAnchor)
         ])
-        let toolbar = UIStackView(arrangedSubviews: [language, model, waveformSpace, insert, recordingControl])
+        let controls: [UIView] = [language, model, waveformSpace, insert, controlSlot]
+        for control in controls { toolbar.addArrangedSubview(control) }
         toolbar.accessibilityIdentifier = "keyboard-toolbar"
         toolbar.spacing = 2
         toolbar.isLayoutMarginsRelativeArrangement = true
-        toolbar.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 11, bottom: 0, trailing: 11)
-        toolbar.heightAnchor.constraint(equalToConstant: 44).isActive = true
-        let stack = UIStackView(arrangedSubviews: [toolbar, keyboard])
+        toolbar.directionalLayoutMargins = NSDirectionalEdgeInsets(top: 0, leading: 16, bottom: 0, trailing: 16)
+        toolbarHeight = toolbar.heightAnchor.constraint(equalToConstant: 52)
+        toolbarHeight?.isActive = true
+        let body = UIView()
+        for surface in [keyboard as UIView, voice] {
+            surface.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            surface.frame = body.bounds
+            body.addSubview(surface)
+        }
+        let stack = UIStackView(arrangedSubviews: [toolbar, body])
         stack.axis = .vertical
         stack.spacing = 0
         stack.translatesAutoresizingMaskIntoConstraints = false
         view.addSubview(stack)
+        view.addSubview(recordingControl)
         NSLayoutConstraint.activate([
             view.heightAnchor.constraint(equalToConstant: Self.contentHeight),
             stack.leadingAnchor.constraint(equalTo: view.leadingAnchor),
@@ -142,7 +150,9 @@ final class KeyboardViewController: UIInputViewController {
             stack.topAnchor.constraint(equalTo: view.topAnchor, constant: 0),
             stack.bottomAnchor.constraint(equalTo: view.bottomAnchor)
         ])
+        updateInputMode()
         updateAppearance()
+        updatePresentation(active: false, recording: false, busy: false, hasTranscript: false)
     }
 
     override func textDidChange(_ textInput: UITextInput?) {
@@ -155,6 +165,7 @@ final class KeyboardViewController: UIInputViewController {
     }
 
     private func updateTypingContext() {
+        guard typingEnabled else { return }
         #if DEBUG
         if isPreview { return }
         #endif
@@ -166,6 +177,39 @@ final class KeyboardViewController: UIInputViewController {
     override func viewWillLayoutSubviews() {
         super.viewWillLayoutSubviews()
         keyboard.setGlobeVisible(needsInputModeSwitchKey)
+        voice.globe.isHidden = !needsInputModeSwitchKey
+    }
+
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        let centered = !typingEnabled && !recordingPresentation && !busyPresentation
+        recordingControl.frame = centered ? voice.convert(voice.actionFrame, to: view) : controlSlot.convert(controlSlot.bounds, to: view)
+        citrus.frame = recordingControl.bounds
+        record.frame = recordingControl.bounds
+        launch.view.frame = recordingControl.bounds
+        citrus.layer.cornerRadius = recordingControl.bounds.width / 2
+    }
+
+    private func updateInputMode() {
+        var enabled = bridge["typingKeyboardEnabled"] == "true"
+        #if DEBUG
+        if isPreview { enabled = previewsTyping }
+        #endif
+        guard enabled != typingEnabled || keyboard.isHidden == enabled else { return }
+        typingEnabled = enabled
+        keyboard.isHidden = !typingEnabled
+        voice.isHidden = typingEnabled
+        toolbarHeight?.constant = typingEnabled ? 44 : 52
+        toolbar.directionalLayoutMargins.top = typingEnabled ? 0 : 8
+        for button in [language, model] {
+            button.layer.cornerRadius = 22
+            button.layer.borderWidth = typingEnabled ? 0 : 0.5
+            button.layer.borderColor = UIColor.label.withAlphaComponent(0.15).resolvedColor(with: traitCollection).cgColor
+        }
+        waveform.update(level: 0, recording: false)
+        voice.update(level: 0, recording: false, startedAt: 0)
+        controlsState = ""
+        updateTypingContext()
     }
 
     private func updateAppearance() {
@@ -179,6 +223,9 @@ final class KeyboardViewController: UIInputViewController {
         view.backgroundColor = .clear
         view.tintColor = dark ? .white : .black
         keyboard.updateAppearance(dark: dark)
+        for button in [language, model] {
+            button.layer.borderColor = UIColor.label.withAlphaComponent(0.15).resolvedColor(with: view.traitCollection).cgColor
+        }
     }
 
     private func updateMenus() {
@@ -217,12 +264,10 @@ final class KeyboardViewController: UIInputViewController {
         updateTypingContext()
         #if DEBUG
         if isPreview {
-            record.setImage(UIImage(systemName: "waveform"), for: .normal)
-            record.accessibilityLabel = "Record"
-            record.isHidden = previewsColdStart
-            launch.view.isHidden = !previewsColdStart
-            insert.isHidden = true
-            waveform.isHidden = true
+            updatePresentation(active: !previewsColdStart, recording: false, busy: previewsProcessing, hasTranscript: false)
+            record.isEnabled = !previewsProcessing
+            language.isEnabled = !previewsProcessing
+            model.isEnabled = !previewsProcessing
             return
         }
         #endif
@@ -257,6 +302,7 @@ final class KeyboardViewController: UIInputViewController {
             snapshotTask = nil
             let menusChanged = bridge["language"] != values["language"] || bridge["model"] != values["model"]
             bridge = values
+            updateInputMode()
             if menusChanged { updateMenus() }
             if hasFullAccess { poller.poll(state: values) }
             render()
@@ -265,29 +311,38 @@ final class KeyboardViewController: UIInputViewController {
 
     private func value(_ key: String) -> String { bridge[key] ?? "" }
 
+    private func updateWaveform(level: Double, recording: Bool) {
+        if typingEnabled {
+            waveform.update(level: level, recording: recording)
+        } else {
+            voice.update(level: level, recording: recording, startedAt: Double(value("recordingStartedAt")) ?? 0)
+        }
+    }
+
     private func setMeterActive(_ active: Bool) {
         if active {
             guard meterTimer == nil else { return }
-            waveform.update(level: 0, recording: true)
+            updateWaveform(level: 0, recording: true)
             let timer = Timer(timeInterval: 0.1, repeats: true) { [weak self] _ in
                 guard let self, meterTask == nil else { return }
                 meterTask = Task { [weak self] in
                     let level = await Task.detached(priority: .userInitiated) { VerseBridge.readAudioLevel() }.value
                     guard !Task.isCancelled, let self else { return }
                     meterTask = nil
-                    waveform.update(level: level, recording: true)
+                    updateWaveform(level: level, recording: true)
                 }
             }
             timer.tolerance = 0.01
             meterTimer = timer
             RunLoop.main.add(timer, forMode: .common)
         } else {
-            guard meterTimer != nil || !waveform.isHidden else { return }
+            guard meterTimer != nil || !waveform.isHidden || !voice.waveform.isHidden else { return }
             meterTimer?.invalidate()
             meterTimer = nil
             meterTask?.cancel()
             meterTask = nil
             waveform.update(level: 0, recording: false)
+            voice.update(level: 0, recording: false, startedAt: 0)
         }
     }
 
@@ -314,21 +369,43 @@ final class KeyboardViewController: UIInputViewController {
             updateTypingContext()
         }
         let hasTranscript = DictationInsertionPolicy.canInsert(transcriptID: value("transcriptID"), text: value("transcriptText"), insertedID: insertedID)
-        let nextControlsState = "\(hasFullAccess)|\(active)|\(recording)|\(commandPending)|\(processing)|\(hasTranscript)|\(value("errorText"))"
+        let nextControlsState = "\(typingEnabled)|\(hasFullAccess)|\(active)|\(recording)|\(commandPending)|\(processing)|\(hasTranscript)|\(value("errorText"))"
         guard nextControlsState != controlsState else { return }
         controlsState = nextControlsState
         language.isEnabled = !recording && !processing && !commandPending
         model.isEnabled = language.isEnabled
-        let canLaunch = !active && !processing
-        record.isHidden = canLaunch
-        launch.view.isHidden = !canLaunch
-        record.configuration?.showsActivityIndicator = processing || commandPending
-        record.setImage(processing || commandPending ? nil : UIImage(systemName: recording ? "stop.fill" : "waveform"), for: .normal)
-        record.accessibilityLabel = recording ? "Stop recording" : (processing ? "Transcribing" : "Record")
+        updatePresentation(active: active, recording: recording, busy: processing || commandPending, hasTranscript: hasTranscript)
         record.isEnabled = hasFullAccess && active && (recording || !processing) && !commandPending
         insert.isEnabled = hasFullAccess && hasTranscript && !recording && !processing && !commandPending
-        insert.isHidden = !hasTranscript
         record.accessibilityHint = value("errorText")
+    }
+
+    private func updatePresentation(active: Bool, recording: Bool, busy: Bool, hasTranscript: Bool) {
+        recordingPresentation = recording
+        busyPresentation = busy
+        let centered = !typingEnabled && !recording && !busy
+        let orange = UIColor(red: 0.89, green: 0.29, blue: 0.04, alpha: 1)
+        let ink = UIColor(red: 0.12, green: 0.16, blue: 0.10, alpha: 1)
+        let canLaunch = !active && !busy
+        record.isHidden = canLaunch
+        launch.view.isHidden = !canLaunch
+        citrus.isHidden = !centered
+        var configuration = UIButton.Configuration.plain()
+        configuration.cornerStyle = .capsule
+        configuration.baseForegroundColor = centered ? ink : (typingEnabled ? orange : .white)
+        configuration.background.backgroundColor = !typingEnabled && !centered ? orange : .clear
+        configuration.showsActivityIndicator = busy
+        configuration.image = busy ? nil : UIImage(systemName: recording ? "stop.fill" : "waveform")
+        configuration.preferredSymbolConfigurationForImage = .init(pointSize: centered ? 25 : 20, weight: .medium)
+        record.configuration = configuration
+        record.accessibilityLabel = recording ? "Stop recording" : (busy ? "Transcribing" : "Record")
+        launch.rootView = KeyboardLaunchLink(foreground: Color(centered ? ink : orange))
+        insert.isHidden = !hasTranscript || recording || busy
+        if !recording {
+            waveform.update(level: 0, recording: false)
+            voice.update(level: 0, recording: false, startedAt: 0)
+        }
+        view.setNeedsLayout()
     }
 
     private var sessionIsActive: Bool {

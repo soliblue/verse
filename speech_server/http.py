@@ -206,8 +206,11 @@ class Handler(BaseHTTPRequestHandler):
             raise APIError(413, "Audio files must be 50 MB or smaller")
         model = query.get("model", [config.default_model])[0]
         language = query.get("language", ["auto"])[0]
+        origin = query.get("origin", ["unknown"])[0]
         if model not in config.models or language not in LANGUAGES:
             raise APIError(400, "Unsupported model or language")
+        if origin not in ("app", "shared", "keyboard", "unknown"):
+            raise APIError(400, "Unsupported recording origin")
         with self.server.reservation_lock:
             pending = sum(job["state"] in ("queued", "transcribing") for job in self.server.store.list())
             if pending + self.server.reserved_jobs >= 20:
@@ -238,7 +241,7 @@ class Handler(BaseHTTPRequestHandler):
                 raise APIError(400, "This file does not contain readable audio") from None
             if duration is not None and (not math.isfinite(duration) or duration <= 0 or duration > config.maximum_duration):
                 raise APIError(400, "Recordings must be shorter than one hour")
-            job = self.server.store.create(filename, model, language, duration, job_id)
+            job = self.server.store.create(filename, model, language, duration, job_id, origin)
         except Exception:
             path.unlink(missing_ok=True)
             raise

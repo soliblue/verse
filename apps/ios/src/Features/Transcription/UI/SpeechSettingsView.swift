@@ -11,6 +11,7 @@ struct SpeechSettingsView: View {
     @State private var connected = false
     @State private var checking = false
     @State private var sessionDuration = VerseBridge.sessionDuration
+    @State private var typingKeyboard = VerseBridge.typingKeyboardEnabled
     @State private var microphoneAllowed = AVAudioApplication.shared.recordPermission == .granted
     @AppStorage("verse.completionNotifications") private var notifications = false
     private let cream = Color(red: 1, green: 0.95, blue: 0.79)
@@ -91,6 +92,8 @@ struct SpeechSettingsView: View {
                 .listRowBackground(cream)
 
                 Section {
+                    Toggle("Typing keyboard", isOn: $typingKeyboard)
+                        .onChange(of: typingKeyboard) { _, enabled in VerseBridge.typingKeyboardEnabled = enabled }
                     if !microphoneAllowed {
                         Button("Allow microphone") {
                             store.perform {

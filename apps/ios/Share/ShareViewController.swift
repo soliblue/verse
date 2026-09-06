@@ -92,7 +92,8 @@ final class ShareViewController: UIViewController {
         components.queryItems = [
             URLQueryItem(name: "model", value: VerseBridge.model),
             URLQueryItem(name: "language", value: VerseBridge.language),
-            URLQueryItem(name: "filename", value: filename)
+            URLQueryItem(name: "filename", value: filename),
+            URLQueryItem(name: "origin", value: "shared")
         ]
         guard let url = components.url else { return }
         var request = URLRequest(url: url)

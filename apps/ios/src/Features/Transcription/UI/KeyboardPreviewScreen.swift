@@ -63,6 +63,8 @@ private final class KeyboardFixtureController: UIViewController {
             let controller = KeyboardViewController()
             controller.isPreview = true
             controller.previewsColdStart = arguments.contains("--keyboard-cold-ui-testing")
+            controller.previewsTyping = arguments.contains("--typing-keyboard-ui-testing")
+            controller.previewsProcessing = arguments.contains("--keyboard-processing-ui-testing")
             controller.previewTextInput = { [weak field] text in field?.insertText(text) }
             controller.previewDeleteBackward = { [weak field] in field?.deleteBackward() }
             field.fixtureKeyboard = controller

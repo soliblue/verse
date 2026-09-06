@@ -35,6 +35,7 @@ final class TranscriptionStore {
         }
         VerseBridge.sessionExpiresAt = 0
         VerseBridge.isRecording = false
+        VerseBridge.recordingStartedAt = 0
         VerseBridge.acknowledgedCommandID = VerseBridge.commandID
         if demo {
             items = [.preview]
@@ -87,9 +88,10 @@ final class TranscriptionStore {
         isRefreshing = true
         defer { isRefreshing = false }
         let previous = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.state) })
+        let pendingID = VerseBridge.pendingJobID
         items = try await api.history()
         try JSONEncoder().encode(items).write(to: cacheURL, options: .atomic)
-        for item in items where item.state == "completed" && previous[item.id] != nil && previous[item.id] != "completed" {
+        for item in items where item.state == "completed" && previous[item.id] != "completed" && (previous[item.id] != nil || item.id == pendingID) {
             await notify(item)
         }
         let jobID = keyboardJobID.isEmpty ? VerseBridge.pendingJobID : keyboardJobID
@@ -118,7 +120,7 @@ final class TranscriptionStore {
         try await refresh()
     }
 
-    func toggleRecording() async throws {
+    func toggleRecording(origin: TranscriptionOrigin = .app) async throws {
         guard !isStartingRecording else { return }
         guard isConfigured else { throw SpeechFailure("Add your device token in Settings first.") }
         guard !isUploading || recorder.isRecording else { throw SpeechFailure("Wait for this recording to upload.") }
@@ -133,9 +135,10 @@ final class TranscriptionStore {
                 recorder.deactivate()
                 throw SpeechFailure("Dictation session ended.")
             }
-            try recorder.begin()
+            try recorder.begin(origin: origin)
             if let url = recorder.fileURL { recordingUpload = RecordingUpload(url: url) }
             VerseBridge.isRecording = true
+            VerseBridge.recordingStartedAt = recorder.startedAt.timeIntervalSince1970
             VerseBridge.errorText = ""
             await updateActivity("recording")
         }
@@ -163,7 +166,7 @@ final class TranscriptionStore {
         guard generation == sessionGeneration else { throw SpeechFailure("Dictation session ended.") }
         guard !recorder.isRecording else { return }
         VerseBridge.insertionTranscriptID = ""
-        try await toggleRecording()
+        try await toggleRecording(origin: .keyboard)
     }
 
     func activateKeyboard() async throws {
@@ -226,20 +229,21 @@ final class TranscriptionStore {
         if case .failure = result { recordingUpload?.cancel(); recordingUpload = nil }
         recorder.deactivate()
         VerseBridge.isRecording = false
+        VerseBridge.recordingStartedAt = 0
         await endActivity()
         let url = try result.get()
-        if let url { try await upload(url, keyboard: true) }
+        if let url { try await upload(url) }
     }
 
     func finishRecording() async throws {
-        let keyboard = keyboardExpiresAt != nil
         let result = Result { try recorder.finish() }
         if case .failure = result { recordingUpload?.cancel(); recordingUpload = nil }
         VerseBridge.isRecording = false
+        VerseBridge.recordingStartedAt = 0
         if keyboardExpiresAt == nil { recorder.deactivate() }
         await updateActivity("transcribing")
         let url = try result.get()
-        if let url { try await upload(url, keyboard: keyboard) }
+        if let url { try await upload(url) }
     }
 
     func importAudio(_ url: URL) async throws {
@@ -249,12 +253,12 @@ final class TranscriptionStore {
         guard size > 0, size <= 52_428_800 else { throw SpeechFailure("Choose an audio file smaller than 50 MB.") }
         let folder = pendingDirectory
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let destination = folder.appendingPathComponent("\(UUID().uuidString)-\(url.lastPathComponent)")
+        let destination = folder.appendingPathComponent("Import-\(UUID().uuidString)-\(url.lastPathComponent)")
         try FileManager.default.copyItem(at: url, to: destination)
         try await upload(destination)
     }
 
-    func upload(_ url: URL, keyboard: Bool = false) async throws {
+    func upload(_ url: URL) async throws {
         guard !isUploading else { throw SpeechFailure("Wait for the current upload to finish.") }
         isUploading = true
         VerseBridge.statusText = "Uploading…"
@@ -275,7 +279,7 @@ final class TranscriptionStore {
         items.insert(item, at: 0)
         VerseBridge.statusText = "Transcribing…"
         VerseBridge.pendingJobID = item.id
-        if keyboard {
+        if TranscriptionOrigin.pendingAudio(url) == .keyboard {
             keyboardJobID = item.id
             VerseBridge.pendingInsertionJobID = item.id
         }
@@ -316,7 +320,7 @@ final class TranscriptionStore {
             if keyboardExpiresAt != nil {
                 if action == "start", !recorder.isRecording, !isUploading, VerseBridge.pendingJobID.isEmpty {
                     VerseBridge.insertionTranscriptID = ""
-                    perform { try await self.toggleRecording() }
+                    perform { try await self.toggleRecording(origin: .keyboard) }
                 } else if action == "stop", recorder.isRecording {
                     perform { try await self.finishRecording() }
                 }
@@ -330,10 +334,13 @@ final class TranscriptionStore {
     }
 
     private func notify(_ item: Transcription) async {
-        guard UserDefaults.standard.bool(forKey: "verse.completionNotifications"), UIApplication.shared.applicationState != .active else { return }
+        guard let body = item.completionNotificationBody(
+            enabled: UserDefaults.standard.bool(forKey: "verse.completionNotifications"),
+            appIsActive: UIApplication.shared.applicationState == .active
+        ) else { return }
         let content = UNMutableNotificationContent()
         content.title = "Transcription ready"
-        content.body = "Open Verse to read and copy your transcript."
+        content.body = body
         content.sound = .default
         try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: item.id, content: content, trigger: nil))
     }

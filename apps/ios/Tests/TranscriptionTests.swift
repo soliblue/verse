@@ -13,6 +13,8 @@ final class TranscriptionTests: XCTestCase {
         let item = try decoder.decode(Transcription.self, from: data)
         XCTAssertEqual(item.text, "Hello")
         XCTAssertEqual(item.detectedLanguage, "en")
+        XCTAssertNil(item.origin)
+        XCTAssertNil(item.completionNotificationBody(enabled: true, appIsActive: false))
         XCTAssertFalse(item.isPending)
         XCTAssertGreaterThan(item.date.timeIntervalSince1970, 0)
     }
@@ -44,5 +46,56 @@ final class TranscriptionTests: XCTestCase {
         XCTAssertEqual(SpeechAPI.recordingIdentifier(for: restored), SpeechAPI.recordingIdentifier(for: url))
         XCTAssertNil(SpeechAPI.recordingIdentifier(for: URL(fileURLWithPath: "Imported.m4a")))
         XCTAssertNil(SpeechAPI.recordingIdentifier(for: URL(fileURLWithPath: "Recording-invalid.m4a")))
+    }
+
+    func testPendingOriginAndIdentifierSurviveRecordingRetry() {
+        let id = "ABCD1234-5678-4ABC-9123-123456789ABC"
+        for origin in [TranscriptionOrigin.app, .keyboard] {
+            let name = "Recording-\(origin.rawValue)-\(id).m4a"
+            let url = URL(fileURLWithPath: "PendingAudio/\(name)")
+            let restored = URL(fileURLWithPath: url.path)
+            XCTAssertEqual(TranscriptionOrigin.pendingAudio(restored), origin)
+            XCTAssertEqual(SpeechAPI.recordingIdentifier(for: restored), "abcd123456784abc9123123456789abc")
+        }
+        XCTAssertEqual(TranscriptionOrigin.pendingAudio(URL(fileURLWithPath: "Import-\(id)-voice.m4a")), .shared)
+        XCTAssertEqual(TranscriptionOrigin.pendingAudio(URL(fileURLWithPath: "Recording-\(id).m4a")), .unknown)
+        XCTAssertEqual(TranscriptionOrigin.pendingAudio(URL(fileURLWithPath: "unknown.m4a")), .unknown)
+    }
+
+    func testCompletionNotificationsContainTranscriptionForAppAndSharedAudio() throws {
+        for origin in [TranscriptionOrigin.app, .shared] {
+            let item = notificationItem(origin: origin)
+            let restored = try JSONDecoder().decode(Transcription.self, from: JSONEncoder().encode(item))
+            XCTAssertEqual(restored.origin, origin)
+            XCTAssertEqual(restored.completionNotificationBody(enabled: true, appIsActive: false), "Hello, see you at eight.\nBis später!")
+        }
+    }
+
+    func testKeyboardAndUnknownJobsNeverProduceCompletionNotifications() throws {
+        let origins: [TranscriptionOrigin?] = [.keyboard, .unknown, nil]
+        for origin in origins {
+            let item = notificationItem(origin: origin)
+            let restored = try JSONDecoder().decode(Transcription.self, from: JSONEncoder().encode(item))
+            XCTAssertNil(restored.completionNotificationBody(enabled: true, appIsActive: false))
+        }
+    }
+
+    func testCompletionNotificationsRespectPreferenceForegroundAndContent() {
+        let item = notificationItem(origin: .app)
+        XCTAssertNil(item.completionNotificationBody(enabled: false, appIsActive: false))
+        XCTAssertNil(item.completionNotificationBody(enabled: true, appIsActive: true))
+        for state in ["queued", "transcribing", "failed"] {
+            XCTAssertNil(notificationItem(origin: .shared, state: state).completionNotificationBody(enabled: true, appIsActive: false))
+        }
+        let transcripts: [String?] = [nil, "", " \n "]
+        for text in transcripts {
+            XCTAssertNil(notificationItem(origin: .shared, text: text).completionNotificationBody(enabled: true, appIsActive: false))
+        }
+    }
+
+    private func notificationItem(origin: TranscriptionOrigin?, state: String = "completed", text: String? = "Hello, see you at eight.\nBis später!") -> Transcription {
+        Transcription(id: "notification", filename: "Recording-test.m4a", state: state, model: "medium",
+                      language: "auto", detectedLanguage: "en", text: text, durationSeconds: 4, error: nil,
+                      createdAt: "2026-09-06T09:00:00Z", updatedAt: "2026-09-06T09:00:00Z", origin: origin)
     }
 }

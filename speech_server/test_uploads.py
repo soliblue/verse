@@ -77,12 +77,17 @@ class StagedHTTPTests(unittest.TestCase):
         for index, chunk in enumerate(chunks):
             self.assertEqual(self.request("POST", path + "/" + str(index), chunk)[0], 200)
         manifest = json.dumps({"size": len(data), "chunks": [hashlib.sha256(chunk).hexdigest() for chunk in chunks], "sha256": hashlib.sha256(data).hexdigest()}).encode()
-        status, job = self.request("POST", path + "/finish?model=medium&filename=recording.wav", manifest)
+        status, job = self.request("POST", path + "/finish?model=medium&filename=recording.wav&origin=keyboard", manifest)
         self.assertEqual(status, 202)
         self.assertEqual(job["id"], identifier)
+        self.assertEqual(job["origin"], "keyboard")
         self.assertEqual((self.config.audio / identifier).read_bytes(), data)
-        self.assertEqual(self.request("POST", path + "/finish", manifest)[1]["id"], identifier)
-        self.assertEqual(self.request("POST", "/v1/transcriptions?upload_id=" + identifier, data)[1]["id"], identifier)
+        repeated = self.request("POST", path + "/finish?origin=app", manifest)[1]
+        fallback = self.request("POST", "/v1/transcriptions?origin=shared&upload_id=" + identifier, data)[1]
+        self.assertEqual(repeated["id"], identifier)
+        self.assertEqual(fallback["id"], identifier)
+        self.assertEqual(repeated["origin"], "keyboard")
+        self.assertEqual(fallback["origin"], "keyboard")
         self.assertEqual(len(self.server.store.list()), 1)
         self.assertFalse(self.server.uploads.directory(identifier).exists())
 

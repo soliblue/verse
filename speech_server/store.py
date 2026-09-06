@@ -27,11 +27,11 @@ class Store:
         finally:
             connection.close()
 
-    def create(self, filename, model, language, duration, job_id=None):
+    def create(self, filename, model, language, duration, job_id=None, origin="unknown"):
         now = timestamp()
         job = dict(id=job_id or uuid4().hex, filename=filename, state="queued", model=model,
                    language=language, detected_language=None, text="", segments=[],
-                   duration_seconds=duration, error=None, created_at=now, updated_at=now)
+                   duration_seconds=duration, error=None, created_at=now, updated_at=now, origin=origin)
         with self.connection() as connection:
             connection.execute("INSERT INTO transcriptions VALUES (?, ?, ?, ?)",
                                (job["id"], job["state"], now, json.dumps(job)))

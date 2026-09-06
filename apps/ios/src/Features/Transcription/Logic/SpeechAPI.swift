@@ -14,9 +14,9 @@ struct SpeechAPI {
         try validate(response, data: body)
     }
 
-    func finishUpload(_ manifest: Data, id: String, filename: String, model: String, language: String) async throws -> Transcription {
+    func finishUpload(_ manifest: Data, id: String, filename: String, model: String, language: String, origin: TranscriptionOrigin) async throws -> Transcription {
         var parts = URLComponents()
-        parts.queryItems = [URLQueryItem(name: "filename", value: filename), URLQueryItem(name: "model", value: model), URLQueryItem(name: "language", value: language)]
+        parts.queryItems = [URLQueryItem(name: "filename", value: filename), URLQueryItem(name: "model", value: model), URLQueryItem(name: "language", value: language), URLQueryItem(name: "origin", value: origin.rawValue)]
         var request = try request("/v1/uploads/\(id)/finish" + (parts.string ?? ""))
         request.httpMethod = "POST"
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -57,7 +57,8 @@ struct SpeechAPI {
         parts.queryItems = [
             URLQueryItem(name: "model", value: VerseBridge.model),
             URLQueryItem(name: "language", value: VerseBridge.language),
-            URLQueryItem(name: "filename", value: url.lastPathComponent)
+            URLQueryItem(name: "filename", value: url.lastPathComponent),
+            URLQueryItem(name: "origin", value: TranscriptionOrigin.pendingAudio(url).rawValue)
         ]
         if let identifier { parts.queryItems?.append(URLQueryItem(name: "upload_id", value: identifier)) }
         var request = try request("/v1/transcriptions" + (parts.string ?? ""))
@@ -71,7 +72,8 @@ struct SpeechAPI {
 
     static func recordingIdentifier(for url: URL) -> String? {
         let name = url.deletingPathExtension().lastPathComponent
-        guard name.hasPrefix("Recording-"), let uuid = UUID(uuidString: String(name.dropFirst(10))) else { return nil }
+        guard let prefix = ["Recording-keyboard-", "Recording-app-", "Recording-"].first(where: { name.hasPrefix($0) }),
+              let uuid = UUID(uuidString: String(name.dropFirst(prefix.count))) else { return nil }
         return uuid.uuidString.replacingOccurrences(of: "-", with: "").lowercased()
     }
 

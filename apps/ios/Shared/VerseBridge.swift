@@ -4,6 +4,16 @@ import Security
 enum VerseBridge {
     static let defaultBaseURL = "https://verse.soli.blue"
 
+    static var typingKeyboardEnabled: Bool {
+        get { read("typingKeyboardEnabled") == "true" }
+        set { write(String(newValue), key: "typingKeyboardEnabled") }
+    }
+
+    static var recordingStartedAt: Double {
+        get { Double(read("recordingStartedAt") ?? "0") ?? 0 }
+        set { write(String(newValue), key: "recordingStartedAt") }
+    }
+
     static var sessionDuration: Double {
         get {
             let duration = Double(read("sessionDuration") ?? "900") ?? 900

@@ -1,5 +1,17 @@
 import Foundation
 
+enum TranscriptionOrigin: String, Codable {
+    case app, shared, keyboard, unknown
+
+    static func pendingAudio(_ url: URL) -> Self {
+        let filename = url.lastPathComponent
+        if filename.hasPrefix("Recording-keyboard-") { return .keyboard }
+        if filename.hasPrefix("Recording-app-") { return .app }
+        if filename.hasPrefix("Import-") { return .shared }
+        return .unknown
+    }
+}
+
 struct Transcription: Codable, Identifiable, Hashable {
     let id: String
     let filename: String
@@ -12,6 +24,7 @@ struct Transcription: Codable, Identifiable, Hashable {
     let error: String?
     let createdAt: String
     let updatedAt: String
+    var origin: TranscriptionOrigin? = nil
 
     var isPending: Bool { state == "queued" || state == "transcribing" }
     var title: String {
@@ -22,6 +35,12 @@ struct Transcription: Codable, Identifiable, Hashable {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.date(from: createdAt) ?? ISO8601DateFormatter().date(from: createdAt) ?? .distantPast
+    }
+
+    func completionNotificationBody(enabled: Bool, appIsActive: Bool) -> String? {
+        guard enabled, !appIsActive, state == "completed", origin == .app || origin == .shared,
+              let text, !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return nil }
+        return text
     }
 
     static let preview = Transcription(

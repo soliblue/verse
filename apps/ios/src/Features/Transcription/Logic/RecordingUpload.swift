@@ -52,7 +52,7 @@ final class RecordingUpload {
     }
 
     private func submit(_ manifest: Data) async throws -> Transcription {
-        let result = await Task { try await api.finishUpload(manifest, id: id, filename: url.lastPathComponent, model: model, language: language) }.result
+        let result = await Task { try await api.finishUpload(manifest, id: id, filename: url.lastPathComponent, model: model, language: language, origin: TranscriptionOrigin.pendingAudio(url)) }.result
         if case .success(let item) = result { return item }
         if let item = try await api.transcription(id) { return item }
         return try result.get()

@@ -13,6 +13,7 @@ from unittest.mock import patch
 
 from speech_server.config import Config
 from speech_server.http import Server
+from speech_server.store import Store
 
 
 class SpeechTests(unittest.TestCase):
@@ -57,6 +58,7 @@ class SpeechTests(unittest.TestCase):
     def test_invalid_audio_and_parameters(self):
         self.assertEqual(self.request("POST", "/v1/transcriptions", b"not audio")[0], 400)
         self.assertEqual(self.request("POST", "/v1/transcriptions?model=unknown", self.audio())[0], 400)
+        self.assertEqual(self.request("POST", "/v1/transcriptions?origin=invalid", self.audio())[0], 400)
         self.assertEqual(self.server.store.list(), [])
         self.assertEqual(list(self.config.audio.iterdir()), [])
 
@@ -64,6 +66,7 @@ class SpeechTests(unittest.TestCase):
         status, job = self.request("POST", "/v1/transcriptions?filename=Test.wav&language=en", self.audio())
         self.assertEqual(status, 202)
         self.assertEqual(job["state"], "queued")
+        self.assertEqual(job["origin"], "unknown")
         self.assertAlmostEqual(job["duration_seconds"], 1)
         path = "/v1/transcriptions/" + job["id"]
         self.assertEqual(self.request("GET", path)[1], job)
@@ -71,6 +74,18 @@ class SpeechTests(unittest.TestCase):
         self.assertEqual(self.request("DELETE", path)[0], 204)
         self.assertEqual(self.request("GET", path)[0], 404)
         self.assertEqual(list(self.config.audio.iterdir()), [])
+
+    def test_upload_origin_survives_completion_and_store_reopen(self):
+        for origin in ["app", "shared", "keyboard", "unknown"]:
+            status, job = self.request("POST", "/v1/transcriptions?origin=" + origin, self.audio())
+            self.assertEqual(status, 202)
+            self.assertEqual(job["origin"], origin)
+            self.server.store.update(job["id"], state="completed", text="Hello, see you at eight.")
+            restored = Store(self.config.database).get(job["id"])
+            self.assertEqual(restored["origin"], origin)
+            self.assertEqual(restored["text"], "Hello, see you at eight.")
+            fetched = self.request("GET", "/v1/transcriptions/" + job["id"])[1]
+            self.assertEqual(fetched["origin"], origin)
 
     def test_restart_recovers_interrupted_jobs_and_preserves_completed(self):
         first = self.server.store.create("a.wav", "medium", "auto", 1)
