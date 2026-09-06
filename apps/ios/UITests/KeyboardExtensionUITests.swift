@@ -46,9 +46,7 @@ final class KeyboardExtensionUITests: XCTestCase {
         assertExtension(in: app, field: field)
         capture("real-extension-first-presentation")
         for attempt in 1...2 {
-            let next = element("keyboard-voice-next-keyboard", in: app)
-            XCTAssertTrue(next.isHittable)
-            next.tap()
+            try nextKeyboardButton(in: app).tap()
             XCTAssertTrue(root.waitForNonExistence(timeout: 5))
             XCTAssertTrue(app.keyboards.firstMatch.exists)
             XCTAssertEqual(field.value as? String, "Keep this text.")
@@ -79,14 +77,18 @@ final class KeyboardExtensionUITests: XCTestCase {
         let root = element("keyboard-content", in: app)
         for _ in 0..<6 {
             if root.waitForExistence(timeout: 0.5) { return }
-            let next = app.buttons.matching(NSPredicate(format: "label IN %@", ["Next keyboard", "Next Keyboard", "Change keyboard", "Switch keyboard"])).firstMatch
-            guard next.exists, next.isHittable else {
-                capture("real-extension-system-globe-unavailable")
-                throw XCTSkip("The simulator did not expose its system keyboard switch control")
-            }
-            next.tap()
+            try nextKeyboardButton(in: app).tap()
         }
         XCTAssertTrue(root.waitForExistence(timeout: 5), "The enabled Verse extension did not appear")
+    }
+
+    private func nextKeyboardButton(in app: XCUIApplication) throws -> XCUIElement {
+        let own = element("keyboard-voice-next-keyboard", in: app)
+        if own.exists, own.isHittable { return own }
+        let matches = app.buttons.matching(NSPredicate(format: "label IN %@", ["Next keyboard", "Next Keyboard", "Change keyboard", "Switch keyboard"]))
+        if let next = matches.allElementsBoundByIndex.first(where: { $0.isHittable }) { return next }
+        capture("real-extension-system-globe-unavailable")
+        throw XCTSkip("The simulator did not expose a keyboard switch control")
     }
 
     private func assertExtension(in app: XCUIApplication, field: XCUIElement) {

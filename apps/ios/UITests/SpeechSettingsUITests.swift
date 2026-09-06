@@ -16,7 +16,7 @@ final class SpeechSettingsUITests: XCTestCase {
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
         picker.tap()
         app.buttons["Custom"].firstMatch.tap()
-        let prompt = app.descendants(matching: .any)["custom-writing-prompt"].firstMatch
+        let prompt = app.textFields["custom-writing-prompt"]
         XCTAssertTrue(prompt.waitForExistence(timeout: 5))
         prompt.tap()
         prompt.typeText("Keep it short and friendly.")
@@ -28,7 +28,7 @@ final class SpeechSettingsUITests: XCTestCase {
         let app = settings(availability: "appleIntelligenceNotEnabled")
         XCTAssertTrue(app.staticTexts["Apple Intelligence is off"].exists)
         XCTAssertFalse(app.buttons["writing-style-picker"].exists)
-        XCTAssertFalse(app.descendants(matching: .any)["custom-writing-prompt"].firstMatch.exists)
+        XCTAssertFalse(app.textFields["custom-writing-prompt"].exists)
         XCTAssertTrue(app.buttons["apple-intelligence-settings"].exists)
         screenshot("settings-intelligence-disabled")
     }

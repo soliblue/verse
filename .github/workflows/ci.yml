@@ -69,7 +69,7 @@ jobs:
           echo "SMOKE_UDID=$SMOKE_UDID" >> "$GITHUB_ENV"
           xcrun simctl boot "$SMOKE_UDID"
 
-      - name: Build without signing
+      - name: Build with simulator signing
         id: build
         run: |
           set -o pipefail
@@ -80,8 +80,52 @@ jobs:
             -destination "platform=iOS Simulator,id=$SMOKE_UDID" \
             -derivedDataPath "$RUNNER_TEMP/verse-build" \
             ONLY_ACTIVE_ARCH=YES \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_REQUIRED=NO
+
+      - name: Verify simulator Keychain entitlements
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, plistlib, struct, subprocess
+          root = pathlib.Path(os.environ["RUNNER_TEMP"])
+          app = root / "verse-build/Build/Products/Debug-iphonesimulator/Verse.app"
+
+          def embedded_entitlements(executable):
+              data = executable.read_bytes()
+              assert data[:4] == b"\xcf\xfa\xed\xfe", "Expected a thin arm64 simulator executable"
+              offset = 32
+              for _ in range(struct.unpack_from("<I", data, 16)[0]):
+                  command, size = struct.unpack_from("<II", data, offset)
+                  if command == 0x19:
+                      for index in range(struct.unpack_from("<I", data, offset + 64)[0]):
+                          section = offset + 72 + index * 80
+                          name = data[section:section + 16].split(b"\0")[0]
+                          segment = data[section + 16:section + 32].split(b"\0")[0]
+                          if (segment, name) == (b"__TEXT", b"__entitlements"):
+                              length, start = struct.unpack_from("<QI", data, section + 40)
+                              return plistlib.loads(data[start:start + length].rstrip(b"\0"))
+                  offset += size
+              raise AssertionError(f"No simulator entitlements in {executable.name}")
+
+          evidence = []
+          for bundle in [app, app / "PlugIns/VerseKeyboard.appex", app / "PlugIns/VerseShare.appex"]:
+              subprocess.run(["codesign", "--verify", "--strict", str(bundle)], check=True)
+              info = plistlib.loads((bundle / "Info.plist").read_bytes())
+              signature = subprocess.run(["codesign", "-d", "-vv", "--entitlements", "-", "--xml", str(bundle)], capture_output=True, check=True)
+              assert b"Signature=adhoc" in signature.stderr, f"{bundle.name} is not ad-hoc signed"
+              entitlements = plistlib.loads(signature.stdout) if signature.stdout.strip() else {}
+              if not entitlements.get("keychain-access-groups"):
+                  entitlements = embedded_entitlements(bundle / info["CFBundleExecutable"])
+              group = info["VerseKeychainAccessGroup"]
+              assert group and "$(" not in group, f"Unexpanded group in {bundle.name}"
+              groups = entitlements.get("keychain-access-groups", [])
+              assert group in groups, f"Keychain group mismatch in {bundle.name}: expected {group}, found {groups}"
+              evidence.append({"bundle": info["CFBundleIdentifier"], "signature": "adhoc", "keychain_group": group})
+          assert len({item["keychain_group"] for item in evidence}) == 1, "App and extensions must share one group"
+          print(json.dumps(evidence, indent=2))
+          (root / "verse-signing-evidence.json").write_text(json.dumps(evidence, indent=2) + "\n")
+          PY
 
       - name: Wait for simulator
         timeout-minutes: 6
@@ -109,7 +153,8 @@ jobs:
             -default-test-execution-time-allowance "$TEST_TIMEOUT" \
             -maximum-test-execution-time-allowance 600 \
             "${EXTRA[@]}" \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_REQUIRED=NO
 
       - name: Export native unit summary
@@ -144,7 +189,8 @@ jobs:
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 60 \
             -maximum-test-execution-time-allowance 120 \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_REQUIRED=NO
 
       - name: Export native UI summary
@@ -177,7 +223,8 @@ jobs:
             -test-timeouts-enabled YES \
             -default-test-execution-time-allowance 180 \
             -maximum-test-execution-time-allowance 240 \
-            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_ALLOWED=YES \
+            CODE_SIGN_IDENTITY=- \
             CODE_SIGNING_REQUIRED=NO
           xcrun xcresulttool get test-results summary --path "$RUNNER_TEMP/verse-extension-tests.xcresult" > "$RUNNER_TEMP/verse-smoke/real-extension-summary.json"
           xcrun xcresulttool export attachments --path "$RUNNER_TEMP/verse-extension-tests.xcresult" --output-path "$RUNNER_TEMP/verse-smoke/real-extension"
@@ -237,6 +284,7 @@ jobs:
             ${{ runner.temp }}/verse-smoke
             ${{ runner.temp }}/verse-unit-summary.json
             ${{ runner.temp }}/verse-ui-summary.json
+            ${{ runner.temp }}/verse-signing-evidence.json
             ${{ runner.temp }}/verse-*-tests.xcresult
           if-no-files-found: ignore
 

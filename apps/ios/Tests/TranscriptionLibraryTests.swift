@@ -1,8 +1,32 @@
+import Security
 import XCTest
 @testable import Verse
 
 @MainActor
 final class TranscriptionLibraryTests: XCTestCase {
+    func testSharedKeychainIsAvailable() throws {
+        let group = try XCTUnwrap(Bundle.main.object(forInfoDictionaryKey: "VerseKeychainAccessGroup") as? String)
+        XCTAssertFalse(group.contains("$("))
+        let query: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrAccessGroup as String: group,
+            kSecAttrService as String: "soli.verse.tests",
+            kSecAttrAccount as String: UUID().uuidString
+        ]
+        let data = Data("Keychain test".utf8)
+        var values = query
+        values[kSecValueData as String] = data
+        values[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        let status = SecItemAdd(values as CFDictionary, nil)
+        defer { SecItemDelete(query as CFDictionary) }
+        XCTAssertEqual(status, errSecSuccess, "Shared Keychain group \(group): \(SecCopyErrorMessageString(status, nil) as String? ?? String(status))")
+        var lookup = query
+        lookup[kSecReturnData as String] = true
+        var result: CFTypeRef?
+        XCTAssertEqual(SecItemCopyMatching(lookup as CFDictionary, &result), errSecSuccess)
+        XCTAssertEqual(result as? Data, data)
+    }
+
     func testPendingSelectionSurvivesRestartAndMetadataIsNotAudio() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
