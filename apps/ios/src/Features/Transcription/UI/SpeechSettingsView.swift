@@ -59,13 +59,11 @@ struct SpeechSettingsView: View {
                 }
                 .listRowBackground(Color.clear)
 
-                Section {
-                    SetupToggle(
-                        title: "Apple Intelligence", identifier: "apple-intelligence",
-                        isOn: $writingEnabled, isAvailable: store.writing.availability.isAvailable,
-                        helper: store.writing.availability.isAvailable ? nil : store.writing.availability.message
-                    )
-                    .onChange(of: writingEnabled) { _, value in VerseBridge.writingEnabled = value }
+                SetupSection(
+                    title: "Apple Intelligence", identifier: "apple-intelligence",
+                    isOn: $writingEnabled, isAvailable: store.writing.availability.isAvailable,
+                    helper: store.writing.availability.isAvailable ? nil : store.writing.availability.message
+                ) {
                     if store.writing.availability.isAvailable, writingEnabled {
                         Picker("Style", selection: $style) {
                             ForEach(TranscriptStyle.allCases, id: \.self) { value in Text(value.title).tag(value) }
@@ -84,6 +82,7 @@ struct SpeechSettingsView: View {
                         }
                     }
                 }
+                .onChange(of: writingEnabled) { _, value in VerseBridge.writingEnabled = value }
                 .listRowBackground(Color.clear)
                 .disabled(busy)
 
@@ -133,13 +132,17 @@ struct SpeechSettingsView: View {
                 }
                 .listRowBackground(Color.clear)
 
+                SetupSection(
+                    title: "Typing keyboard", identifier: "typing-keyboard",
+                    isOn: $typingKeyboard, isAvailable: keyboardConfirmed,
+                    helper: keyboardConfirmed ? "Manage Verse in iPhone Settings." : "Add Verse in iPhone Settings, allow Full Access, then open it once."
+                ) {
+                    EmptyView()
+                }
+                .onChange(of: typingKeyboard) { _, value in VerseBridge.typingKeyboardEnabled = value }
+                .listRowBackground(Color.clear)
+
                 Section {
-                    SetupToggle(
-                        title: "Typing keyboard", identifier: "typing-keyboard",
-                        isOn: $typingKeyboard, isAvailable: keyboardConfirmed,
-                        helper: keyboardConfirmed ? "Manage Verse in iPhone Settings." : "Add Verse in iPhone Settings, allow Full Access, then open it once."
-                    )
-                    .onChange(of: typingKeyboard) { _, value in VerseBridge.typingKeyboardEnabled = value }
                     if !microphoneAllowed {
                         Button("Allow microphone") {
                             store.perform { microphoneAllowed = await AVAudioApplication.requestRecordPermission() }
@@ -197,18 +200,19 @@ struct SpeechSettingsView: View {
     }
 }
 
-private struct SetupToggle: View {
+private struct SetupSection<Content: View>: View {
     let title: String
     let identifier: String
     @Binding var isOn: Bool
     let isAvailable: Bool
     let helper: String?
+    @ViewBuilder let content: () -> Content
     @State private var pulse: UUID?
     @State private var highlighted = false
     private let green = Color(red: 0, green: 0.39, blue: 0.22)
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
+        Section {
             Toggle(title, isOn: Binding(
                 get: { isAvailable && isOn },
                 set: { value in
@@ -218,6 +222,8 @@ private struct SetupToggle: View {
             ))
             .accessibilityIdentifier(identifier + "-toggle")
             .accessibilityHint(isAvailable ? "" : "Setup required. Tap to highlight the instructions below.")
+            content()
+        } footer: {
             if let helper {
                 Button {
                     if let url = URL(string: UIApplication.openSettingsURLString) { UIApplication.shared.open(url) }
@@ -233,7 +239,6 @@ private struct SetupToggle: View {
                 .accessibilityValue(highlighted ? "Highlighted" : "")
             }
         }
-        .padding(.vertical, 3)
         .task(id: pulse) {
             guard pulse != nil else { return }
             withAnimation(.easeInOut(duration: 0.15)) { highlighted = true }

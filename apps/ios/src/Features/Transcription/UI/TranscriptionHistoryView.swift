@@ -7,9 +7,15 @@ struct TranscriptionHistoryView: View {
     private let green = Color(red: 0, green: 0.39, blue: 0.22)
 
     var body: some View {
+        let days = sections
         LazyVStack(alignment: .leading, spacing: 0) {
             HStack {
-                Text("Recordings").font(.subheadline.weight(.semibold))
+                if let day = days.first?.day, store.pendingAudio.isEmpty {
+                    Text(day, format: .dateTime.month(.abbreviated).day())
+                        .font(.caption.weight(.semibold))
+                } else {
+                    Text("Recordings").font(.subheadline.weight(.semibold))
+                }
                 Spacer()
                 Button {
                     store.perform { try await store.activateKeyboard() }
@@ -38,10 +44,12 @@ struct TranscriptionHistoryView: View {
                 .disabled(store.isRerunning || store.isUploading || store.recorder.isRecording)
                 Divider().overlay(green.opacity(0.25))
             }
-            ForEach(sections, id: \.day) { section in
-                Text(section.day, format: .dateTime.month(.abbreviated).day())
-                    .font(.caption.weight(.semibold)).foregroundStyle(green)
-                    .padding(.top, 16).padding(.bottom, 4)
+            ForEach(days, id: \.day) { section in
+                if section.day != days.first?.day || !store.pendingAudio.isEmpty {
+                    Text(section.day, format: .dateTime.month(.abbreviated).day())
+                        .font(.caption.weight(.semibold)).foregroundStyle(green)
+                        .padding(.top, 16).padding(.bottom, 4)
+                }
                 ForEach(section.items, id: \.recordingKey) { item in
                     Button { openTranscript(item.recordingKey) } label: {
                         VStack(alignment: .leading, spacing: 8) {

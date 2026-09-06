@@ -36,7 +36,7 @@ final class SpeechSettingsUITests: XCTestCase {
     func testAvailableWritingOffersCustomPromptAfterEnabling() {
         let app = settings(availability: "available")
         XCTAssertFalse(app.buttons["writing-style-picker"].exists)
-        app.switches["apple-intelligence-toggle"].tap()
+        tapSwitch(app.switches["apple-intelligence-toggle"])
         let picker = app.buttons["writing-style-picker"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
         picker.tap()
@@ -55,9 +55,9 @@ final class SpeechSettingsUITests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "0")
         XCTAssertFalse(app.buttons["writing-style-picker"].exists)
         XCTAssertFalse(app.buttons["Open Settings"].exists)
-        toggle.tap()
-        XCTAssertEqual(toggle.value as? String, "0")
+        tapSwitch(toggle)
         assertHighlighted(app.buttons["apple-intelligence-setup"])
+        XCTAssertEqual(toggle.value as? String, "0")
         screenshot("quiet-receipt-intelligence-disabled")
     }
 
@@ -67,9 +67,9 @@ final class SpeechSettingsUITests: XCTestCase {
         if !toggle.isHittable { app.swipeUp() }
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         XCTAssertEqual(toggle.value as? String, "0")
-        toggle.tap()
-        XCTAssertEqual(toggle.value as? String, "0")
+        tapSwitch(toggle)
         assertHighlighted(app.buttons["typing-keyboard-setup"])
+        XCTAssertEqual(toggle.value as? String, "0")
         XCTAssertFalse(app.buttons["iPhone Settings"].exists)
         screenshot("quiet-receipt-keyboard-setup")
     }
@@ -79,7 +79,7 @@ final class SpeechSettingsUITests: XCTestCase {
         let toggle = app.switches["typing-keyboard-toggle"]
         if !toggle.isHittable { app.swipeUp() }
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
-        toggle.tap()
+        tapSwitch(toggle)
         XCTAssertEqual(toggle.value as? String, "1")
     }
 
@@ -99,9 +99,18 @@ final class SpeechSettingsUITests: XCTestCase {
     }
 
     private func assertHighlighted(_ helper: XCUIElement) {
-        XCTAssertTrue(helper.exists)
-        let highlighted = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Highlighted"), object: helper)
-        XCTAssertEqual(XCTWaiter.wait(for: [highlighted], timeout: 2), .completed)
+        let deadline = Date().addingTimeInterval(2)
+        while Date() < deadline {
+            if helper.value as? String == "Highlighted" { return }
+            RunLoop.current.run(until: Date().addingTimeInterval(0.05))
+        }
+        XCTFail("Setup instructions did not highlight after tapping the unavailable switch")
+    }
+
+    private func tapSwitch(_ toggle: XCUIElement) {
+        let nativeControl = toggle.switches.firstMatch
+        if nativeControl.exists { nativeControl.tap() }
+        else { toggle.tap() }
     }
 
     private func settings(availability: String, arguments: [String] = []) -> XCUIApplication {

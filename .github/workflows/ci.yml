@@ -275,6 +275,17 @@ jobs:
             --path "$RUNNER_TEMP/verse-ui-tests.xcresult" \
             --output-path "$RUNNER_TEMP/verse-smoke/ui-tests"
 
+      - name: Upload UI screenshots
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: verse-ui-screens
+          path: |
+            ${{ runner.temp }}/verse-smoke/**/*.png
+            ${{ runner.temp }}/verse-smoke/ui-tests/manifest.json
+            ${{ runner.temp }}/verse-ui-summary.json
+          if-no-files-found: ignore
+
       - name: Upload simulator evidence
         if: always()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a

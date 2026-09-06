@@ -121,6 +121,8 @@ struct TranscriptDetailView: View {
                 Image(systemName: "chevron.down").font(.caption.weight(.semibold))
             }
             .font(.subheadline)
+            .fixedSize(horizontal: true, vertical: false)
+            .padding(.horizontal, 6)
         }
         .accessibilityIdentifier("transcript-version-picker")
         .accessibilityLabel(item?.modelLabel ?? "Transcript versions")

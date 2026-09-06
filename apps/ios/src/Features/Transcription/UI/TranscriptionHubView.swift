@@ -51,7 +51,7 @@ struct TranscriptionHubView: View {
                     masthead
                         .padding(.horizontal, 20).padding(.vertical, 6)
                         .background {
-                            Image("CitrusPaper").resizable().scaledToFill().ignoresSafeArea(edges: .top)
+                            Image("CitrusPaper").resizable().scaledToFill().clipped().ignoresSafeArea(edges: .top)
                         }
                 }
                 .refreshable { store.perform { try await store.refresh() } }
