@@ -51,7 +51,12 @@ struct TranscriptionHubView: View {
                     masthead
                         .padding(.horizontal, 20).padding(.vertical, 6)
                         .background {
-                            Image("CitrusPaper").resizable().scaledToFill().clipped().ignoresSafeArea(edges: .top)
+                            GeometryReader { toolbar in
+                                Image("CitrusPaper").resizable().scaledToFill()
+                                    .frame(width: toolbar.size.width, height: toolbar.size.height)
+                                    .clipped()
+                            }
+                            .ignoresSafeArea(edges: .top)
                         }
                 }
                 .refreshable { store.perform { try await store.refresh() } }
