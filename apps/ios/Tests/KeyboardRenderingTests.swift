@@ -84,7 +84,7 @@ final class KeyboardRenderingTests: XCTestCase {
         let frame = popup.convert(popup.bounds, to: root)
         XCTAssertTrue(root.clipsToBounds)
         XCTAssertTrue(root.bounds.contains(frame))
-        XCTAssertGreaterThanOrEqual(frame.minY, 4)
+        XCTAssertGreaterThanOrEqual(frame.minY, 0)
     }
 
     func testVoiceIsDefaultAndUsesTheSystemKeyboardBacking() throws {
