@@ -209,6 +209,10 @@ private struct SetupSection<Content: View>: View {
     @ViewBuilder let content: () -> Content
     @State private var pulse: UUID?
     @State private var highlighted = false
+    #if DEBUG
+    @State private var highlightStartedAt = 0.0
+    @State private var highlightEndedAt = 0.0
+    #endif
     private let green = Color(red: 0, green: 0.39, blue: 0.22)
 
     var body: some View {
@@ -236,15 +240,35 @@ private struct SetupSection<Content: View>: View {
                 }
                 .buttonStyle(.plain)
                 .accessibilityIdentifier(identifier + "-setup")
-                .accessibilityValue(highlighted ? "Highlighted" : "")
+                .accessibilityValue(highlightAccessibilityValue)
             }
         }
         .task(id: pulse) {
             guard pulse != nil else { return }
-            withAnimation(.easeInOut(duration: 0.15)) { highlighted = true }
+            withAnimation(.easeInOut(duration: 0.15)) {
+                highlighted = true
+                #if DEBUG
+                highlightStartedAt = Date().timeIntervalSince1970
+                highlightEndedAt = 0
+                #endif
+            }
             try? await Task.sleep(for: .seconds(1))
             guard !Task.isCancelled else { return }
-            withAnimation(.easeInOut(duration: 0.3)) { highlighted = false }
+            withAnimation(.easeInOut(duration: 0.3)) {
+                highlighted = false
+                #if DEBUG
+                highlightEndedAt = Date().timeIntervalSince1970
+                #endif
+            }
         }
+    }
+
+    private var highlightAccessibilityValue: String {
+        #if DEBUG
+        if ProcessInfo.processInfo.arguments.contains("--ui-testing") {
+            return "pulse:\(highlightStartedAt):\(highlightEndedAt):\(highlighted ? 1 : 0)"
+        }
+        #endif
+        return highlighted ? "Highlighted" : ""
     }
 }

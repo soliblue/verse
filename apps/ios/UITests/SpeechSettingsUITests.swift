@@ -55,8 +55,7 @@ final class SpeechSettingsUITests: XCTestCase {
         XCTAssertEqual(toggle.value as? String, "0")
         XCTAssertFalse(app.buttons["writing-style-picker"].exists)
         XCTAssertFalse(app.buttons["Open Settings"].exists)
-        tapSwitch(toggle)
-        assertHighlighted(app.buttons["apple-intelligence-setup"])
+        assertSetupPulse(toggle, helper: app.buttons["apple-intelligence-setup"])
         XCTAssertEqual(toggle.value as? String, "0")
         screenshot("quiet-receipt-intelligence-disabled")
     }
@@ -67,8 +66,7 @@ final class SpeechSettingsUITests: XCTestCase {
         if !toggle.isHittable { app.swipeUp() }
         XCTAssertTrue(toggle.waitForExistence(timeout: 5))
         XCTAssertEqual(toggle.value as? String, "0")
-        tapSwitch(toggle)
-        assertHighlighted(app.buttons["typing-keyboard-setup"])
+        assertSetupPulse(toggle, helper: app.buttons["typing-keyboard-setup"])
         XCTAssertEqual(toggle.value as? String, "0")
         XCTAssertFalse(app.buttons["iPhone Settings"].exists)
         screenshot("quiet-receipt-keyboard-setup")
@@ -98,13 +96,22 @@ final class SpeechSettingsUITests: XCTestCase {
         XCTAssertTrue(app.buttons["apple-intelligence-setup"].label.contains("not ready"))
     }
 
-    private func assertHighlighted(_ helper: XCUIElement) {
-        let deadline = Date().addingTimeInterval(2)
+    private func assertSetupPulse(_ toggle: XCUIElement, helper: XCUIElement) {
+        let before = (helper.value as? String ?? "").split(separator: ":")
+        let previousStart = before.count == 4 ? Double(before[1]) ?? 0 : 0
+        tapSwitch(toggle)
+        let deadline = Date().addingTimeInterval(3)
         while Date() < deadline {
-            if helper.value as? String == "Highlighted" { return }
+            let value = (helper.value as? String ?? "").split(separator: ":")
+            if value.count == 4, value[0] == "pulse",
+               let start = Double(value[1]), let end = Double(value[2]),
+               start > previousStart, end > start, value[3] == "0" {
+                XCTAssertEqual(end - start, 1, accuracy: 0.4)
+                return
+            }
             RunLoop.current.run(until: Date().addingTimeInterval(0.05))
         }
-        XCTFail("Setup instructions did not highlight after tapping the unavailable switch")
+        XCTFail("Setup instructions did not complete the one-second highlight")
     }
 
     private func tapSwitch(_ toggle: XCUIElement) {
