@@ -1,16 +1,21 @@
 # Verse
 
-A private iPhone transcription app. Record a message, share an audio file, or dictate through the Verse keyboard. Local Whisper on your VPS turns speech into text. No subscription, provider API, or user account.
+A private iPhone transcription app. Record a message, import audio, or dictate through the Verse keyboard. Whisper runs on your iPhone by default, with your VPS available as an alternative. No subscription, paid provider API, or user account.
 
 ## iPhone
 
 - Record, copy, share, play back, and delete recordings.
-- Import audio from Files or share audio from another app to Verse.
-- Choose small, medium, or large-v3 and an optional language.
-- Enter your device token once in Settings. The server address is preconfigured.
-- History is cached for offline reading. Recordings that fail to upload remain on the device for retry.
+- Download an on-device model in Settings: Tiny, Base, Small, Medium, Large v3, or Large v3 Turbo. Medium is selected by default; nothing downloads automatically.
+- Choose a language or let Whisper detect it. Downloaded models work offline, without a server token.
+- Turn off on-device transcription to use the preconfigured VPS and enter your device token.
+- Recordings, original transcripts, and history remain on the iPhone for local jobs. Failed work stays available for retry with its original processing settings.
+- Optional Original, Casual, Polished, and Custom writing styles use Apple's on-device text model. Original skips rewriting. Custom accepts your own instruction.
 
-Open Verse once, enter the device token and allow microphone access. Add Verse in iPhone Settings → General → Keyboard → Keyboards, then enable Full Access. Allow Live Activities for Verse.
+Download a model or configure Server, then allow microphone access. Add Verse in iPhone Settings → General → Keyboard → Keyboards, enable Full Access, and allow Live Activities for Verse.
+
+Writing styles require iOS 26+, compatible hardware, and Apple Intelligence enabled with its model ready. Verse hides the style picker when unavailable and explains the next step. Enable it in iPhone Settings → Apple Intelligence & Siri. Unsupported languages, unavailable models, and failed rewrites keep the original transcript. Rewriting is optional and adds processing time.
+
+For on-device file transcription, use Import audio inside Verse. The share extension uses the VPS; when on-device mode is selected, it asks before sending anything. No audio silently falls back from local processing to the server.
 
 Verse opens a voice-only panel by default: citrus to activate or record, a live waveform and stop control while recording, and language/model controls above. It uses the native keyboard backdrop throughout. The letter keyboard is optional under Settings → Typing keyboard.
 
@@ -18,7 +23,9 @@ On iOS 18 or later, add the Verse dictation control in Control Center, or assign
 
 iOS does not let keyboard extensions access the microphone directly. The audio-recording intent starts the app process without opening its interface and keeps a visible Live Activity. The microphone stays ready for 15 minutes by default, configurable to 5 or 60 minutes. Idle audio is discarded. Tap End session in the Live Activity to turn it off immediately. A manual Start keyboard session action remains available inside Verse, including on iOS 17. Secure text fields and some apps do not allow third-party keyboards. Universal direct microphone activation from the keyboard itself is not supported.
 
-Shared uploads continue on the server after acceptance. The keyboard polls an individual pending job directly, so it can receive a result even if iOS suspends the main app. Optional completion notifications contain the transcript for app recordings and imported/shared files only. Keyboard dictation never notifies. Notifications are best effort while the app can poll, not remote push notifications.
+Server recordings upload compressed AAC while you speak, with final integrity checks and repeatable retries. Accepted server jobs continue independently; the keyboard polls an individual job even if iOS suspends Verse. On-device recognition runs in the app process, not the keyboard extension. If iOS terminates the app, unfinished audio remains available for retry.
+
+Optional completion notifications contain the transcript for app recordings and imported/shared files only. Keyboard dictation never notifies. Notifications are best effort while the app can process or poll, not remote push notifications.
 
 ## Server
 
@@ -34,7 +41,7 @@ The server binds to localhost port 8787 behind the existing private-token HTTPS 
 make check
 ```
 
-GitHub CI builds the app and extensions and runs simulator tests. The manually triggered TestFlight workflow signs all four targets and uploads to the existing `soli.verse` app. Credentials remain in GitHub secrets.
+GitHub CI builds the app and extensions and runs simulator tests. Its optional `local_model_smoke` run explicitly downloads Tiny and transcribes a public reference clip; normal CI does not download speech models. Simulator timings are not phone benchmarks. The manually triggered TestFlight workflow signs all four targets and uploads to the existing `soli.verse` app. Credentials remain in GitHub secrets.
 
 ## Layout
 
@@ -50,4 +57,4 @@ scripts/                             Service template and verification tools
 
 The retired reader, events, and Nightjar source have been removed. Their history remains in Git. No research automation runs.
 
-The orange icon matches the app artwork. Its source is `apps/ios/src/Assets.xcassets/AppIcon.appiconset/AppIcon.png`.
+The orange icon matches the app artwork. Its source is `apps/ios/src/Assets.xcassets/AppIcon.appiconset/AppIcon.png`. Dependency licenses are bundled in `apps/ios/src/ThirdPartyNotices.txt`.

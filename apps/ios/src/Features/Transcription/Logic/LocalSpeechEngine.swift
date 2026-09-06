@@ -53,6 +53,8 @@ final class LocalSpeechEngine {
         refreshInstalled()
     }
 
+    nonisolated deinit {}
+
     var isBusy: Bool { isPreparing || isTranscribing }
 
     func refreshInstalled() {
@@ -178,12 +180,12 @@ final class LocalSpeechEngine {
     }
 
     private func modelDirectory(_ model: LocalSpeechModel) -> URL {
-        HubApiWrapper(downloadBase: directory).localRepoLocation(.init(id: "argmaxinc/whisperkit-coreml"))
+        directory.appending(component: "models").appending(component: "argmaxinc/whisperkit-coreml")
             .appendingPathComponent(model.variant, isDirectory: true)
     }
 
     private func tokenizerDirectory(_ model: LocalSpeechModel) -> URL {
-        HubApiWrapper(downloadBase: directory).localRepoLocation(.init(id: model.tokenizer))
+        directory.appending(component: "models").appending(component: model.tokenizer)
     }
 }
 

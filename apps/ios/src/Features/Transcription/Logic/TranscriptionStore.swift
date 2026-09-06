@@ -375,7 +375,7 @@ final class TranscriptionStore {
     private func validateSelection(_ selection: SpeechSelection) throws {
         if selection.onDevice {
             guard localEngine.installedModelIDs.contains(selection.model) else {
-                throw SpeechFailure("Download the \(selection.model) model in Settings, or choose Server transcription.")
+                throw SpeechFailure("Download the \(selection.model) model in Settings before transcribing this recording.")
             }
         } else if VerseBridge.token.isEmpty {
             throw SpeechFailure("Add your device token in Settings first.")

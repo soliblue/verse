@@ -4,7 +4,7 @@ import AppIntents
 @available(iOS 18.0, *)
 nonisolated struct ToggleDictationIntent: AudioRecordingIntent, LiveActivityIntent {
     static let title: LocalizedStringResource = "Toggle dictation"
-    static let description = IntentDescription("Start speaking, or stop and transcribe on your private server.")
+    static let description = IntentDescription("Start speaking, or stop and transcribe.")
     static let openAppWhenRun = false
     static let authenticationPolicy: IntentAuthenticationPolicy = .requiresLocalDeviceAuthentication
 

@@ -11,8 +11,10 @@ Private, single-user iPhone transcription app. Keep `soli.verse` and its existin
 
 ## Contracts
 
-- Preserve streaming AAC uploads, integrity checks, idempotent retries, local pending recordings, and single-insertion guards.
-- Default recognition is Medium. No provider API or automatic model downloads.
+- Preserve server streaming AAC uploads, integrity checks, idempotent retries, local pending recordings, and single-insertion guards. Keep the selected engine, model, language, and style with each pending recording.
+- On-device WhisperKit is enabled by default, with Medium selected. Models and tokenizers download only after an explicit Download action. Server transcription remains optional. No paid provider API or silent server fallback.
+- Optional Apple writing styles are Original, Casual, Polished, and Custom. Original is the default. Hide style controls when Apple Intelligence is unavailable, explain setup, preserve the original text, and fall back safely.
+- The share extension uses the server. When on-device mode is selected, obtain explicit server consent before uploading; import inside Verse for local transcription. Local recordings and history must survive updates and cleanup.
 - Keyboard extensions cannot record directly. The app owns capture; active sessions permit keyboard control. Cold power opens the app. Ready sessions default to 15 minutes, selectable 5/15/60. Idle audio is discarded.
 - Keep credentials in root `.env`, Keychain, or GitHub secrets. Never commit them. Current recordings and SQLite data under `db/` are private and must survive cleanup/deployment.
 - The VPS service binds to loopback behind the existing HTTPS tunnel and authenticates with a device token. Do not alter shared infrastructure or access controls.

@@ -70,6 +70,17 @@ final class LocalSpeechEngineTests: XCTestCase {
         XCTAssertFalse(FileManager.default.fileExists(atPath: folder.path))
     }
 
+    func testEngineDeallocatesSynchronously() {
+        weak var releasedEngine: LocalSpeechEngine?
+        autoreleasepool {
+            let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+            let engine = LocalSpeechEngine(directory: folder)
+            releasedEngine = engine
+            withExtendedLifetime(engine) { XCTAssertNotNil(releasedEngine) }
+        }
+        XCTAssertNil(releasedEngine)
+    }
+
     func testMissingModelPreparationFailsWithoutDownloading() async {
         let folder = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         let engine = LocalSpeechEngine(directory: folder)
