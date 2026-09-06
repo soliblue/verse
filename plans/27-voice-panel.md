@@ -8,7 +8,7 @@ Status: release authorized. Run native CI and rendered comparison, update the ex
 4. Base completion notifications on each job's actual origin. App recordings and imported/shared audio may notify under the existing permission/preference rules; keyboard or voice-panel dictation must not. Include the transcription in the notification body. Origin must survive refresh/relaunch and must not be inferred from whether a keyboard session happens to be active.
 5. Add notification-origin regressions and voice-panel state/layout tests. Run `make check`, native CI, and inspect rendered evidence before any requested release. Physical microphone handoff and device FPS still require phone verification.
 
-Verification: `make check` passes 25 tests. Native tooling cannot run on this Linux host (`xcrun` unavailable). New native tests and screenshot captures will run in GitHub CI. Backend origin metadata needs the next service restart before app distribution.
+Verification: `make check` passes 25 tests. Native CI 34021395566 passes 51 unit tests and all 17 UI tests, including the corrected cold-activation target. Rendered comparison led to one final processing-spinner contrast fix and regression test, awaiting native verification. See `design-qa.md` for comparisons. The backend is restarted and healthy: authenticated live streaming tests pass for app, shared and keyboard origins; all 17 existing records remain unchanged, with a private SQLite backup.
 
 Backdrop reference: Apple's [UIInputView documentation](https://developer.apple.com/documentation/uikit/uiinputview) describes the native keyboard-matching background. Custom panel containers remain transparent rather than attempting to recolour system-owned chrome.
 

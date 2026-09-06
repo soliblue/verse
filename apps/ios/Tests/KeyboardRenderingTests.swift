@@ -97,6 +97,21 @@ final class KeyboardRenderingTests: XCTestCase {
         }
     }
 
+    func testProcessingIndicatorRetainsContrastWhileDisabled() throws {
+        for typing in [false, true] {
+            let (window, controller) = installedController(typing: typing, processing: true)
+            defer { controller.view.removeFromSuperview(); window.isHidden = true }
+            let button = try XCTUnwrap(descendant(in: controller.view, identifiedBy: "keyboard-record") as? UIButton)
+            let configuration = try XCTUnwrap(button.configuration)
+            let transform = try XCTUnwrap(configuration.activityIndicatorColorTransformer)
+            let expected = typing ? UIColor(red: 0.89, green: 0.29, blue: 0.04, alpha: 1) : .white
+            XCTAssertFalse(button.isEnabled)
+            XCTAssertTrue(configuration.showsActivityIndicator)
+            XCTAssertEqual(transform(.clear), expected)
+            XCTAssertEqual(transform(.gray), expected)
+        }
+    }
+
     func testVoiceWaveformUses49BoundedBars() throws {
         let (window, waveform) = installedWaveform(voice: true)
         defer { waveform.removeFromSuperview(); window.isHidden = true }
@@ -210,11 +225,12 @@ final class KeyboardRenderingTests: XCTestCase {
         }
     }
 
-    private func installedController(width: CGFloat = 402, typing: Bool = false) -> (UIWindow, KeyboardViewController) {
+    private func installedController(width: CGFloat = 402, typing: Bool = false, processing: Bool = false) -> (UIWindow, KeyboardViewController) {
         let window = UIWindow(frame: CGRect(x: 0, y: 0, width: width, height: 874))
         let controller = KeyboardViewController()
         controller.isPreview = true
         controller.previewsTyping = typing
+        controller.previewsProcessing = processing
         controller.loadViewIfNeeded()
         controller.view.frame = CGRect(x: 0, y: 0, width: width, height: KeyboardViewController.contentHeight)
         window.addSubview(controller.view)

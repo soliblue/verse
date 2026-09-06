@@ -394,6 +394,8 @@ final class KeyboardViewController: UIInputViewController {
         var configuration = UIButton.Configuration.plain()
         configuration.cornerStyle = .capsule
         configuration.baseForegroundColor = centered ? ink : (typingEnabled ? orange : .white)
+        let indicatorColor: UIColor = typingEnabled ? orange : .white
+        configuration.activityIndicatorColorTransformer = UIConfigurationColorTransformer { _ in indicatorColor }
         configuration.background.backgroundColor = !typingEnabled && !centered ? orange : .clear
         configuration.showsActivityIndicator = busy
         configuration.image = busy ? nil : UIImage(systemName: recording ? "stop.fill" : "waveform")

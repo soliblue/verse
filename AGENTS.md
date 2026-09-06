@@ -25,7 +25,7 @@ Private, single-user iPhone transcription app. Keep `soli.verse` and its existin
 - No inline comments, docstrings, decorative headers, em dashes, speculative abstractions, or new try-catch blocks.
 - Root sessions integrate and verify. Delegate independent work when useful.
 - Keep a concise numbered plan for nontrivial changes, including contracts and verification.
-- Preserve unrelated changes. Soli authorizes committing, pushing, and deploying completed Verse iterations after verification to the existing VPS and internal TestFlight. No public submission or unrelated infrastructure changes.
+- Preserve unrelated changes. Soli authorizes committing and pushing Verse work for verification, then deploying verified iterations to the existing VPS and internal TestFlight. No public submission or unrelated infrastructure changes.
 - Run `make check`, then GitHub CI for native unit tests, UI tests, builds, and screenshot evidence. Device-only microphone handoff requires real-phone verification; simulator fixtures do not prove it.
 - TestFlight upload success is not availability. Verify Apple processing and internal beta state before claiming a release is ready.
 
