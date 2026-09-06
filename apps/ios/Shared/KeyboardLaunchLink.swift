@@ -11,6 +11,7 @@ struct KeyboardLaunchLink: View {
                     .font(.system(size: 21, weight: .medium))
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .foregroundStyle(foreground)
+                    .contentShape(Circle())
             }
             .buttonStyle(.plain)
             .accessibilityIdentifier("keyboard-open-dictation")

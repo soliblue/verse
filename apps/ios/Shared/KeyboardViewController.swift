@@ -200,6 +200,7 @@ final class KeyboardViewController: UIInputViewController {
         keyboard.isHidden = !typingEnabled
         voice.isHidden = typingEnabled
         toolbarHeight?.constant = typingEnabled ? 44 : 52
+        toolbar.spacing = typingEnabled ? 2 : 8
         toolbar.directionalLayoutMargins.top = typingEnabled ? 0 : 8
         for button in [language, model] {
             button.layer.cornerRadius = 22
