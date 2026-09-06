@@ -11,6 +11,8 @@ final class ShareViewController: UIViewController {
     private var attachmentProgress: Progress?
     private var temporaryFile: URL?
     private var hasFinished = false
+    private var waitingForServerApproval = false
+    private var selection = SpeechSelection.current
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -39,8 +41,15 @@ final class ShareViewController: UIViewController {
             stack.trailingAnchor.constraint(equalTo: view.trailingAnchor, constant: -24)
         ])
         guard !VerseBridge.token.isEmpty else {
-            status.text = "Open Verse and enter your server token first."
+            status.text = "Import this file in Verse for on-device transcription, or add your server token in Verse Settings to use sharing."
             done.setTitle("Done", for: .normal)
+            return
+        }
+        if VerseBridge.onDeviceTranscriptionEnabled {
+            waitingForServerApproval = true
+            status.text = "Shared files use your server. To keep audio on your iPhone, use Import audio inside Verse."
+            copy.setTitle("Transcribe on server", for: .normal)
+            copy.isEnabled = true
             return
         }
         loadAttachment()
@@ -88,10 +97,17 @@ final class ShareViewController: UIViewController {
 
     private func upload(_ file: URL, filename: String) {
         temporaryFile = file
-        guard var components = URLComponents(string: VerseBridge.baseURL + "/v1/transcriptions") else { return }
+        selection.onDevice = false
+        selection.model = VerseBridge.model
+        guard var components = URLComponents(string: VerseBridge.baseURL + "/v1/transcriptions"),
+              components.scheme == "https", components.host != nil else {
+            status.text = "The server needs an HTTPS address. Check Verse Settings."
+            done.setTitle("Done", for: .normal)
+            return
+        }
         components.queryItems = [
-            URLQueryItem(name: "model", value: VerseBridge.model),
-            URLQueryItem(name: "language", value: VerseBridge.language),
+            URLQueryItem(name: "model", value: selection.model),
+            URLQueryItem(name: "language", value: selection.language),
             URLQueryItem(name: "filename", value: filename),
             URLQueryItem(name: "origin", value: "shared")
         ]
@@ -113,9 +129,10 @@ final class ShareViewController: UIViewController {
                 }
                 return
             }
-            VerseBridge.pendingJobID = job.id
             DispatchQueue.main.async {
                 guard let self, !self.hasFinished else { return }
+                VerseBridge.saveOptions(self.selection, for: job.id)
+                if VerseBridge.pendingJobID.isEmpty { VerseBridge.pendingJobID = job.id }
                 self.poll(job.id)
             }
         }
@@ -137,16 +154,12 @@ final class ShareViewController: UIViewController {
                     return
                 }
                 if job.state == "completed" {
-                    self?.status.text = "Transcribed"
-                    self?.transcript.text = job.text ?? ""
-                    self?.copy.isEnabled = !(job.text ?? "").isEmpty
-                    VerseBridge.transcriptText = job.text ?? ""
-                    VerseBridge.transcriptID = job.id
-                    if VerseBridge.pendingJobID == job.id {
-                        VerseBridge.pendingJobID = ""
-                        VerseBridge.statusText = ""
-                        VerseBridge.errorText = ""
-                    }
+                    let output = await TranscriptDelivery.prepare(id: job.id, text: job.text ?? "", language: job.detectedLanguage)
+                    guard !Task.isCancelled, !VerseBridge.isDeleted(job.id) else { return }
+                    self?.status.text = output.fallback?.message ?? "Transcribed"
+                    self?.transcript.text = output.text
+                    self?.copy.isEnabled = !output.text.isEmpty
+                    VerseBridge.publishTranscriptionResult(id: job.id, statusCode: 200, state: job.state, text: output.text, error: nil)
                     return
                 }
                 if job.state == "failed" {
@@ -164,6 +177,14 @@ final class ShareViewController: UIViewController {
     }
 
     @objc private func copyText() {
+        if waitingForServerApproval {
+            waitingForServerApproval = false
+            copy.setTitle("Copy text", for: .normal)
+            copy.isEnabled = false
+            status.text = "Preparing audio…"
+            loadAttachment()
+            return
+        }
         UIPasteboard.general.string = transcript.text
         copy.setTitle("Copied", for: .normal)
     }

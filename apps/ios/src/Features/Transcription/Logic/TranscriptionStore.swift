@@ -10,6 +10,9 @@ final class TranscriptionStore {
     static let shared = TranscriptionStore()
     let recorder = VoiceRecorder()
     let api = SpeechAPI()
+    let localEngine = LocalSpeechEngine()
+    let writing = AppleWritingService.shared
+    let library = TranscriptionLibrary()
     var items: [Transcription] = []
     var models = ["small", "medium", "large-v3"]
     var error: String?
@@ -28,6 +31,7 @@ final class TranscriptionStore {
     private var activityTask: Task<Void, Never>?
     private var sessionGeneration = 0
     private var recordingUpload: RecordingUpload?
+    private var recordingSelection: SpeechSelection?
 
     init() {
         if VerseBridge.token.isEmpty {
@@ -38,12 +42,20 @@ final class TranscriptionStore {
         VerseBridge.recordingStartedAt = 0
         VerseBridge.acknowledgedCommandID = VerseBridge.commandID
         if demo {
+            VerseBridge.onDeviceTranscriptionEnabled = true
+            VerseBridge.localModel = "medium"
+            VerseBridge.writingStyle = "original"
+            VerseBridge.customWritingPrompt = ""
             items = [.preview]
             return
         }
-        if let data = try? Data(contentsOf: cacheURL), let cached = try? JSONDecoder().decode([Transcription].self, from: data) {
-            items = cached
+        items = library.load()
+        if VerseBridge.pendingJobID.hasPrefix("local-") {
+            VerseBridge.pendingJobID = ""
+            VerseBridge.pendingInsertionJobID = ""
+            VerseBridge.statusText = ""
         }
+        VerseBridge.localInstalledModels = localEngine.installedModelIDs.sorted().joined(separator: ",")
         loadPendingAudio()
         interruptionTask = Task { [weak self] in
             for await notification in NotificationCenter.default.notifications(named: AVAudioSession.interruptionNotification) {
@@ -64,7 +76,7 @@ final class TranscriptionStore {
         }
     }
 
-    var isConfigured: Bool { demo || !VerseBridge.token.isEmpty }
+    var isConfigured: Bool { demo || VerseBridge.onDeviceTranscriptionEnabled || !VerseBridge.token.isEmpty }
 
     func perform(_ operation: @escaping @MainActor () async throws -> Void) {
         Task {
@@ -84,31 +96,31 @@ final class TranscriptionStore {
     }
 
     func refresh() async throws {
-        guard !demo, isConfigured, !isRefreshing else { return }
+        guard !demo, !VerseBridge.token.isEmpty, !isRefreshing else { return }
         isRefreshing = true
         defer { isRefreshing = false }
-        let previous = Dictionary(uniqueKeysWithValues: items.map { ($0.id, $0.state) })
+        let previous = Dictionary(items.map { ($0.id, $0.state) }, uniquingKeysWith: { _, last in last })
         let pendingID = VerseBridge.pendingJobID
-        items = try await api.history()
-        try JSONEncoder().encode(items).write(to: cacheURL, options: .atomic)
-        for item in items where item.state == "completed" && previous[item.id] != "completed" && (previous[item.id] != nil || item.id == pendingID) {
+        var remote = try await api.history()
+        remote.removeAll { VerseBridge.isDeleted($0.id) }
+        for index in remote.indices where remote[index].state == "completed" {
+            let item = remote[index]
+            if VerseBridge.options(for: item.id) != nil || VerseBridge.rewriteResult(for: item.id) != nil {
+                remote[index] = item.applying(await TranscriptDelivery.prepare(id: item.id, text: item.text ?? "", language: item.detectedLanguage))
+            }
+        }
+        let received = Set(remote.map(\.id))
+        remote += items.filter { !$0.isLocal && previous[$0.id] == nil && !received.contains($0.id) }
+        remote.removeAll { VerseBridge.isDeleted($0.id) }
+        items = TranscriptionLibrary.merging(server: remote, cached: items)
+        try library.save(items)
+        for item in remote where item.state == "completed" && previous[item.id] != "completed" && (previous[item.id] != nil || item.id == pendingID) {
             await notify(item)
         }
         let jobID = keyboardJobID.isEmpty ? VerseBridge.pendingJobID : keyboardJobID
         if let item = items.first(where: { $0.id == jobID }), !item.isPending {
-            VerseBridge.statusText = ""
-            if item.state == "completed" {
-                VerseBridge.transcriptText = item.text ?? ""
-                VerseBridge.transcriptID = item.id
-                VerseBridge.errorText = ""
-                if VerseBridge.pendingInsertionJobID == item.id {
-                    VerseBridge.insertionTranscriptID = item.id
-                    VerseBridge.insertionReadyAt = Date().timeIntervalSince1970
-                    VerseBridge.pendingInsertionJobID = ""
-                }
-            } else { VerseBridge.errorText = item.error ?? "Transcription failed. Try again in Verse." }
+            VerseBridge.publishTranscriptionResult(id: item.id, statusCode: 200, state: item.state, text: item.text, error: item.error)
             keyboardJobID = ""
-            VerseBridge.pendingJobID = ""
             await updateActivity(recorder.isRecording ? "recording" : "ready")
         }
     }
@@ -127,6 +139,8 @@ final class TranscriptionStore {
         if recorder.isRecording {
             try await finishRecording()
         } else {
+            let selection = SpeechSelection.current
+            try validateSelection(selection)
             isStartingRecording = true
             defer { isStartingRecording = false }
             let generation = sessionGeneration
@@ -136,7 +150,18 @@ final class TranscriptionStore {
                 throw SpeechFailure("Dictation session ended.")
             }
             try recorder.begin(origin: origin)
-            if let url = recorder.fileURL { recordingUpload = RecordingUpload(url: url) }
+            recordingSelection = selection
+            if let url = recorder.fileURL {
+                let saved = Result { try library.saveSelection(selection, for: url) }
+                if case .failure = saved {
+                    _ = try? recorder.finish()
+                    if keyboardExpiresAt == nil { recorder.deactivate() }
+                }
+                try saved.get()
+                if selection.onDevice { localEngine.warm(selection.model) }
+                else { recordingUpload = RecordingUpload(url: url, selection: selection) }
+            }
+            writing.prewarm(style: selection.style, customPrompt: selection.customPrompt)
             VerseBridge.isRecording = true
             VerseBridge.recordingStartedAt = recorder.startedAt.timeIntervalSince1970
             VerseBridge.errorText = ""
@@ -172,6 +197,7 @@ final class TranscriptionStore {
     func activateKeyboard() async throws {
         guard !isStartingRecording else { return }
         guard isConfigured else { throw SpeechFailure("Add your device token in Settings first.") }
+        try validateSelection(.current)
         isStartingRecording = true
         defer { isStartingRecording = false }
         let generation = sessionGeneration
@@ -214,6 +240,9 @@ final class TranscriptionStore {
         VerseBridge.sessionHeartbeatAt = Date().timeIntervalSince1970
         VerseBridge.errorText = ""
         VerseBridge.statusText = "Ready"
+        let selection = SpeechSelection.current
+        if selection.onDevice { localEngine.warm(selection.model) }
+        writing.prewarm(style: selection.style, customPrompt: selection.customPrompt)
     }
 
     func endSession() async throws {
@@ -251,17 +280,22 @@ final class TranscriptionStore {
         defer { if access { url.stopAccessingSecurityScopedResource() } }
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         guard size > 0, size <= 52_428_800 else { throw SpeechFailure("Choose an audio file smaller than 50 MB.") }
-        let folder = pendingDirectory
+        let folder = library.pendingDirectory
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let destination = folder.appendingPathComponent("Import-\(UUID().uuidString)-\(url.lastPathComponent)")
         try FileManager.default.copyItem(at: url, to: destination)
+        try library.saveSelection(.current, for: destination)
         try await upload(destination)
     }
 
     func upload(_ url: URL) async throws {
-        guard !isUploading else { throw SpeechFailure("Wait for the current upload to finish.") }
+        guard !isUploading, !recorder.isRecording else { throw SpeechFailure("Finish the current recording first.") }
+        let selection = library.selection(for: url) ?? recordingSelection ?? .current
+        try library.saveSelection(selection, for: url)
+        recordingSelection = nil
+        try validateSelection(selection)
         isUploading = true
-        VerseBridge.statusText = "Uploading…"
+        VerseBridge.statusText = selection.onDevice ? "Transcribing…" : "Uploading…"
         uploadBackgroundTask = UIApplication.shared.beginBackgroundTask(withName: "Upload recording") { [weak self] in
             Task { @MainActor in self?.endUploadBackgroundTask() }
         }
@@ -270,12 +304,21 @@ final class TranscriptionStore {
             endUploadBackgroundTask()
             loadPendingAudio()
         }
+        if selection.onDevice {
+            try await transcribeLocally(url, selection: selection)
+            return
+        }
         let streaming = recordingUpload?.url == url ? recordingUpload : nil
         let prepared = try await streaming?.finish()
-        let item: Transcription
+        var item: Transcription
         if let prepared { item = prepared }
-        else { item = try await api.upload(url) }
+        else { item = try await api.upload(url, selection: selection) }
         if streaming != nil { recordingUpload = nil }
+        VerseBridge.saveOptions(selection, for: item.id)
+        if item.state == "completed" {
+            item = item.applying(await TranscriptDelivery.prepare(id: item.id, text: item.text ?? "", language: item.detectedLanguage))
+        }
+        items.removeAll { $0.id == item.id }
         items.insert(item, at: 0)
         VerseBridge.statusText = "Transcribing…"
         VerseBridge.pendingJobID = item.id
@@ -283,12 +326,73 @@ final class TranscriptionStore {
             keyboardJobID = item.id
             VerseBridge.pendingInsertionJobID = item.id
         }
-        try JSONEncoder().encode(items).write(to: cacheURL, options: .atomic)
-        try FileManager.default.removeItem(at: url)
+        try library.save(items)
+        try library.removePending(url)
+        if !item.isPending {
+            VerseBridge.publishTranscriptionResult(id: item.id, statusCode: 200, state: item.state, text: item.text, error: item.error)
+            keyboardJobID = ""
+            await notify(item)
+        }
+    }
+
+    private func transcribeLocally(_ url: URL, selection: SpeechSelection) async throws {
+        let id = TranscriptionLibrary.localID(for: url)
+        if let existing = items.first(where: { $0.id == id && $0.state == "completed" }) {
+            VerseBridge.pendingJobID = id
+            VerseBridge.publishTranscriptionResult(id: id, statusCode: 200, state: existing.state, text: existing.text, error: nil)
+            try library.removePending(url)
+            return
+        }
+        let origin = TranscriptionOrigin.pendingAudio(url)
+        VerseBridge.saveOptions(selection, for: id)
+        VerseBridge.pendingJobID = id
+        if origin == .keyboard { VerseBridge.pendingInsertionJobID = id }
+        defer {
+            if VerseBridge.pendingJobID == id {
+                VerseBridge.pendingJobID = ""
+                VerseBridge.pendingInsertionJobID = ""
+                VerseBridge.statusText = ""
+            }
+        }
+        let result = try await localEngine.transcribe(url: url, model: selection.model, language: selection.language)
+        let output = await TranscriptDelivery.prepare(id: id, text: result.text, language: result.language)
+        try Task.checkCancellation()
+        let filename = try library.keepAudio(url, id: id)
+        let now = ISO8601DateFormatter().string(from: Date())
+        let item = Transcription(id: id, filename: url.lastPathComponent, state: "completed", model: selection.model,
+                                 language: selection.language, detectedLanguage: result.language, text: result.text,
+                                 durationSeconds: result.duration, error: nil, createdAt: now, updatedAt: now,
+                                 origin: origin, engine: "on-device", localAudioName: filename).applying(output)
+        let updated = [item] + items.filter { $0.id != id }
+        try library.save(updated)
+        items = updated
+        VerseBridge.publishTranscriptionResult(id: id, statusCode: 200, state: item.state, text: item.text, error: nil)
+        try library.removePending(url)
+        await notify(item)
+        await updateActivity(recorder.isRecording ? "recording" : "ready")
+    }
+
+    private func validateSelection(_ selection: SpeechSelection) throws {
+        if selection.onDevice {
+            guard localEngine.installedModelIDs.contains(selection.model) else {
+                throw SpeechFailure("Download the \(selection.model) model in Settings, or choose Server transcription.")
+            }
+        } else if VerseBridge.token.isEmpty {
+            throw SpeechFailure("Add your device token in Settings first.")
+        }
+    }
+
+    func audio(for item: Transcription) async throws -> URL {
+        if item.isLocal { return try library.audio(for: item) }
+        return try await api.audio(item.id)
     }
 
     func delete(_ item: Transcription) async throws {
-        if !demo { try await api.delete(item.id) }
+        if !demo {
+            if item.isLocal { try library.deleteAudio(for: item) }
+            else { try await api.delete(item.id) }
+        }
+        VerseBridge.invalidateTranscription(item.id)
         items.removeAll { $0.id == item.id }
         if VerseBridge.pendingJobID == item.id {
             VerseBridge.pendingJobID = ""
@@ -299,7 +403,7 @@ final class TranscriptionStore {
             VerseBridge.transcriptID = ""
             VerseBridge.transcriptText = ""
         }
-        try JSONEncoder().encode(items).write(to: cacheURL, options: .atomic)
+        try library.save(items)
     }
 
     private func tick() {
@@ -327,7 +431,7 @@ final class TranscriptionStore {
             }
         }
         if Date().timeIntervalSince(lastPoll) >= 2,
-           items.contains(where: \.isPending) || !VerseBridge.pendingJobID.isEmpty {
+           items.contains(where: \.isPending) || (!VerseBridge.pendingJobID.isEmpty && !VerseBridge.pendingJobID.hasPrefix("local-")) {
             lastPoll = Date()
             perform { try await self.refresh() }
         }
@@ -345,21 +449,14 @@ final class TranscriptionStore {
         try? await UNUserNotificationCenter.current().add(UNNotificationRequest(identifier: item.id, content: content, trigger: nil))
     }
 
-    private var cacheURL: URL {
-        FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask)[0].appendingPathComponent("transcriptions.json")
-    }
-
-    private var pendingDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0].appendingPathComponent("PendingAudio", isDirectory: true)
-    }
-
     private func loadPendingAudio() {
         guard !recorder.isRecording else { return }
-        pendingAudio = (try? FileManager.default.contentsOfDirectory(at: pendingDirectory, includingPropertiesForKeys: nil)) ?? []
+        pendingAudio = library.pendingAudio()
     }
 
     func discardPending(_ url: URL) throws {
-        try FileManager.default.removeItem(at: url)
+        try library.removePending(url)
+        VerseBridge.removeProcessingState(for: TranscriptionLibrary.localID(for: url))
         loadPendingAudio()
     }
 

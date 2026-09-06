@@ -1,4 +1,8 @@
 name: Verse
+packages:
+  Argmax:
+    url: https://github.com/argmaxinc/argmax-oss-swift
+    exactVersion: 1.1.0
 options:
   bundleIdPrefix: soli
   developmentLanguage: en
@@ -22,6 +26,8 @@ targets:
           - Info.plist
       - path: Shared
     dependencies:
+      - package: Argmax
+        product: WhisperKit
       - target: VerseKeyboard
       - target: VerseShare
       - target: VerseControls

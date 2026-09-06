@@ -19,13 +19,20 @@ struct Transcription: Codable, Identifiable, Hashable {
     let model: String
     let language: String
     let detectedLanguage: String?
-    let text: String?
+    var text: String?
     let durationSeconds: Double?
     let error: String?
     let createdAt: String
     let updatedAt: String
     var origin: TranscriptionOrigin? = nil
+    var engine: String? = nil
+    var localAudioName: String? = nil
+    var originalText: String? = nil
+    var writingStyle: String? = nil
+    var writingFallback: String? = nil
 
+    var isLocal: Bool { engine == "on-device" }
+    var hasRewrite: Bool { originalText != nil && originalText != text }
     var isPending: Bool { state == "queued" || state == "transcribing" }
     var title: String {
         if let text, !text.isEmpty { return String(text.prefix(100)) }
@@ -35,6 +42,15 @@ struct Transcription: Codable, Identifiable, Hashable {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
         return formatter.date(from: createdAt) ?? ISO8601DateFormatter().date(from: createdAt) ?? .distantPast
+    }
+
+    func applying(_ result: TranscriptRewriteResult) -> Self {
+        var copy = self
+        copy.text = result.text
+        copy.originalText = result.original
+        copy.writingStyle = result.style.rawValue
+        copy.writingFallback = result.fallback?.rawValue
+        return copy
     }
 
     func completionNotificationBody(enabled: Bool, appIsActive: Bool) -> String? {

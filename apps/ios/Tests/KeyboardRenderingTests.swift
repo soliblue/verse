@@ -72,6 +72,85 @@ final class KeyboardRenderingTests: XCTestCase {
         }
     }
 
+    func testKeyboardWaitsForItsFirstBoundedLayout() throws {
+        let controller = KeyboardViewController()
+        controller.isPreview = true
+        controller.previewsColdStart = true
+        controller.loadViewIfNeeded()
+        let root = try XCTUnwrap(controller.inputView)
+        XCTAssertEqual(root.alpha, 0)
+        XCTAssertFalse(root.isUserInteractionEnabled)
+        XCTAssertTrue(root.accessibilityElementsHidden)
+        let window = UIWindow(frame: CGRect(x: 0, y: 0, width: 440, height: 956))
+        window.addSubview(root)
+        defer { root.removeFromSuperview(); window.isHidden = true }
+        controller.viewWillAppear(false)
+        XCTAssertEqual(root.alpha, 0)
+        root.layoutIfNeeded()
+        controller.viewDidLayoutSubviews()
+        XCTAssertEqual(root.alpha, 1)
+        XCTAssertTrue(root.isUserInteractionEnabled)
+        XCTAssertFalse(root.accessibilityElementsHidden)
+    }
+
+    func testProvisionalHeightsNeverPresentTheKeyboard() throws {
+        for typing in [false, true] {
+            let (window, controller) = installedController(typing: typing)
+            defer { controller.view.removeFromSuperview(); window.isHidden = true }
+            let root = try XCTUnwrap(controller.inputView)
+            for height in [CGFloat(0), 100, 452, 874, 956] {
+                XCTAssertEqual(root.alpha, 1)
+                root.frame.size.height = height
+                XCTAssertEqual(root.alpha, 0)
+                XCTAssertFalse(root.isUserInteractionEnabled)
+                XCTAssertTrue(root.accessibilityElementsHidden)
+                controller.viewDidLayoutSubviews()
+                XCTAssertEqual(root.alpha, 0)
+                root.frame.size.height = KeyboardViewController.contentHeight
+                XCTAssertEqual(root.alpha, 0)
+                root.layoutIfNeeded()
+                controller.viewDidLayoutSubviews()
+                XCTAssertEqual(root.alpha, 1)
+                XCTAssertTrue(root.isUserInteractionEnabled)
+                XCTAssertFalse(root.accessibilityElementsHidden)
+                let toolbar = try XCTUnwrap(descendant(in: root, identifiedBy: "keyboard-toolbar"))
+                XCTAssertTrue(root.bounds.contains(toolbar.convert(toolbar.bounds, to: root)))
+            }
+        }
+    }
+
+    func testLayerBoundsChangesCannotBypassThePresentationGate() throws {
+        let (window, controller) = installedController()
+        defer { controller.view.removeFromSuperview(); window.isHidden = true }
+        let root = try XCTUnwrap(controller.inputView)
+        root.layer.bounds.size.height = 956
+        controller.viewDidLayoutSubviews()
+        XCTAssertEqual(root.alpha, 0)
+        XCTAssertFalse(root.isUserInteractionEnabled)
+        root.layer.bounds.size.height = KeyboardViewController.contentHeight
+        root.setNeedsLayout()
+        root.layoutIfNeeded()
+        controller.viewDidLayoutSubviews()
+        XCTAssertEqual(root.alpha, 1)
+    }
+
+    func testReattachmentWaitsForLayoutWithoutChangingRequestedHeight() throws {
+        let (window, controller) = installedController()
+        defer { controller.view.removeFromSuperview(); window.isHidden = true }
+        let root = try XCTUnwrap(controller.inputView)
+        for _ in 0..<3 {
+            root.removeFromSuperview()
+            XCTAssertEqual(root.alpha, 0)
+            XCTAssertEqual(root.intrinsicContentSize.height, 260)
+            window.addSubview(root)
+            XCTAssertEqual(root.alpha, 0)
+            root.layoutIfNeeded()
+            controller.viewDidLayoutSubviews()
+            XCTAssertEqual(root.alpha, 1)
+            XCTAssertEqual(root.bounds.height, 260)
+        }
+    }
+
     func testClippingKeepsTopRowKeyPreviewVisible() throws {
         let (window, controller) = installedController(typing: true)
         defer { controller.view.removeFromSuperview(); window.isHidden = true }

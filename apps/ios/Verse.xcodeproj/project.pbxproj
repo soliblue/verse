@@ -5,6 +5,9 @@
 	};
 	objectVersion = 77;
 	objects = {
+		VW0000000000000000000001 = {isa = XCRemoteSwiftPackageReference; repositoryURL = "https://github.com/argmaxinc/argmax-oss-swift"; requirement = {kind = exactVersion; version = 1.1.0; }; };
+		VW0000000000000000000002 = {isa = XCSwiftPackageProductDependency; package = VW0000000000000000000001; productName = WhisperKit; };
+		VW0000000000000000000003 = {isa = PBXBuildFile; productRef = VW0000000000000000000002; };
 		VC0000000000000000000001 = {isa = PBXFileSystemSynchronizedRootGroup; path = Widget; sourceTree = "<group>"; exceptions = (VC0000000000000000000002,); };
 		VC0000000000000000000002 = {isa = PBXFileSystemSynchronizedBuildFileExceptionSet; membershipExceptions = (Info.plist,); target = VC0000000000000000000010; };
 		VC0000000000000000000010 = {
@@ -133,6 +136,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				VW0000000000000000000003,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -213,6 +217,7 @@
 			);
 			name = Verse;
 			packageProductDependencies = (
+				VW0000000000000000000002,
 			);
 			productName = Verse;
 			productReference = MB00000000000000000000A4 /* Verse.app */;
@@ -297,6 +302,7 @@
 			mainGroup = MB00000000000000000000A0;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				VW0000000000000000000001,
 			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = MB00000000000000000000A1 /* Products */;

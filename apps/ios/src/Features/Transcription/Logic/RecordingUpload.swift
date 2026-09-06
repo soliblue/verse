@@ -6,15 +6,17 @@ final class RecordingUpload {
     let url: URL
     private let id: String
     private let api = SpeechAPI()
-    private let model = VerseBridge.model
-    private let language = VerseBridge.language
+    private let model: String
+    private let language: String
     private let chunkSize = 32 * 1024
     private var hashes: [Int: String] = [:]
     private var task: Task<Void, Error>?
     private var manifest: Data?
 
-    init(url: URL) {
+    init(url: URL, selection: SpeechSelection = .current) {
         self.url = url
+        model = selection.model
+        language = selection.language
         id = SpeechAPI.recordingIdentifier(for: url) ?? UUID().uuidString.replacingOccurrences(of: "-", with: "").lowercased()
         task = Task { [weak self] in
             while !Task.isCancelled {

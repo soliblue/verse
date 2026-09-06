@@ -8,6 +8,12 @@ final class KeyboardTranscriptionPoller {
         let state: String
         let text: String?
         let error: String?
+        let detectedLanguage: String?
+
+        enum CodingKeys: String, CodingKey {
+            case id, state, text, error
+            case detectedLanguage = "detected_language"
+        }
     }
 
     private var task: Task<Void, Never>?
@@ -20,7 +26,7 @@ final class KeyboardTranscriptionPoller {
         guard task == nil, Date().timeIntervalSince(lastPoll) >= 0.75 else { return }
         let id = state["pendingJobID"] ?? ""
         let token = state["token"] ?? ""
-        guard !id.isEmpty, !token.isEmpty,
+        guard !id.isEmpty, !id.hasPrefix("local-"), !token.isEmpty,
               let base = URL(string: state["baseURL"] ?? VerseBridge.defaultBaseURL), base.scheme == "https", base.host != nil else { return }
         lastPoll = Date()
         generation += 1
@@ -37,10 +43,14 @@ final class KeyboardTranscriptionPoller {
                 let job = statusCode == 200 ? (try? JSONDecoder().decode(Job.self, from: data)) : nil
                 guard statusCode == 401 || (statusCode == 200 && job?.id == id && (job?.state == "completed" || job?.state == "failed")) else { return }
                 let state = job?.state
-                let text = job?.text
+                let output: String?
+                if job?.state == "completed" {
+                    output = await TranscriptDelivery.prepare(id: id, text: job?.text ?? "", language: job?.detectedLanguage).text
+                } else { output = job?.text }
+                guard !Task.isCancelled else { return }
                 let error = job?.error
                 let publication = Task.detached(priority: .userInitiated) {
-                    VerseBridge.publishTranscriptionResult(id: id, statusCode: statusCode, state: state, text: text, error: error)
+                    VerseBridge.publishTranscriptionResult(id: id, statusCode: statusCode, state: state, text: output, error: error)
                 }
                 await withTaskCancellationHandler(operation: { await publication.value }, onCancel: { publication.cancel() })
             }

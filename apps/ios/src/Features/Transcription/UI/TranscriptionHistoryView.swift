@@ -35,7 +35,7 @@ struct TranscriptionHistoryView: View {
                     } label: { Image(systemName: "trash").frame(width: 44, height: 44) }
                     .accessibilityLabel("Delete pending recording")
                 }
-                .disabled(store.isUploading)
+                .disabled(store.isUploading || store.recorder.isRecording)
                 Divider().overlay(green.opacity(0.25))
             }
             ForEach(store.items) { item in

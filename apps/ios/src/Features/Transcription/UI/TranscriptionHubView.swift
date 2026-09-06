@@ -60,7 +60,10 @@ struct TranscriptionHubView: View {
                     Button("OK") { store.error = nil }
                 } message: { Text(store.error ?? "") }
                 .onChange(of: scenePhase) { _, phase in
-                    if phase == .active { store.perform { try await store.refresh() } }
+                    if phase == .active {
+                        store.writing.refreshAvailability()
+                        store.perform { try await store.refresh() }
+                    }
                     if phase == .background { returningToKeyboard = false }
                 }
                 .onOpenURL { url in
@@ -110,6 +113,12 @@ struct TranscriptionHubView: View {
 
     @ViewBuilder
     private var sessionStatus: some View {
+        if VerseBridge.onDeviceTranscriptionEnabled, !store.localEngine.installedModelIDs.contains(VerseBridge.localModel) {
+            Button { settingsPresented = true } label: {
+                Label("Download a transcription model", systemImage: "arrow.down.circle")
+            }
+            .padding(.bottom, 16)
+        }
         if !store.isConfigured {
             Button { settingsPresented = true } label: {
                 Label("Add your device token", systemImage: "key")

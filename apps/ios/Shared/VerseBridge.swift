@@ -3,6 +3,102 @@ import Security
 
 enum VerseBridge {
     static let defaultBaseURL = "https://verse.soli.blue"
+    private struct RewriteLease: Codable { let owner: String; let started: Double }
+
+    static var onDeviceTranscriptionEnabled: Bool {
+        get { read("onDeviceTranscriptionEnabled") != "false" }
+        set { write(String(newValue), key: "onDeviceTranscriptionEnabled") }
+    }
+
+    static var localModel: String {
+        get { read("localModel") ?? "medium" }
+        set { write(newValue, key: "localModel") }
+    }
+
+    static var localInstalledModels: String {
+        get { read("localInstalledModels") ?? "" }
+        set { write(newValue, key: "localInstalledModels") }
+    }
+
+    static var writingStyle: String {
+        get { read("writingStyle") ?? "original" }
+        set { write(newValue, key: "writingStyle") }
+    }
+
+    static var customWritingPrompt: String {
+        get { read("customWritingPrompt") ?? "" }
+        set { write(String(newValue.prefix(500)), key: "customWritingPrompt") }
+    }
+
+    static func saveOptions(_ options: SpeechSelection, for id: String) {
+        guard !isDeleted(id) else { return }
+        guard let data = try? JSONEncoder().encode(options), let value = String(data: data, encoding: .utf8) else { return }
+        write(value, key: "options." + id, service: "soli.verse.transcriptions")
+    }
+
+    static func options(for id: String) -> SpeechSelection? {
+        guard !isDeleted(id) else { return nil }
+        guard let value = read("options." + id, service: "soli.verse.transcriptions") else { return nil }
+        return try? JSONDecoder().decode(SpeechSelection.self, from: Data(value.utf8))
+    }
+
+    static func rewriteResult(for id: String) -> TranscriptRewriteResult? {
+        guard !isDeleted(id) else { return nil }
+        guard let value = read("rewrite." + id, service: "soli.verse.transcriptions") else { return nil }
+        return try? JSONDecoder().decode(TranscriptRewriteResult.self, from: Data(value.utf8))
+    }
+
+    static func saveRewrite(_ result: TranscriptRewriteResult, for id: String) -> TranscriptRewriteResult {
+        guard !isDeleted(id) else { return .original(result.original, style: result.style, fallback: .cancelled) }
+        guard let data = try? JSONEncoder().encode(result) else { return result }
+        var values = query("rewrite." + id, service: "soli.verse.transcriptions")
+        values[kSecValueData as String] = data
+        values[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        SecItemAdd(values as CFDictionary, nil)
+        if isDeleted(id) {
+            removeProcessingState(for: id)
+            return .original(result.original, style: result.style, fallback: .cancelled)
+        }
+        if let cached = rewriteResult(for: id), cached.original == result.original { return cached }
+        return result
+    }
+
+    static func isDeleted(_ id: String) -> Bool {
+        read("deleted." + id, service: "soli.verse.transcriptions") == "true"
+    }
+
+    static func invalidateTranscription(_ id: String) {
+        write("true", key: "deleted." + id, service: "soli.verse.transcriptions")
+        removeProcessingState(for: id)
+    }
+
+    static func removeProcessingState(for id: String) {
+        for key in ["options." + id, "rewrite." + id, "claim." + id] {
+            SecItemDelete(query(key, service: "soli.verse.transcriptions") as CFDictionary)
+        }
+    }
+
+    static func claimRewrite(for id: String) -> String? {
+        let key = "claim." + id
+        if let value = read(key, service: "soli.verse.transcriptions"),
+           let lease = try? JSONDecoder().decode(RewriteLease.self, from: Data(value.utf8)),
+           Date().timeIntervalSince1970 - lease.started > 20 {
+            releaseRewrite(for: id, owner: lease.owner)
+        }
+        let lease = RewriteLease(owner: UUID().uuidString, started: Date().timeIntervalSince1970)
+        guard let data = try? JSONEncoder().encode(lease) else { return nil }
+        var values = query(key, service: "soli.verse.transcriptions")
+        values[kSecValueData as String] = data
+        values[kSecAttrGeneric as String] = Data(lease.owner.utf8)
+        values[kSecAttrAccessible as String] = kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly
+        return SecItemAdd(values as CFDictionary, nil) == errSecSuccess ? lease.owner : nil
+    }
+
+    static func releaseRewrite(for id: String, owner: String) {
+        var values = query("claim." + id, service: "soli.verse.transcriptions")
+        values[kSecAttrGeneric as String] = Data(owner.utf8)
+        SecItemDelete(values as CFDictionary)
+    }
 
     static var typingKeyboardEnabled: Bool {
         get { read("typingKeyboardEnabled") == "true" }
@@ -140,7 +236,7 @@ enum VerseBridge {
     }
 
     nonisolated static func publishTranscriptionResult(id: String, statusCode: Int, state: String?, text: String?, error: String?) {
-        guard read("pendingJobID") == id, !Task.isCancelled else { return }
+        guard read("pendingJobID") == id, read("deleted." + id, service: "soli.verse.transcriptions") != "true", !Task.isCancelled else { return }
         if statusCode == 401 {
             write("Your device token was not accepted. Check Verse Settings.", key: "errorText")
         } else if statusCode == 200, state == "completed" {
@@ -180,10 +276,10 @@ enum VerseBridge {
         }
     }
 
-    nonisolated private static func query(_ key: String) -> [String: Any] {
+    nonisolated private static func query(_ key: String, service: String = "soli.verse.bridge") -> [String: Any] {
         var values: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
-            kSecAttrService as String: "soli.verse.bridge",
+            kSecAttrService as String: service,
             kSecAttrAccount as String: key
         ]
         if let group = Bundle.main.object(forInfoDictionaryKey: "VerseKeychainAccessGroup") as? String,
@@ -193,8 +289,8 @@ enum VerseBridge {
         return values
     }
 
-    nonisolated private static func read(_ key: String) -> String? {
-        var values = query(key)
+    nonisolated private static func read(_ key: String, service: String = "soli.verse.bridge") -> String? {
+        var values = query(key, service: service)
         values[kSecReturnData as String] = true
         values[kSecMatchLimit as String] = kSecMatchLimitOne
         var result: CFTypeRef?
@@ -203,8 +299,8 @@ enum VerseBridge {
         return String(data: data, encoding: .utf8)
     }
 
-    nonisolated private static func write(_ value: String, key: String) {
-        let values = query(key)
+    nonisolated private static func write(_ value: String, key: String, service: String = "soli.verse.bridge") {
+        let values = query(key, service: service)
         let attributes: [String: Any] = [
             kSecValueData as String: Data(value.utf8),
             kSecAttrAccessible as String: kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly

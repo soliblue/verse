@@ -46,7 +46,7 @@ struct SpeechAPI {
         try await decode(Configuration.self, request: request("/v1/config"))
     }
 
-    func upload(_ url: URL) async throws -> Transcription {
+    func upload(_ url: URL, selection: SpeechSelection = .current) async throws -> Transcription {
         let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
         guard size > 0, size <= 52_428_800 else {
             throw SpeechFailure("Choose an audio file smaller than 50 MB.")
@@ -55,8 +55,8 @@ struct SpeechAPI {
         if let identifier, let existing = try await transcription(identifier) { return existing }
         var parts = URLComponents()
         parts.queryItems = [
-            URLQueryItem(name: "model", value: VerseBridge.model),
-            URLQueryItem(name: "language", value: VerseBridge.language),
+            URLQueryItem(name: "model", value: selection.model),
+            URLQueryItem(name: "language", value: selection.language),
             URLQueryItem(name: "filename", value: url.lastPathComponent),
             URLQueryItem(name: "origin", value: TranscriptionOrigin.pendingAudio(url).rawValue)
         ]

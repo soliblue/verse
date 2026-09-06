@@ -53,6 +53,7 @@ final class KeyboardViewController: UIInputViewController {
         root.autoresizingMask = .flexibleWidth
         root.allowsSelfSizing = true
         root.clipsToBounds = true
+        root.invalidatePresentation()
         root.heightAnchor.constraint(equalToConstant: Self.contentHeight).isActive = true
         inputView = root
     }
@@ -191,12 +192,15 @@ final class KeyboardViewController: UIInputViewController {
 
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
+        guard let root = inputView as? KeyboardInputView else { return }
+        guard root.hasBoundedGeometry else { root.completeLayout(); return }
         let centered = !typingEnabled && !recordingPresentation && !busyPresentation
         recordingControl.frame = centered ? voice.convert(voice.actionFrame, to: view) : controlSlot.convert(controlSlot.bounds, to: view)
         citrus.frame = recordingControl.bounds
         record.frame = recordingControl.bounds
         recordingControl.layoutIfNeeded()
         citrus.layer.cornerRadius = recordingControl.bounds.width / 2
+        root.completeLayout()
     }
 
     private func updateInputMode() {
@@ -240,7 +244,8 @@ final class KeyboardViewController: UIInputViewController {
 
     private func updateMenus() {
         let selectedLanguage = bridge["language"] ?? "auto"
-        let selectedModel = bridge["model"] ?? "medium"
+        let onDevice = bridge["onDeviceTranscriptionEnabled"] != "false"
+        let selectedModel = bridge[onDevice ? "localModel" : "model"] ?? "medium"
         language.setTitle(selectedLanguage == "auto" ? "AUTO" : selectedLanguage.uppercased(), for: .normal)
         language.accessibilityValue = selectedLanguage
         language.menu = UIMenu(children: [
@@ -257,14 +262,26 @@ final class KeyboardViewController: UIInputViewController {
             }
         })
         model.accessibilityValue = selectedModel
-        model.menu = UIMenu(children: [("small", "Small"), ("medium", "Medium"), ("large-v3", "Large")].map { code, name in
-            UIAction(title: name, state: selectedModel == code ? .on : .off) { [weak self] _ in
+        let choices = onDevice
+            ? [("tiny", "Tiny"), ("base", "Base"), ("small", "Small"), ("medium", "Medium"), ("large-v3", "Large"), ("turbo", "Turbo")]
+            : [("small", "Small"), ("medium", "Medium"), ("large-v3", "Large")]
+        let installed = Set((bridge["localInstalledModels"] ?? "").split(separator: ",").map(String.init))
+        var actions: [UIMenuElement] = choices.map { code, name in
+            UIAction(title: name, attributes: onDevice && !installed.contains(code) ? .disabled : [], state: selectedModel == code ? .on : .off) { [weak self] _ in
                 self?.cancelSnapshot()
-                VerseBridge.model = code
-                self?.bridge["model"] = code
+                if onDevice {
+                    VerseBridge.localModel = code
+                } else {
+                    VerseBridge.model = code
+                }
+                self?.bridge[onDevice ? "localModel" : "model"] = code
                 self?.updateMenus()
             }
-        })
+        }
+        if onDevice && installed.isEmpty {
+            actions.append(UIAction(title: "Download models in Verse", attributes: .disabled) { _ in })
+        }
+        model.menu = UIMenu(children: actions)
     }
 
     override func viewWillAppear(_ animated: Bool) {
@@ -310,7 +327,7 @@ final class KeyboardViewController: UIInputViewController {
             let values = await Task.detached(priority: .userInitiated) { VerseBridge.snapshot() }.value
             guard !Task.isCancelled, let self else { return }
             snapshotTask = nil
-            let menusChanged = bridge["language"] != values["language"] || bridge["model"] != values["model"]
+            let menusChanged = ["language", "model", "onDeviceTranscriptionEnabled", "localModel", "localInstalledModels"].contains { bridge[$0] != values[$0] }
             bridge = values
             updateInputMode()
             if menusChanged { updateMenus() }
@@ -459,10 +476,55 @@ final class KeyboardViewController: UIInputViewController {
 }
 
 private final class KeyboardInputView: UIInputView {
+    var hasBoundedGeometry: Bool {
+        window != nil && bounds.width.isFinite && bounds.width > 0 &&
+        bounds.height.isFinite && abs(bounds.height - KeyboardViewController.contentHeight) <= 0.5
+    }
+
+    override var bounds: CGRect {
+        didSet {
+            if bounds != oldValue { invalidatePresentation() }
+        }
+    }
+
+    override var frame: CGRect {
+        didSet {
+            if frame != oldValue { invalidatePresentation() }
+        }
+    }
+
+    override func didMoveToSuperview() {
+        super.didMoveToSuperview()
+        invalidatePresentation()
+    }
+
     override func didMoveToWindow() {
         super.didMoveToWindow()
+        invalidatePresentation()
         if bounds.width == 0, window != nil { frame.size.width = hostWidth }
         invalidateIntrinsicContentSize()
+    }
+
+    override func layoutSubviews() {
+        if !hasBoundedGeometry { setPresented(false) }
+        super.layoutSubviews()
+    }
+
+    func invalidatePresentation() {
+        setPresented(false)
+        setNeedsLayout()
+    }
+
+    func completeLayout() {
+        setPresented(hasBoundedGeometry)
+    }
+
+    private func setPresented(_ presented: Bool) {
+        UIView.performWithoutAnimation {
+            alpha = presented ? 1 : 0
+            isUserInteractionEnabled = presented
+            accessibilityElementsHidden = !presented
+        }
     }
 
     override var intrinsicContentSize: CGSize {

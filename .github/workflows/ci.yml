@@ -2,6 +2,11 @@ name: CI
 
 on:
   workflow_dispatch:
+    inputs:
+      local_model_smoke:
+        description: Download Tiny and verify real on-device inference in the simulator
+        type: boolean
+        default: false
   pull_request:
   push:
 
@@ -37,7 +42,7 @@ jobs:
   ios:
     name: iOS build and smoke test
     runs-on: macos-15
-    timeout-minutes: 35
+    timeout-minutes: 50
 
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
@@ -82,6 +87,12 @@ jobs:
       - name: Run unit tests
         timeout-minutes: 15
         run: |
+          EXTRA=()
+          TEST_TIMEOUT=600
+          if [[ "${{ inputs.local_model_smoke }}" != "true" ]]; then
+            EXTRA=(-skip-testing:VerseTests/LocalSpeechEngineTests/testDownloadedTinyTranscribesReferenceAudio)
+            TEST_TIMEOUT=60
+          fi
           xcodebuild test \
             -project apps/ios/Verse.xcodeproj \
             -scheme Verse \
@@ -91,8 +102,9 @@ jobs:
             -only-testing:VerseTests \
             -parallel-testing-enabled NO \
             -test-timeouts-enabled YES \
-            -default-test-execution-time-allowance 60 \
-            -maximum-test-execution-time-allowance 120 \
+            -default-test-execution-time-allowance "$TEST_TIMEOUT" \
+            -maximum-test-execution-time-allowance 600 \
+            "${EXTRA[@]}" \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
 

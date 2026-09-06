@@ -9,6 +9,7 @@ struct TranscriptDetailView: View {
     @State private var player: AVAudioPlayer?
     @State private var loadingAudio = false
     @State private var confirmingDelete = false
+    @State private var showOriginal = false
 
     private var item: Transcription? { store.items.first { $0.id == id } }
 
@@ -24,10 +25,13 @@ struct TranscriptDetailView: View {
                     } else if item.state == "failed" {
                         ContentUnavailableView("Could not transcribe", systemImage: "exclamationmark.circle", description: Text(item.error ?? "Try uploading this recording again."))
                     } else {
-                        Text(item.text?.isEmpty == false ? item.text! : "No speech detected.")
+                        Text((showOriginal ? item.originalText : item.text).flatMap { $0.isEmpty ? nil : $0 } ?? "No speech detected.")
                             .font(.title3).lineSpacing(7).textSelection(.enabled)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .accessibilityIdentifier("transcript-text")
+                        if let raw = item.writingFallback, let reason = TranscriptRewriteFallback(rawValue: raw) {
+                            Text(reason.message).font(.caption).foregroundStyle(.secondary)
+                        }
                     }
                 }
                 .padding(24)
@@ -38,7 +42,7 @@ struct TranscriptDetailView: View {
         .background(Color(red: 1, green: 0.97, blue: 0.85).ignoresSafeArea())
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
-                if let item, let text = item.text, !text.isEmpty {
+                if let item, let text = showOriginal ? item.originalText : item.text, !text.isEmpty {
                     Button {
                         UIPasteboard.general.string = text
                         copied = true
@@ -47,11 +51,15 @@ struct TranscriptDetailView: View {
                     ShareLink(item: text).accessibilityLabel("Share transcript")
                 }
                 Menu {
+                    if item?.hasRewrite == true {
+                        Button(showOriginal ? "Show styled text" : "Show original", systemImage: "textformat") { showOriginal.toggle() }
+                    }
                     Button("Play recording", systemImage: "play") {
                         loadingAudio = true
                         store.perform {
                             defer { loadingAudio = false }
-                            let url = try await store.api.audio(id)
+                            guard let item else { return }
+                            let url = try await store.audio(for: item)
                             try AVAudioSession.sharedInstance().setCategory(.playback)
                             try AVAudioSession.sharedInstance().setActive(true)
                             player = try AVAudioPlayer(contentsOf: url)
