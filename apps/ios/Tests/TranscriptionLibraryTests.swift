@@ -82,6 +82,61 @@ final class TranscriptionLibraryTests: XCTestCase {
         XCTAssertEqual(TranscriptionLibrary.merging(server: [changed], cached: [styled]).first?.text, "new original")
     }
 
+    func testSelectedVersionSurvivesLibraryRestartWithoutChangingHistory() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = TranscriptionLibrary(directory: root)
+        let items = Transcription.previewVersions + Transcription.previewHistory.prefix(2)
+        try library.save(items)
+        XCTAssertTrue(library.loadSelectedVersions().isEmpty)
+        try library.saveSelectedVersions([Transcription.preview.recordingKey: Transcription.preview.id])
+        let restored = TranscriptionLibrary(directory: root)
+        XCTAssertEqual(restored.load(), items)
+        XCTAssertEqual(restored.loadSelectedVersions(), [Transcription.preview.recordingKey: Transcription.preview.id])
+        XCTAssertEqual(Transcription.preferredVersion(for: Transcription.preview.recordingKey, in: restored.load(),
+                                                    selectedVersions: restored.loadSelectedVersions()), Transcription.preview)
+        XCTAssertEqual(Transcription.recordings(from: restored.load()).map(\.recordingKey),
+                       Transcription.recordings(from: items).map(\.recordingKey))
+    }
+
+    func testLimitedRefreshKeepsSelectedVersionAndRequestedLanguage() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = TranscriptionLibrary(directory: root)
+        var cached = fixture(id: "cloud-original")
+        cached.language = "de"
+        var newer = fixture(id: "cloud-newer")
+        newer.recordingID = cached.recordingKey
+        let chosen = [cached.recordingKey: cached.id]
+        try library.saveSelectedVersions(chosen)
+        let limited = TranscriptionLibrary.merging(server: [newer], cached: [cached, newer])
+        let selected = try XCTUnwrap(Transcription.preferredVersion(for: newer.id, in: limited,
+                                                                  selectedVersions: library.loadSelectedVersions()))
+        XCTAssertEqual(selected.id, cached.id)
+        XCTAssertEqual(selected.languageLabel, "DE")
+        let refreshed = TranscriptionLibrary.merging(server: [fixture(id: cached.id)], cached: limited)
+        try library.save(refreshed)
+        let restored = TranscriptionLibrary(directory: root)
+        let item = try XCTUnwrap(Transcription.preferredVersion(for: cached.recordingKey, in: restored.load(),
+                                                              selectedVersions: restored.loadSelectedVersions()))
+        XCTAssertEqual(item.selection.language, "de")
+        XCTAssertEqual(item.detectedLanguage, "en")
+        XCTAssertEqual(restored.loadSelectedVersions(), chosen)
+    }
+
+    func testInvalidSelectedVersionDataDoesNotPreventHistoryLoading() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
+        defer { try? FileManager.default.removeItem(at: root) }
+        let library = TranscriptionLibrary(directory: root)
+        try library.save(Transcription.previewVersions)
+        try Data("invalid".utf8).write(to: root.appendingPathComponent("selected-versions.json"))
+        XCTAssertTrue(library.loadSelectedVersions().isEmpty)
+        XCTAssertEqual(library.load(), Transcription.previewVersions)
+        try library.saveSelectedVersions(["preview": "preview"])
+        try library.saveSelectedVersions([:])
+        XCTAssertTrue(library.loadSelectedVersions().isEmpty)
+    }
+
     func testLegacyPendingSelectionStillDecodes() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString)
         defer { try? FileManager.default.removeItem(at: root) }
@@ -116,6 +171,8 @@ final class TranscriptionLibraryTests: XCTestCase {
         XCTAssertEqual(context.origin, .keyboard)
         XCTAssertEqual(context.filename, item.filename)
         XCTAssertEqual(context.selection, selection)
+        XCTAssertEqual(context.selection.language, "de")
+        XCTAssertEqual(item.selection.language, "auto")
         XCTAssertEqual(context.localAudioName, archive)
         XCTAssertEqual(try Data(contentsOf: first), bytes)
         XCTAssertNotEqual(SpeechAPI.recordingIdentifier(for: first), SpeechAPI.recordingIdentifier(for: second))

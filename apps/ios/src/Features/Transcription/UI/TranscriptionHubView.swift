@@ -14,7 +14,7 @@ struct TranscriptionHubView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                ScrollView {
+                List {
                     VStack(spacing: 0) {
                         ZStack {
                             Image("CitrusHero").resizable().scaledToFit()
@@ -34,30 +34,28 @@ struct TranscriptionHubView: View {
                             .accessibilityIdentifier("dictation-return-guidance")
                         }
                         sessionStatus.padding(.horizontal, 24)
-                        TranscriptionHistoryView(store: store, minimumHeight: max(190, geometry.size.height - min(geometry.size.width, 520) - 120)) { id in
-                            sheet = .transcript(id)
-                        }
-                        .padding(.horizontal, 10).padding(.bottom, 16)
                     }
                     .frame(maxWidth: 560).frame(maxWidth: .infinity)
+                    .listRowInsets(EdgeInsets())
+                    .listRowSeparator(.hidden)
+                    .listRowBackground(Color.clear)
+                    TranscriptionHistoryView(store: store) { id in sheet = .transcript(id) }
                 }
+                .listStyle(.plain)
+                .listSectionSpacing(0)
+                .environment(\.defaultMinListRowHeight, 0)
+                .contentMargins(.top, 64, for: .scrollContent)
+                .contentMargins(.bottom, 16, for: .scrollContent)
+                .scrollContentBackground(.hidden)
                 .scrollDismissesKeyboard(.interactively)
                 .background {
                     Image("CitrusPaper").resizable().scaledToFill().ignoresSafeArea()
                 }
                 .foregroundStyle(ink)
                 .toolbar(.hidden, for: .navigationBar)
-                .safeAreaInset(edge: .top, spacing: 0) {
+                .overlay(alignment: .top) {
                     masthead
                         .padding(.horizontal, 20).padding(.vertical, 6)
-                        .background {
-                            GeometryReader { toolbar in
-                                Image("CitrusPaper").resizable().scaledToFill()
-                                    .frame(width: toolbar.size.width, height: toolbar.size.height)
-                                    .clipped()
-                            }
-                            .ignoresSafeArea(edges: .top)
-                        }
                 }
                 .refreshable { store.perform { try await store.refresh() } }
                 .task { store.perform { try await store.refresh() } }
@@ -181,6 +179,12 @@ struct TranscriptionHubView: View {
         .accessibilityLabel(store.recorder.isRecording ? "Stop recording" : "Record")
         .accessibilityValue(store.isUploading ? "Uploading" : (store.isStartingRecording ? "Starting" : (store.recorder.isRecording ? "Recording" : "Ready")))
         .disabled(store.isUploading || store.isStartingRecording)
+        .contextMenu {
+            Button("Start keyboard session", systemImage: "keyboard") {
+                store.perform { try await store.activateKeyboard() }
+            }
+            .disabled(store.recorder.isRecording || store.isUploading || store.isStartingRecording || store.isRerunning)
+        }
     }
 
     private enum Sheet: Identifiable {

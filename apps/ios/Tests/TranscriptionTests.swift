@@ -68,10 +68,53 @@ final class TranscriptionTests: XCTestCase {
         XCTAssertEqual(Transcription.versions(for: original.id, in: restored).map(\.id), [local.id, original.id])
         XCTAssertEqual(Transcription.versions(for: local.id, in: restored).map(\.id), [local.id, original.id])
         XCTAssertEqual(local.modelLabel, "Local · Large v3 Turbo")
+        XCTAssertEqual(local.compactModelLabel, "Local Turbo")
         XCTAssertEqual(local.originalText, "Original words")
         XCTAssertEqual(local.selection, SpeechSelection(onDevice: true, model: "turbo", language: "ar", style: .custom, customPrompt: "Keep it informal."))
         XCTAssertEqual(original.modelLabel, "Cloud · Medium")
         XCTAssertEqual(original.text, "Hello, see you at eight.\nBis später!")
+    }
+
+    func testPreferredVersionChangesContentWithoutMovingRecordingAnchors() throws {
+        let items = Transcription.previewVersions + Transcription.previewHistory.prefix(2)
+        let anchors = Transcription.recordings(from: items)
+        let selected = [Transcription.preview.recordingKey: Transcription.preview.id]
+        let displayed = anchors.compactMap {
+            Transcription.preferredVersion(for: $0.recordingKey, in: items, selectedVersions: selected)
+        }
+        XCTAssertEqual(displayed.map(\.recordingKey), anchors.map(\.recordingKey))
+        XCTAssertEqual(displayed.last?.id, Transcription.preview.id)
+        XCTAssertEqual(anchors.last?.id, "preview-cloud-small")
+        XCTAssertEqual(Transcription.recordings(from: items).map(\.date), anchors.map(\.date))
+        XCTAssertEqual(Transcription.preferredVersion(for: "preview-cloud-small", in: items, selectedVersions: selected)?.id,
+                       Transcription.preview.id)
+    }
+
+    func testMissingDeletedAndUnrelatedVersionSelectionsUseGroupFallback() {
+        let items = Transcription.previewVersions + Transcription.previewHistory.prefix(1)
+        for selected in [[:], ["preview": "missing"], ["preview": "preview-history-0"]] {
+            XCTAssertEqual(Transcription.preferredVersion(for: "preview", in: items, selectedVersions: selected)?.id,
+                           "preview-cloud-small")
+        }
+        let remaining = items.filter { $0.id != "preview" }
+        XCTAssertEqual(Transcription.preferredVersion(for: "preview", in: remaining,
+                                                    selectedVersions: ["preview": "preview"])?.id, "preview-cloud-small")
+        XCTAssertNil(Transcription.preferredVersion(for: "deleted-recording", in: items, selectedVersions: [:]))
+        XCTAssertNil(Transcription.preferredVersion(for: "preview", in: [], selectedVersions: ["preview": "preview"]))
+    }
+
+    func testCompactMetadataUsesRequestedLanguageNotDetection() {
+        var item = Transcription.preview
+        XCTAssertEqual(item.compactModelLabel, "Local Medium")
+        XCTAssertEqual(item.languageLabel, "AUTO")
+        item.language = " ar "
+        XCTAssertEqual(item.languageLabel, "AR")
+        XCTAssertEqual(item.detectedLanguage, "en")
+        item.language = ""
+        XCTAssertEqual(item.languageLabel, "AUTO")
+        item.language = "Auto"
+        XCTAssertEqual(item.languageLabel, "AUTO")
+        XCTAssertEqual(Transcription.previewVersions.last?.compactModelLabel, "Cloud Small")
     }
 
     func testPendingOriginAndIdentifierSurviveRecordingRetry() {

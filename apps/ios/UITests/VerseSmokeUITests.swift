@@ -66,11 +66,19 @@ final class VerseSmokeUITests: XCTestCase {
         XCTAssertFalse(app.staticTexts["Uploading"].exists)
         XCTAssertFalse(app.staticTexts["Starting"].exists)
         XCTAssertTrue(app.buttons["Import audio"].exists)
-        XCTAssertTrue(app.buttons["Activate keyboard"].exists)
+        XCTAssertFalse(app.buttons["Activate keyboard"].exists)
         XCTAssertFalse(app.tabBars.firstMatch.exists)
         XCTAssertFalse(app.staticTexts["Articles"].exists)
         XCTAssertFalse(app.staticTexts["Calendar"].exists)
         screenshot("hub")
+    }
+
+    func testManualKeyboardSessionIsAvailableOnRecordMenu() {
+        let app = launch()
+        let record = app.buttons["Record"]
+        XCTAssertTrue(record.waitForExistence(timeout: 8))
+        record.press(forDuration: 0.7)
+        XCTAssertTrue(app.buttons["Start keyboard session"].waitForExistence(timeout: 3))
     }
 
     func testDarkKeyboardLayout() {

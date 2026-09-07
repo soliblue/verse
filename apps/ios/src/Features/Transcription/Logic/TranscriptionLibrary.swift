@@ -33,6 +33,16 @@ struct TranscriptionLibrary {
         try JSONEncoder().encode(items).write(to: indexURL, options: .atomic)
     }
 
+    func loadSelectedVersions() -> [String: String] {
+        guard let data = try? Data(contentsOf: selectedVersionsURL) else { return [:] }
+        return (try? JSONDecoder().decode([String: String].self, from: data)) ?? [:]
+    }
+
+    func saveSelectedVersions(_ versions: [String: String]) throws {
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        try JSONEncoder().encode(versions).write(to: selectedVersionsURL, options: .atomic)
+    }
+
     func selection(for url: URL) -> SpeechSelection? {
         pendingTranscription(for: url)?.selection
     }
@@ -118,6 +128,7 @@ struct TranscriptionLibrary {
             result.recordingID = previous.recordingID
             result.localAudioName = previous.localAudioName
             result.customPrompt = previous.customPrompt
+            result.language = previous.language
             result.origin = previous.origin ?? incoming.origin
             result.engine = previous.engine ?? incoming.engine
             result.writingStyle = previous.writingStyle ?? incoming.writingStyle
@@ -132,4 +143,5 @@ struct TranscriptionLibrary {
     }
 
     private var indexURL: URL { directory.appendingPathComponent("transcriptions.json") }
+    private var selectedVersionsURL: URL { directory.appendingPathComponent("selected-versions.json") }
 }

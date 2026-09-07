@@ -17,7 +17,7 @@ struct Transcription: Codable, Identifiable, Hashable {
     var filename: String
     let state: String
     let model: String
-    let language: String
+    var language: String
     let detectedLanguage: String?
     var text: String?
     let durationSeconds: Double?
@@ -38,6 +38,14 @@ struct Transcription: Codable, Identifiable, Hashable {
     var modelLabel: String {
         let names = ["tiny": "Tiny", "base": "Base", "small": "Small", "medium": "Medium", "large-v3": "Large v3", "turbo": "Large v3 Turbo", "large-v3-turbo": "Large v3 Turbo"]
         return "\(isLocal ? "Local" : "Cloud") · \(names[model] ?? model)"
+    }
+    var compactModelLabel: String {
+        let name = model == "turbo" || model == "large-v3-turbo" ? "Turbo" : SpeechModelChoice(onDevice: isLocal, model: model).name
+        return "\(isLocal ? "Local" : "Cloud") \(name)"
+    }
+    var languageLabel: String {
+        let code = language.trimmingCharacters(in: .whitespacesAndNewlines)
+        return code.isEmpty ? "AUTO" : code.uppercased()
     }
     var selection: SpeechSelection {
         SpeechSelection(onDevice: isLocal, model: model, language: language,
@@ -81,6 +89,11 @@ struct Transcription: Codable, Identifiable, Hashable {
         let key = items.first { $0.id == id }?.recordingKey ?? id
         return items.filter { $0.recordingKey == key }
             .sorted { $0.date == $1.date ? $0.id > $1.id : $0.date > $1.date }
+    }
+
+    static func preferredVersion(for id: String, in items: [Self], selectedVersions: [String: String]) -> Self? {
+        let versions = versions(for: id, in: items)
+        return versions.first { $0.id == selectedVersions[$0.recordingKey] } ?? versions.first
     }
 
     static let preview = Transcription(

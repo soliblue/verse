@@ -4,7 +4,7 @@ A private iPhone transcription app. Record a message, import audio, or dictate t
 
 ## iPhone
 
-- Record, copy, share, play back, and delete recordings. Open any transcript in a yellow half-sheet, switch between its versions, or transcribe the same audio with another model.
+- Record, copy, share, play back, and swipe left to delete recordings. Open any transcript in a yellow half-sheet. Its menu switches saved versions or regenerates directly with a ready Local or Cloud model and a per-run language. Missing Local models download after explicit selection. Your chosen version also stays selected in history.
 - One model list offers Local Tiny, Base, Small, Medium, Large v3, and Large v3 Turbo, plus Cloud Small, Medium, and Large v3 on your VPS. Local Medium is selected by default. Choosing an unavailable Local model starts its download; progress, cancellation, and swipe-to-remove stay in that list.
 - Choose a language or let Whisper detect it. Downloaded models work offline, without a server token.
 - Choose a Cloud model to use the preconfigured VPS and enter your device token.
@@ -21,7 +21,7 @@ Verse opens a voice-only panel by default: citrus to activate or record, a live 
 
 On iOS 18 or later, add the Verse dictation control in Control Center, or assign the Toggle dictation shortcut to your Action Button. While typing in another app, trigger the control once to record and again to transcribe. Select the Verse keyboard to receive the result. Fresh dictations insert automatically once; older results offer an Insert button. Siri also supports “Dictate with Verse”.
 
-iOS does not let keyboard extensions access the microphone directly. The audio-recording intent starts the app process without opening its interface and keeps a visible Live Activity. The microphone stays ready for 15 minutes by default, configurable to 5 or 60 minutes. Idle audio is discarded. Tap End session in the Live Activity to turn it off immediately. A manual Start keyboard session action remains available inside Verse, including on iOS 17. Secure text fields and some apps do not allow third-party keyboards. Universal direct microphone activation from the keyboard itself is not supported.
+iOS does not let keyboard extensions access the microphone directly. The audio-recording intent starts the app process without opening its interface and keeps a visible Live Activity. The microphone stays ready for 15 minutes by default, configurable to 5 or 60 minutes. Idle audio is discarded. Tap End session in the Live Activity to turn it off immediately. Long-press Verse's record button for Start keyboard session, including on iOS 17. Secure text fields and some apps do not allow third-party keyboards. Universal direct microphone activation from the keyboard itself is not supported.
 
 Server recordings upload compressed AAC while you speak, with final integrity checks and repeatable retries. Accepted server jobs continue independently; the keyboard polls an individual job even if iOS suspends Verse. On-device recognition runs in the app process, not the keyboard extension. If iOS terminates the app, unfinished audio remains available for retry.
 

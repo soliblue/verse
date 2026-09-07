@@ -11,6 +11,7 @@ final class TranscriptionStore {
     let recorder = VoiceRecorder()
     let api = SpeechAPI()
     let localEngine = LocalSpeechEngine()
+    let regeneration = TranscriptRegeneration()
     let writing = AppleWritingService.shared
     let library = TranscriptionLibrary()
     var items: [Transcription] = []
@@ -34,6 +35,7 @@ final class TranscriptionStore {
     private var recordingUpload: RecordingUpload?
     private var recordingSelection: SpeechSelection?
     private var deletingRecordingIDs = Set<String>()
+    private var selectedVersions: [String: String] = [:]
 
     init() {
         if VerseBridge.token.isEmpty {
@@ -56,6 +58,7 @@ final class TranscriptionStore {
             return
         }
         items = library.load().filter { !VerseBridge.isDeleted($0.id) }
+        selectedVersions = library.loadSelectedVersions()
         if VerseBridge.pendingJobID.hasPrefix("local-") {
             VerseBridge.pendingJobID = ""
             VerseBridge.pendingInsertionJobID = ""
@@ -87,6 +90,20 @@ final class TranscriptionStore {
     var recordings: [Transcription] { Transcription.recordings(from: items) }
 
     func versions(for id: String) -> [Transcription] { Transcription.versions(for: id, in: items) }
+
+    func preferredVersion(for id: String) -> Transcription? {
+        Transcription.preferredVersion(for: id, in: items, selectedVersions: selectedVersions)
+    }
+
+    func selectVersion(_ item: Transcription) throws {
+        guard items.contains(where: { $0.id == item.id && $0.recordingKey == item.recordingKey }) else {
+            throw SpeechFailure("This transcription is no longer in your library.")
+        }
+        var updated = selectedVersions
+        updated[item.recordingKey] = item.id
+        if !demo { try library.saveSelectedVersions(updated) }
+        selectedVersions = updated
+    }
 
     func perform(_ operation: @escaping @MainActor () async throws -> Void) {
         Task {
@@ -344,6 +361,7 @@ final class TranscriptionStore {
         item.localAudioName = try library.keepAudio(url, id: item.recordingKey, existingName: pending.localAudioName)
         item.customPrompt = selection.customPrompt
         item.writingStyle = selection.style.rawValue
+        item.language = selection.language
         VerseBridge.saveOptions(selection, for: item.id)
         if item.state == "completed" {
             item = item.applying(await TranscriptDelivery.prepare(id: item.id, text: item.text ?? "", language: item.detectedLanguage))
@@ -479,6 +497,9 @@ final class TranscriptionStore {
             if !demo, !version.isLocal { try await api.delete(version.id) }
             VerseBridge.invalidateTranscription(version.id)
             items.removeAll { $0.id == version.id }
+            if selectedVersions[key] == version.id || !items.contains(where: { $0.recordingKey == key }) {
+                selectedVersions[key] = nil
+            }
             if VerseBridge.pendingJobID == version.id {
                 VerseBridge.pendingJobID = ""
                 VerseBridge.statusText = ""
@@ -490,6 +511,7 @@ final class TranscriptionStore {
             }
             if !demo {
                 try library.save(items)
+                try library.saveSelectedVersions(selectedVersions)
                 try library.deleteAudio(for: version, retaining: items)
             }
         }
@@ -545,6 +567,9 @@ final class TranscriptionStore {
     }
 
     func discardPending(_ url: URL) throws {
+        guard !isUploading, !isRerunning, !recorder.isRecording else {
+            throw SpeechFailure("Wait for the current recording to finish.")
+        }
         try library.removePending(url)
         VerseBridge.removeProcessingState(for: TranscriptionLibrary.localID(for: url))
         loadPendingAudio()

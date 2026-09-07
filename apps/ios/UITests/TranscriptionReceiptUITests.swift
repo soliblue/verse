@@ -16,7 +16,7 @@ final class TranscriptionReceiptUITests: XCTestCase {
         XCTAssertGreaterThan(sheet.frame.minY, app.frame.height * 0.35)
         XCTAssertLessThan(sheet.frame.minY, app.frame.height * 0.65)
         XCTAssertTrue(app.buttons["transcript-version-picker"].exists)
-        XCTAssertTrue(app.buttons["Transcribe again"].exists || app.buttons["transcribe-again"].exists)
+        XCTAssertFalse(app.buttons["transcribe-again"].exists)
         XCTAssertTrue(app.buttons["Play recording"].exists)
         XCTAssertFalse(app.navigationBars.buttons["Back"].exists)
         screenshot("quiet-receipt-transcript-half-sheet")
@@ -53,34 +53,80 @@ final class TranscriptionReceiptUITests: XCTestCase {
         XCTAssertTrue(original.waitForExistence(timeout: 3))
         original.tap()
         XCTAssertEqual(app.staticTexts["transcript-text"].label, "Hey, I'm on my way. Let's meet outside in ten minutes.")
+        dismissTranscript(in: app)
+        XCTAssertTrue(recording.label.contains("Let's meet outside"))
+        XCTAssertTrue(recording.label.contains("Local Medium"))
+        XCTAssertTrue(recording.label.contains("AUTO"))
+        recording.tap()
+        XCTAssertTrue(picker.waitForExistence(timeout: 5))
+        XCTAssertTrue(picker.label.contains("Local Medium"))
         picker.tap()
         let alternate = app.buttons["transcript-version-preview-cloud-small"]
         XCTAssertTrue(alternate.waitForExistence(timeout: 3))
         alternate.tap()
         screenshot("quiet-receipt-transcript-alternate")
+        dismissTranscript(in: app)
+        XCTAssertTrue(recording.label.contains("Meet me outside"))
+        XCTAssertTrue(recording.label.contains("Cloud Small"))
     }
 
     func testRedoAddsVersionWithoutChangingDefaultModel() {
         let app = launch(["--installed-models=medium,turbo"])
         app.buttons["recording-preview"].tap()
-        app.buttons["transcribe-again"].tap()
-        let turbo = app.buttons["model-choice-local.turbo"]
+        app.buttons["transcript-version-picker"].tap()
+        let turbo = app.buttons["regenerate-model-local.turbo"]
         XCTAssertTrue(turbo.waitForExistence(timeout: 5))
         turbo.tap()
         let picker = app.buttons["transcript-version-picker"]
         XCTAssertTrue(picker.waitForExistence(timeout: 5))
-        XCTAssertTrue(picker.label.contains("Large v3 Turbo"))
+        XCTAssertTrue(picker.label.contains("Local Turbo"))
         picker.tap()
         XCTAssertTrue(app.buttons["transcript-version-preview"].exists)
         screenshot("quiet-receipt-transcript-versions")
         app.buttons["transcript-version-preview"].tap()
-        let sheet = app.descendants(matching: .any)["transcript-sheet"].firstMatch
-        sheet.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
-            .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+        dismissTranscript(in: app)
         XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
         app.buttons["Settings"].tap()
         XCTAssertTrue(app.buttons["speech-model-picker"].waitForExistence(timeout: 5))
         XCTAssertTrue(app.buttons["speech-model-picker"].label.contains("Local Medium"))
+    }
+
+    func testSwipeLeftDeletesRecordingAndItsVersions() {
+        let app = launch(["--versions-ui-testing"])
+        let recording = app.buttons["recording-preview"]
+        XCTAssertTrue(recording.waitForExistence(timeout: 8))
+        recording.coordinate(withNormalizedOffset: CGVector(dx: 0.9, dy: 0.5))
+            .press(forDuration: 0.1, thenDragTo: recording.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.5)))
+        let delete = app.buttons["Delete"].firstMatch
+        XCTAssertTrue(delete.waitForExistence(timeout: 3))
+        screenshot("quiet-receipt-swipe-delete")
+        delete.tap()
+        XCTAssertTrue(app.staticTexts["Your recordings will appear here."].waitForExistence(timeout: 5))
+        XCTAssertFalse(recording.exists)
+        XCTAssertFalse(app.buttons["recording-preview-cloud-small"].exists)
+    }
+
+    func testHistoryRowsAreCompactAndHaveNoKeyboardShortcut() {
+        let app = launch(["--history-ui-testing"])
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 8))
+        app.swipeUp()
+        app.swipeUp()
+        let rows = app.buttons.matching(NSPredicate(format: "identifier BEGINSWITH %@", "recording-preview-history-"))
+            .allElementsBoundByIndex.filter { $0.isHittable }
+        XCTAssertGreaterThanOrEqual(rows.count, 6)
+        for row in rows {
+            XCTAssertLessThanOrEqual(row.frame.height, 86)
+            XCTAssertTrue(row.label.contains("AUTO"))
+        }
+        XCTAssertFalse(app.buttons["Activate keyboard"].exists)
+        screenshot("quiet-receipt-compact-history")
+    }
+
+    private func dismissTranscript(in app: XCUIApplication) {
+        let sheet = app.descendants(matching: .any)["transcript-sheet"].firstMatch
+        sheet.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.02))
+            .press(forDuration: 0.1, thenDragTo: app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.98)))
+        XCTAssertTrue(app.buttons["Settings"].waitForExistence(timeout: 5))
     }
 
     private func launch(_ arguments: [String] = []) -> XCUIApplication {
