@@ -1,34 +1,33 @@
-# Voice panel visual verification
+# Compact receipt verification
 
 final result: passed
 
-Source visual truth: `/home/soli/.codex/generated_images/019f5649-2a8e-7f41-9ab5-56f5b5b7bbeb/exec-3e149905-070b-4263-98e8-bda9d1ada2df.png`, Citrus (2) idle and Ribbon (3) recording. The user's latest instruction replaces the mockup's card background with one continuous native keyboard backdrop.
+Source visual truth: `/home/soli/.codex/generated_images/019f5649-2a8e-7f41-9ab5-56f5b5b7bbeb/exec-03162e0b-5332-4899-9733-4dd7fe27f4d2.png`. This refines the selected second concept with a transparent masthead. The board is 1705 by 923 pixels, showing cropped history and menu states, not a full-height phone.
 
-Final implementation: [native CI 34022056346](https://github.com/soliblue/verse/actions/runs/34022056346), source `da168d9`. Screenshots are in `/tmp/verse-voice-evidence-34022056346/evidence/verse-smoke/`. This is the actual UIKit input controller hosted by a simulator text field, not a web replica. Xcode runs in GitHub because this host is Linux.
+Implementation evidence: [CI 34093239321](https://github.com/soliblue/verse/actions/runs/34093239321), source `27d4f75`, under `/tmp/verse-ci-34093239321/screens/verse-smoke/`. Native iPhone 17 Pro, iOS 26.2, 402 by 874 points at 3x; captures are 1206 by 2622 pixels. The reference and native captures were opened together. Corresponding content regions were compared without stretching the wide concept to phone proportions.
 
-Viewport: iPhone 17 Pro, iOS 26.2, 402 by 874 points at 3x. Native captures are 1206 by 2622 pixels. The app-owned input area is the bottom 1206 by 780 pixels, normalized to 402 by 260 points. Unit tests also cover 320- and 440-point widths. The extension-only system dock is outside this fixture's evidence.
+Full-view captures in `ui-tests/`:
 
-Reference: 1448 by 1086 pixels, four concepts. Citrus was cropped at `(766,90,634,446)` and Ribbon at `(46,628,635,304)`, then normalized to 402 points wide without stretching. Both source and implementation are letterboxed to 402 by 284 for comparison. The mock concepts have different heights; the implementation consistently uses 260 points. Background differences follow the user's explicit native-backdrop instruction.
+- Scrolled history: `CD398FFB-4048-442B-A0BF-56C67F041B63.png`.
+- Unified menu: `6B8C047A-7789-4445-999B-EA22F0104DAA.png`.
+- Native half-sheet: `F7E84432-21BB-42F8-914C-DEC2AE85C551.png`.
+- Swipe deletion: `47BBC165-841E-4CD5-98A6-109BC95B43C5.png`.
+- Download and cancellation: `26A507EE-2C22-41E6-81AE-EC450C4217CA.png`.
+- Regenerated language and retained versions: `6E3827F8-8213-4F68-A9E8-B04E12A41085.png`.
 
-Full-panel comparisons: `/tmp/verse-idle-reference-comparison.png` and `/tmp/verse-recording-reference-comparison.png`. Controls, artwork edges and time are legible at this normalized size, so a separate zoom is unnecessary. Ready, cold, recording, processing, dark and retained-typing captures were collected. Recording input is synthetic, not microphone/FPS evidence.
+Findings:
+
+1. Resolved P1, scrolled masthead: the first capture from `24cf951` allowed sharp transcript text behind the logo and system status text. Fix `27d4f75` uses an unpainted native [safeAreaBar](https://developer.apple.com/documentation/swiftui/view/safeareabar(edge:alignment:spacing:content:)) with a soft scroll-edge effect on iOS 26. Earlier iOS uses reserved, clipped content beneath the masthead. No solid toolbar background is added. The corrected capture keeps the status bar and controls legible, with a soft transition over the existing paper.
+2. Focused comparison: `/tmp/verse-scroll-header-comparison.png` places the before and after top 1206 by 600 pixel regions side by side, each normalized to 402 by 200 pixels. Both use the same simulator, fixture history, and scrolled test state. The bar remains fixed and the text overlap is resolved. Scroll offsets differ slightly because the corrected bar reserves its native safe area.
+3. No functional failures: 25 backend tests, 99 native unit tests, and 38 UI tests passed. One optional real-keyboard test was skipped. The first run ended at its ten-minute workflow limit after the new interaction tests had passed; the allowance is now twenty minutes, with per-test limits unchanged.
+4. P3 platform differences: the native menu wraps long version labels and scrolls to additional models. The iOS 26 swipe action uses the existing app tint and circular trash control instead of the concept's red rectangle. Deletion retains the native destructive role, label, and full-swipe gesture. No unresolved P0, P1, or P2 findings remain.
 
 Fidelity review:
 
-1. Typography: native symbols and 17-point monospaced time match the restrained direction. `AUTO` replaces the mock's `EN` because automatic language is the configured default. No unwanted headings or instructional copy.
-2. Spacing: centered 176-point citrus and 16-point outer margins match the composition. The first pass exposed crowded 2-point gaps between the 44-point language/model targets. Increased to 8 points in voice mode; typing remains unchanged.
-3. Colours: light and dark captures show a continuous native material across the app-owned input area. Orange foregrounds remain visible. Physical extension docking still needs phone verification.
-4. Artwork: printed citrus, empty cream center and circular mask are faithful to the selected direction. No rectangular image background or visible halo in either theme.
-5. Content: power when cold, wave when ready, stop and elapsed time while recording. Processing is icon-only. The recording trace and timestamp naturally differ from the mock.
+- Typography: existing heavy-italic wordmark and native body/caption hierarchy retained. Two-line previews and one-line metadata are readable. Native menus can wrap longer model names rather than truncating them.
+- Spacing: receipt margins are eight points; row text is inset twenty points. The half-sheet expands natively. The concept's enlarged popup is not used as literal phone geometry.
+- Colors: original yellow paper, cream receipt, and green metadata retained. Menu glass reflects underlying artwork; it is not a custom flat-yellow popup. The native swipe action follows the existing app tint.
+- Images: original citrus and receipt assets are reused, including the torn footer. No substitute drawings or new decorative assets.
+- Content: saved versions, requested language, direct model actions, download/cancel state, swipe deletion, and selected-version list updates are present. Fixture dates, language, and durations intentionally differ from the concept. The keyboard shortcut is removed from history and remains available through the record button's context menu.
 
-Findings and comparison history:
-
-1. [P1, fixed] Cold activation exposed only a 21.33-point accessible target despite a 176-point orange. Native UI regression failed. Added the full circular SwiftUI content shape in `2ce0c81`; the original size assertion remains intact.
-2. [P2, fixed] Toolbar circles were cramped compared with the reference. Increased their gap to 8 points in `2ce0c81`.
-
-Second pass: CI 34021395566 passed all 51 unit tests and 17 UI tests. Same-state comparisons are `/tmp/verse-idle-reference-comparison-final.png` and `/tmp/verse-recording-reference-comparison-final.png`, with captures under `/tmp/verse-voice-evidence-34021395566/evidence/verse-smoke/`. The 176-point cold target and 8-point toolbar gap now pass. Light/dark artwork and backgrounds remain clean.
-
-3. [P2, fixed] The second capture exposed low contrast in the disabled processing spinner. Its system-resolved colour was too close to the orange button. Added an explicit [native activity-indicator colour transformer](https://developer.apple.com/documentation/uikit/uibuttonconfiguration/activityindicatorcolortransformer) plus a regression test. Final before/after evidence is `/tmp/verse-processing-contrast-comparison.png`: the spinner is now white and legible on orange.
-
-Third pass: source `da168d9` passes all 52 native unit tests, 17 UI tests and 25 backend tests, with no skips. Final source/capture comparisons are `/tmp/verse-idle-release-comparison.png` and `/tmp/verse-recording-release-comparison.png`. Citrus, toolbar spacing, waveform and native backdrop remain consistent. All earlier P1/P2 findings are resolved; no actionable P0/P1/P2 visual findings remain within the verified fixture.
-
-Checklist: native checks, rendered comparison and internal distribution complete. Apple confirms 0.3.1 build 23 as `VALID` and `IN_BETA_TESTING` for Internal. Actual microphone handoff, host-owned dock blending and physical-device frame rate remain phone checks, not claims established by this fixture.
+Release: [internal TestFlight workflow 34102640090](https://github.com/soliblue/verse/actions/runs/34102640090) uploaded version 0.3.1 (27) from verified source `27d4f75`. App Store Connect confirmed `VALID`, `IN_BETA_TESTING`, and membership in the `Internal` group on September 7, 2026. Physical microphone handoff and real-device frame rate are not established by these simulator fixtures. Local model downloads and inference in these UI tests use fixtures, not performance benchmarks.

@@ -16,6 +16,12 @@
 
 ## Verification
 
+[CI 34093239321](https://github.com/soliblue/verse/actions/runs/34093239321) passed for `27d4f75`: 25 backend tests, 99 native unit tests, and 38 UI tests, with one optional real-extension test skipped. Screenshot review caught text overlapping the floating masthead in the first iteration. The native soft scroll-edge effect fixes that without adding an opaque toolbar rectangle. Final captures verify compact rows, native swipe deletion, persisted version selection, the unified model and language menu, and explicit download/cancellation. See [design-qa.md](../design-qa.md).
+
+[TestFlight 34102640090](https://github.com/soliblue/verse/actions/runs/34102640090) uploaded version 0.3.1 (27) from verified `27d4f75`. Apple confirmed `VALID`, `IN_BETA_TESTING`, and the `Internal` group on September 7, 2026. No server or infrastructure changes were needed.
+
+### Previous release
+
 [CI 34054040240](https://github.com/soliblue/verse/actions/runs/34054040240) passed for `6a5afbf`: 25 backend tests, 93 native tests, and 31 UI tests on the iPhone 17 Pro simulator with iOS 26.2. The optional real-extension test was not enabled. Screenshots confirmed the yellow half-sheet, shared model list, pinned toolbar, and receipt spacing.
 
 Both setup hints visibly glow green and return to gray in the simulator recordings. Tests inspect DEBUG-only timestamps from the actual highlight transitions because XCTest waits past the one-second cue before returning from a tap. Release behavior is unchanged. Real-phone microphone handoff is not established by simulator evidence.
