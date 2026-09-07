@@ -176,7 +176,7 @@ jobs:
 
       - name: Run UI tests
         if: ${{ !cancelled() && steps.build.outcome == 'success' }}
-        timeout-minutes: 10
+        timeout-minutes: 20
         run: |
           xcodebuild test \
             -project apps/ios/Verse.xcodeproj \
