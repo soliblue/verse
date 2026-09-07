@@ -14,49 +14,23 @@ struct TranscriptionHubView: View {
     var body: some View {
         NavigationStack {
             GeometryReader { geometry in
-                List {
-                    VStack(spacing: 0) {
-                        ZStack {
-                            Image("CitrusHero").resizable().scaledToFit()
-                                .mask { Rectangle().padding(.vertical, 16).blur(radius: 12) }
-                                .accessibilityHidden(true)
-                            recordingControls
+                Group {
+                    if #available(iOS 26, *) {
+                        history(width: geometry.size.width)
+                            .safeAreaBar(edge: .top, spacing: 0) { masthead }
+                            .scrollEdgeEffectStyle(.soft, for: .top)
+                    } else {
+                        VStack(spacing: 0) {
+                            masthead
+                            history(width: geometry.size.width).clipped()
                         }
-                        .frame(width: min(geometry.size.width, 520), height: min(geometry.size.width, 520))
-                        if returningToKeyboard && store.recorder.isRecording {
-                            VStack(spacing: 5) {
-                                Text("Listening. Swipe back to your app.").font(.headline)
-                                Text("Swipe right along the bottom edge. Tap Stop in the keyboard when done.")
-                                    .font(.subheadline)
-                            }
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 24).padding(.bottom, 16)
-                            .accessibilityIdentifier("dictation-return-guidance")
-                        }
-                        sessionStatus.padding(.horizontal, 24)
                     }
-                    .frame(maxWidth: 560).frame(maxWidth: .infinity)
-                    .listRowInsets(EdgeInsets())
-                    .listRowSeparator(.hidden)
-                    .listRowBackground(Color.clear)
-                    TranscriptionHistoryView(store: store) { id in sheet = .transcript(id) }
                 }
-                .listStyle(.plain)
-                .listSectionSpacing(0)
-                .environment(\.defaultMinListRowHeight, 0)
-                .contentMargins(.top, 64, for: .scrollContent)
-                .contentMargins(.bottom, 16, for: .scrollContent)
-                .scrollContentBackground(.hidden)
-                .scrollDismissesKeyboard(.interactively)
                 .background {
                     Image("CitrusPaper").resizable().scaledToFill().ignoresSafeArea()
                 }
                 .foregroundStyle(ink)
                 .toolbar(.hidden, for: .navigationBar)
-                .overlay(alignment: .top) {
-                    masthead
-                        .padding(.horizontal, 20).padding(.vertical, 6)
-                }
                 .refreshable { store.perform { try await store.refresh() } }
                 .task { store.perform { try await store.refresh() } }
                 .sheet(item: $sheet) { destination in
@@ -110,6 +84,42 @@ struct TranscriptionHubView: View {
         }
     }
 
+    private func history(width: CGFloat) -> some View {
+        List {
+            VStack(spacing: 0) {
+                ZStack {
+                    Image("CitrusHero").resizable().scaledToFit()
+                        .mask { Rectangle().padding(.vertical, 16).blur(radius: 12) }
+                        .accessibilityHidden(true)
+                    recordingControls
+                }
+                .frame(width: min(width, 520), height: min(width, 520))
+                if returningToKeyboard && store.recorder.isRecording {
+                    VStack(spacing: 5) {
+                        Text("Listening. Swipe back to your app.").font(.headline)
+                        Text("Swipe right along the bottom edge. Tap Stop in the keyboard when done.")
+                            .font(.subheadline)
+                    }
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal, 24).padding(.bottom, 16)
+                    .accessibilityIdentifier("dictation-return-guidance")
+                }
+                sessionStatus.padding(.horizontal, 24)
+            }
+            .frame(maxWidth: 560).frame(maxWidth: .infinity)
+            .listRowInsets(EdgeInsets())
+            .listRowSeparator(.hidden)
+            .listRowBackground(Color.clear)
+            TranscriptionHistoryView(store: store) { id in sheet = .transcript(id) }
+        }
+        .listStyle(.plain)
+        .listSectionSpacing(0)
+        .environment(\.defaultMinListRowHeight, 0)
+        .contentMargins(.bottom, 16, for: .scrollContent)
+        .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
+    }
+
     private var masthead: some View {
         HStack {
             Text("verse")
@@ -129,6 +139,7 @@ struct TranscriptionHubView: View {
             .accessibilityLabel("Settings")
         }
         .font(.system(size: 21, weight: .semibold)).buttonStyle(.plain)
+        .padding(.horizontal, 20).padding(.vertical, 6)
         .accessibilityIdentifier("home-toolbar")
     }
 
