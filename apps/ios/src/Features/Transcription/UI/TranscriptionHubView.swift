@@ -76,6 +76,9 @@ struct TranscriptionHubView: View {
                             }
                         }
                     } else if url.isFileURL {
+                        sheet = nil
+                        importing = false
+                        returningToKeyboard = false
                         store.perform { try await store.importAudio(url) }
                     }
                 }

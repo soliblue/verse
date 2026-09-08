@@ -1,7 +1,7 @@
 import CryptoKit
 import Foundation
 
-struct PendingTranscription: Codable, Equatable {
+struct PendingTranscription: Codable, Equatable, Sendable {
     var selection: SpeechSelection
     var recordingID: String? = nil
     var origin: TranscriptionOrigin? = nil
@@ -13,7 +13,7 @@ struct PendingTranscription: Codable, Equatable {
 
 struct TranscriptionLibrary {
     let directory: URL
-    let pendingDirectory: URL
+    nonisolated let pendingDirectory: URL
 
     init(directory: URL? = nil, pendingDirectory: URL? = nil) {
         let support = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
@@ -59,8 +59,35 @@ struct TranscriptionLibrary {
         try savePendingTranscription(pending, for: url)
     }
 
-    func savePendingTranscription(_ pending: PendingTranscription, for url: URL) throws {
+    nonisolated func savePendingTranscription(_ pending: PendingTranscription, for url: URL) throws {
         try JSONEncoder().encode(pending).write(to: url.appendingPathExtension("json"), options: .atomic)
+    }
+
+    nonisolated func prepareImport(audio url: URL, selection: SpeechSelection) throws -> URL {
+        guard url.isFileURL else { throw SpeechFailure("Choose an audio file to import.") }
+        let access = url.startAccessingSecurityScopedResource()
+        defer { if access { url.stopAccessingSecurityScopedResource() } }
+        var coordinationError: NSError?
+        var result: Result<URL, Error>?
+        NSFileCoordinator().coordinate(readingItemAt: url, options: [], error: &coordinationError) { source in
+            result = Result {
+                let values = try source.resourceValues(forKeys: [.isRegularFileKey, .fileSizeKey])
+                guard values.isRegularFile == true, let size = values.fileSize, size > 0, size <= 52_428_800 else {
+                    throw SpeechFailure("Choose an audio file smaller than 50 MB.")
+                }
+                try FileManager.default.createDirectory(at: pendingDirectory, withIntermediateDirectories: true)
+                let destination = pendingDirectory.appendingPathComponent("Import-\(UUID().uuidString)-\(url.lastPathComponent)")
+                let pending = PendingTranscription(selection: selection, origin: .shared, filename: url.lastPathComponent)
+                try savePendingTranscription(pending, for: destination)
+                let copied = Result { try FileManager.default.copyItem(at: source, to: destination) }
+                if case .failure = copied { try? removePending(destination) }
+                try copied.get()
+                return destination
+            }
+        }
+        if let coordinationError { throw coordinationError }
+        guard let result else { throw SpeechFailure("Could not read this audio file. Try opening it again.") }
+        return try result.get()
     }
 
     func prepareRerun(audio: URL, item: Transcription, selection: SpeechSelection, localAudioName: String) throws -> URL {
@@ -82,7 +109,7 @@ struct TranscriptionLibrary {
             .sorted { $0.lastPathComponent < $1.lastPathComponent }
     }
 
-    func removePending(_ url: URL) throws {
+    nonisolated func removePending(_ url: URL) throws {
         if FileManager.default.fileExists(atPath: url.path) { try FileManager.default.removeItem(at: url) }
         let metadata = url.appendingPathExtension("json")
         if FileManager.default.fileExists(atPath: metadata.path) { try FileManager.default.removeItem(at: metadata) }

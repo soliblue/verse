@@ -303,15 +303,11 @@ final class TranscriptionStore {
 
     func importAudio(_ url: URL) async throws {
         guard !isRerunning else { throw SpeechFailure("Wait for this transcription to finish.") }
-        let access = url.startAccessingSecurityScopedResource()
-        defer { if access { url.stopAccessingSecurityScopedResource() } }
-        let size = try url.resourceValues(forKeys: [.fileSizeKey]).fileSize ?? 0
-        guard size > 0, size <= 52_428_800 else { throw SpeechFailure("Choose an audio file smaller than 50 MB.") }
-        let folder = library.pendingDirectory
-        try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
-        let destination = folder.appendingPathComponent("Import-\(UUID().uuidString)-\(url.lastPathComponent)")
-        try FileManager.default.copyItem(at: url, to: destination)
-        try library.saveSelection(.current, for: destination)
+        let selection = SpeechSelection.current
+        let library = library
+        let destination = try await Task.detached(priority: .userInitiated) {
+            try library.prepareImport(audio: url, selection: selection)
+        }.value
         try await upload(destination)
     }
 

@@ -1,6 +1,6 @@
 import Foundation
 
-enum TranscriptionOrigin: String, Codable {
+enum TranscriptionOrigin: String, Codable, Sendable {
     case app, shared, keyboard, unknown
 
     static func pendingAudio(_ url: URL) -> Self {
