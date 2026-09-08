@@ -6,4 +6,8 @@
 
 ## Verification
 
-Pending native CI and internal TestFlight availability.
+- `make check`: 25 backend tests passed.
+- [Native CI](https://github.com/soliblue/verse/actions/runs/34281617994) passed for `35e4098`: 104 unit tests and 40 UI tests, with the optional real-keyboard test skipped.
+- Inspected the cold-launch, sheet-dismissal, and model-preserving retry screenshots in `verse-ui-screens`. Missing Local models keep the audio pending without a Cloud upload.
+- [Internal TestFlight release](https://github.com/soliblue/verse/actions/runs/34283498268) succeeded for `35e4098`. Apple confirmed `0.3.1 (28)` as `VALID` and `IN_BETA_TESTING` in the `Internal` group on September 8, 2026 at 22:05 UTC.
+- WhatsApp action discovery and its exported audio encoding still need a real-phone test.
