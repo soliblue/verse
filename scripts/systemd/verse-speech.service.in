@@ -8,6 +8,7 @@ Type=simple
 WorkingDirectory=__ROOT__
 Environment=VERSE_ROOT=__ROOT__
 EnvironmentFile=__ROOT__/.env
+Environment=VERSE_SPEECH_ENGINE=cloudflare
 Environment=VERSE_WHISPER_MODELS=__MODELS__
 Environment=VERSE_WHISPER_MODELS_ALLOWED=small,medium,large-v3
 Environment=VERSE_WHISPER_DEFAULT_MODEL=medium

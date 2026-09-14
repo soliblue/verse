@@ -1,6 +1,6 @@
 # Verse speech API
 
-Private CPU transcription with faster-whisper. Install `requirements-speech.txt` and system `ffmpeg`. Download models before enabling them. Inference never downloads models and uses no paid service.
+Private transcription API with a server-selected inference provider. Production uses Cloudflare Workers AI while preserving the existing Verse API, queue, SQLite history, and private recordings. Local faster-whisper remains available as an explicit fallback.
 
 Run `python -m speech_server`. The process loads the project-root `.env` without overriding existing environment variables. `VERSE_DEVICE_SECRET` is mandatory. Bind defaults to localhost port 8787; expose it through the existing HTTPS tunnel.
 
@@ -8,6 +8,10 @@ Environment:
 
 | Variable | Default |
 | --- | --- |
+| `VERSE_SPEECH_ENGINE` | `local`; set `cloudflare` for Workers AI |
+| `CLOUDFLARE_ACCOUNT_ID` | required for Cloudflare |
+| `CLOUDFLARE_WORKERS_API_TOKEN` | required for Cloudflare |
+| `VERSE_CLOUDFLARE_MODEL` | `@cf/openai/whisper-large-v3-turbo` |
 | `VERSE_SPEECH_DB` | `db/transcriptions.sqlite` |
 | `VERSE_AUDIO_DIR` | `db/recordings` |
 | `VERSE_AUDIO_STORAGE_BYTES` | `5368709120` (5 GB) |
@@ -20,7 +24,7 @@ Environment:
 | `VERSE_HOST` | `127.0.0.1` |
 | `VERSE_PORT` | `8787` |
 
-The models directory supports either `small/model.bin`, `medium/model.bin`, `large-v3/model.bin` directories or Hugging Face's standard cache layout. Add `large-v3` to the allowed list only after downloading it.
+Cloudflare mode maps every existing app-side Cloud model choice to `VERSE_CLOUDFLARE_MODEL`, so no app release is required. The selected app model remains stored with the job. Local mode supports either `small/model.bin`, `medium/model.bin`, `large-v3/model.bin` directories or Hugging Face's standard cache layout.
 
 All endpoints require `Authorization: Bearer <device token>` except `/health`. Errors return `{"error":"message"}`. Responses must not be cached.
 
@@ -45,7 +49,7 @@ Limits: 50 MB per upload, one hour per recording, 5 GB of retained audio, 20 que
 
 Tests: `make check`.
 
-The inference subprocess keeps one INT8 model loaded between jobs, releasing it after five idle minutes or when the model changes. Uploads can warm the model before recording stops. Beam size 5 and whole-recording context are unchanged. Each result records `inference_seconds` without logging audio or transcript content.
+The bounded inference subprocess calls Cloudflare or keeps one local INT8 model loaded between jobs. Uploads can start the subprocess before recording stops. Beam size 5 and whole-recording context are unchanged. Each result records `inference_seconds` without logging audio or transcript content.
 
 The app uploads complete 32KB blocks of the existing AAC recording during speech. After closing the file it replaces any changed blocks, including rewritten m4a headers, then submits a full-file checksum. No re-encoding, split speech, or inference on incomplete audio. The full local recording is retained until the server accepts it. Stable recording IDs make finish and fallback uploads repeatable across retries. Staging is private, capped at eight unfinished recordings, counted toward the storage quota, and lazily expires after one hour. Older servers receive a normal completed-file upload instead.
 

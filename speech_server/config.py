@@ -17,6 +17,7 @@ class Config:
     cpu_threads: int = 4
     maximum_storage: int = 5 * 1024 * 1024 * 1024
     model_idle_timeout: int = 300
+    engine: str = "local"
 
     @classmethod
     def environment(cls):
@@ -25,6 +26,7 @@ class Config:
             raise ValueError("VERSE_DEVICE_SECRET must contain at least 24 characters")
         config = cls(
             secret=secret,
+            engine=os.environ.get("VERSE_SPEECH_ENGINE", "local"),
             database=Path(os.environ.get("VERSE_SPEECH_DB", "db/transcriptions.sqlite")),
             audio=Path(os.environ.get("VERSE_AUDIO_DIR", "db/recordings")),
             models_dir=Path(os.environ.get("VERSE_WHISPER_MODELS", "models")),
@@ -37,8 +39,18 @@ class Config:
         )
         if config.default_model not in config.models:
             raise ValueError("Default model must be allowed")
-        for model in config.models:
-            config.model_path(model)
+        if config.engine == "local":
+            for model in config.models:
+                config.model_path(model)
+        elif config.engine == "cloudflare":
+            if len(os.environ.get("CLOUDFLARE_ACCOUNT_ID", "")) != 32:
+                raise ValueError("CLOUDFLARE_ACCOUNT_ID must contain 32 characters")
+            if not os.environ.get("CLOUDFLARE_WORKERS_API_TOKEN"):
+                raise ValueError("CLOUDFLARE_WORKERS_API_TOKEN is required")
+            if not os.environ.get("VERSE_CLOUDFLARE_MODEL", "@cf/openai/whisper-large-v3-turbo").startswith("@cf/"):
+                raise ValueError("VERSE_CLOUDFLARE_MODEL must be a Cloudflare-hosted model")
+        else:
+            raise ValueError("VERSE_SPEECH_ENGINE must be local or cloudflare")
         return config
 
     def model_path(self, name):

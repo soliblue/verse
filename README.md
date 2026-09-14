@@ -29,13 +29,13 @@ Optional completion notifications contain the transcript for app recordings and 
 
 ## Server
 
-Install Python dependencies from `requirements-speech.txt` and system `ffmpeg`. Download the faster-whisper models before running the service. Copy `.env.example` to `.env` and configure the device secret and model directory. Run:
+Install Python dependencies from `requirements-speech.txt` and system `ffmpeg`. Copy `.env.example` to `.env` and configure the device secret plus Cloudflare Workers AI credentials. Local faster-whisper remains an explicit fallback. Run:
 
 ```sh
 python -m speech_server
 ```
 
-The server binds to localhost port 8787 behind the existing private-token HTTPS tunnel. Audio and transcripts are stored in SQLite and private files until deleted. Inference uses one worker with bounded uploads, queue length, duration, and runtime. See [the API contract](speech_server/README.md).
+The server binds to localhost port 8787 behind the existing private-token HTTPS tunnel. Audio and transcripts are stored in SQLite and private files until deleted. Production inference uses Cloudflare Workers AI through one bounded worker; the app API is unchanged. See [the API contract](speech_server/README.md).
 
 ```sh
 make check
