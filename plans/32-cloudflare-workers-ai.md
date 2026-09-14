@@ -6,4 +6,8 @@
 
 ## Verification
 
-Pending deployment verification.
+- `make check`: 28 backend tests passed.
+- A real 11-second AAC/m4a probe completed through `@cf/openai/whisper-large-v3-turbo` in 1.74 seconds with text, timestamps, and English detection.
+- The live streamed-upload smoke completed in 2.605 seconds, returned 108 characters, and deleted its test recording.
+- `verse-server.service`, `verse-tunnel.service`, and `https://verse.soli.blue/health` are healthy. Ten existing jobs and ten recording files remain, with no queued or transcribing jobs.
+- GitHub CI is pending for `c2de70f`.

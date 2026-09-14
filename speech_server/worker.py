@@ -48,7 +48,7 @@ class Worker:
     def ensure_model(self, name):
         if self.loaded_model != name or self.process_handle is None or self.process_handle.poll() is not None:
             self.release_model()
-            model = str(self.config.model_path(name)) if self.config.engine == "local" else name
+            model = str(self.config.model_path(name)) if self.config.engine == "local" else "cloudflare"
             command = [sys.executable, "-m", "speech_server.engine", model, str(self.config.cpu_threads)]
             self.process_handle = subprocess.Popen(command, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, text=True)
             self.loaded_model = name
