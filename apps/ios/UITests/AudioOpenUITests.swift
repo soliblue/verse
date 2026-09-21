@@ -33,7 +33,10 @@ final class AudioOpenUITests: XCTestCase {
         let audio = try audioFile()
         let app = XCUIApplication()
         app.launchArguments = ["--ui-testing"]
+        app.launch()
+        XCTAssertTrue(app.buttons["Record"].waitForExistence(timeout: 8))
         app.terminate()
+        XCTAssertTrue(app.wait(for: .notRunning, timeout: 5))
         app.open(audio)
         assertMissingLocalModel(in: app)
         screenshot("audio-open-cold-launch")
