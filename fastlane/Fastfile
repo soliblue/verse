@@ -1,4 +1,5 @@
 require "shellwords"
+require "timeout"
 
 default_platform(:ios)
 
@@ -9,7 +10,6 @@ platform :ios do
     profiles = {
       "Verse" => ["soli.verse", ENV.fetch("PROVISIONING_PROFILE_NAME")],
       "VerseKeyboard" => ["soli.verse.keyboard", ENV.fetch("KEYBOARD_PROVISIONING_PROFILE_NAME")],
-      "VerseShare" => ["soli.verse.share", ENV.fetch("SHARE_PROVISIONING_PROFILE_NAME")],
       "VerseControls" => ["soli.verse.controls", ENV.fetch("WIDGET_PROVISIONING_PROFILE_NAME")]
     }
     api_key = app_store_connect_api_key(
@@ -54,5 +54,32 @@ platform :ios do
       skip_waiting_for_build_processing: true,
       distribute_external: false
     )
+    Timeout.timeout(900, Timeout::Error, "TestFlight build #{build_number} was not available to Internal within 15 minutes") do
+      app = Spaceship::ConnectAPI::App.find("soli.verse")
+      UI.user_error!("Verse was not found in App Store Connect") unless app
+      group = app.get_beta_groups.find { |item| item.name == "Internal" && item.is_internal_group }
+      UI.user_error!("Existing Internal TestFlight group was not found") unless group
+      loop do
+        build = Spaceship::ConnectAPI::Build.all(
+          app_id: app.id,
+          build_number: build_number.to_s,
+          platform: "IOS"
+        ).find { |item| item.version == build_number.to_s }
+        if build
+          state = build.build_beta_detail&.internal_build_state
+          if build.expired || %w[FAILED INVALID].include?(build.processing_state) || %w[PROCESSING_EXCEPTION EXPIRED].include?(state)
+            UI.user_error!("TestFlight build #{build_number} failed: #{build.processing_state}, #{state}, expired=#{build.expired}")
+          end
+          if build.processing_state == "VALID" && state == "IN_BETA_TESTING" && group.fetch_builds.any? { |item| item.id == build.id }
+            UI.success("TestFlight build #{build_number} is VALID, IN_BETA_TESTING, and available to Internal")
+            break
+          end
+          UI.message("Waiting for TestFlight build #{build_number}: #{build.processing_state}, #{state}")
+        else
+          UI.message("Waiting for TestFlight build #{build_number} to appear")
+        end
+        sleep(30)
+      end
+    end
   end
 end

@@ -8,6 +8,7 @@ final class AudioImportTests: XCTestCase {
         let audio = try XCTUnwrap(types.first { ($0["LSItemContentTypes"] as? [String])?.contains("public.audio") == true })
         XCTAssertEqual(audio["CFBundleTypeRole"] as? String, "Viewer")
         XCTAssertEqual(audio["LSHandlerRank"] as? String, "Alternate")
+        XCTAssertTrue((audio["LSItemContentTypes"] as? [String] ?? []).contains("public.movie"))
         for type in types {
             XCTAssertNotEqual(type["LSHandlerRank"] as? String, "Owner")
             XCTAssertFalse((type["LSItemContentTypes"] as? [String] ?? []).contains("public.data"))

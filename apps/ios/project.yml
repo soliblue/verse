@@ -29,7 +29,6 @@ targets:
       - package: Argmax
         product: WhisperKit
       - target: VerseKeyboard
-      - target: VerseShare
       - target: VerseControls
     info:
       path: src/Info.plist
@@ -83,24 +82,6 @@ targets:
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: soli.verse.keyboard
-        CODE_SIGN_ENTITLEMENTS: Verse.entitlements
-        GENERATE_INFOPLIST_FILE: true
-        MARKETING_VERSION: 0.3.1
-        CURRENT_PROJECT_VERSION: 1
-        APPLICATION_EXTENSION_API_ONLY: true
-        SKIP_INSTALL: true
-  VerseShare:
-    type: app-extension
-    platform: iOS
-    sources:
-      - path: Share
-        excludes: [Info.plist]
-      - path: Shared
-    info:
-      path: Share/Info.plist
-    settings:
-      base:
-        PRODUCT_BUNDLE_IDENTIFIER: soli.verse.share
         CODE_SIGN_ENTITLEMENTS: Verse.entitlements
         GENERATE_INFOPLIST_FILE: true
         MARKETING_VERSION: 0.3.1

@@ -15,7 +15,7 @@ Download a model or configure Server, then allow microphone access. Add Verse in
 
 Writing styles require iOS 26+, compatible hardware, and Apple Intelligence enabled with its model ready. When unavailable, the switch stays off and tapping highlights the linked setup instructions. Enable it in iPhone Settings → Apple Intelligence & Siri. Unsupported languages, unavailable models, and failed rewrites keep the original transcript. Rewriting is optional and adds processing time.
 
-For file transcription with your selected model, choose Open in Verse wherever another app offers it, or use Import audio inside Verse. Audio is copied into private pending storage with its selected model, language, and writing style before transcription. A missing local model leaves the file available for retry without downloading or switching to Cloud. The separate share extension uses the VPS; when on-device mode is selected, it asks before sending anything. Open-in availability and supported audio encoding depend on the source app; WhatsApp needs a real-phone check.
+For file transcription with your selected model, choose Open in Verse wherever another app offers it, or use Import audio inside Verse. Audio is copied into private pending storage with its selected model, language, and writing style before transcription. A missing local model leaves the file available for retry without downloading or switching to Cloud. Opening a shared file starts transcription directly in Verse, without a confirmation modal. The old server-only share extension is removed. The source app must offer compatible file sharing or Open In; availability and supported audio encoding depend on that app.
 
 Verse opens a voice-only panel by default: citrus to activate or record, a live waveform and stop control while recording, and language/model controls above. It uses the native keyboard backdrop throughout. The letter keyboard is optional under Settings → Typing keyboard. Before its first use, the switch highlights setup instructions until the actual Verse keyboard confirms Full Access. This confirmation records the last observed setup, not continuous knowledge of iOS keyboard settings.
 
@@ -25,7 +25,7 @@ iOS does not let keyboard extensions access the microphone directly. The audio-r
 
 Server recordings upload compressed AAC while you speak, with final integrity checks and repeatable retries. Accepted server jobs continue independently; the keyboard polls an individual job even if iOS suspends Verse. On-device recognition runs in the app process, not the keyboard extension. If iOS terminates the app, unfinished audio remains available for retry.
 
-Optional completion notifications contain the transcript for app recordings and imported/shared files only. Keyboard dictation never notifies. Notifications are best effort while the app can process or poll, not remote push notifications.
+The first valid file import requests iOS notification permission unless you have explicitly disabled completion notifications. You can change this in Settings. Completion notifications contain the transcript for app recordings and imported/shared files only. Keyboard dictation never notifies. Notifications are best effort while the app can process or poll, not remote push notifications.
 
 ## Server
 
@@ -41,14 +41,13 @@ The server binds to localhost port 8787 behind the existing private-token HTTPS 
 make check
 ```
 
-GitHub CI builds the app and extensions and runs simulator tests. Its optional `local_model_smoke` run explicitly downloads Tiny and transcribes a public reference clip; normal CI does not download speech models. Simulator timings are not phone benchmarks. The manually triggered TestFlight workflow signs all four targets and uploads to the existing `soli.verse` app. Credentials remain in GitHub secrets.
+GitHub CI builds the app and extensions and runs simulator tests. Its optional `local_model_smoke` run explicitly downloads Tiny and transcribes a public reference clip; normal CI does not download speech models. Simulator timings are not phone benchmarks. The manually triggered TestFlight workflow signs the app, keyboard, and controls targets and uploads to the existing `soli.verse` app. Credentials remain in GitHub secrets.
 
 ## Layout
 
 ```text
 apps/ios/src/Features/Transcription/   App UI and logic
 apps/ios/Keyboard/                    Dictation keyboard
-apps/ios/Share/                       Audio share extension
 apps/ios/Widget/                      Live Activity and dictation control
 apps/ios/Shared/                      Shared Keychain bridge
 speech_server/                       Queue, HTTP API, local Whisper

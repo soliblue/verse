@@ -108,8 +108,9 @@ jobs:
                   offset += size
               raise AssertionError(f"No simulator entitlements in {executable.name}")
 
+          assert not (app / "PlugIns/VerseShare.appex").exists(), "Retired server-only sharing must not be embedded"
           evidence = []
-          for bundle in [app, app / "PlugIns/VerseKeyboard.appex", app / "PlugIns/VerseShare.appex"]:
+          for bundle in [app, app / "PlugIns/VerseKeyboard.appex"]:
               subprocess.run(["codesign", "--verify", "--strict", str(bundle)], check=True)
               info = plistlib.loads((bundle / "Info.plist").read_bytes())
               signature = subprocess.run(["codesign", "-d", "-vv", "--entitlements", "-", "--xml", str(bundle)], capture_output=True, check=True)

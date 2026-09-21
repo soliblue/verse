@@ -308,6 +308,7 @@ final class TranscriptionStore {
         let destination = try await Task.detached(priority: .userInitiated) {
             try library.prepareImport(audio: url, selection: selection)
         }.value
+        loadPendingAudio()
         try await upload(destination)
     }
 
@@ -342,6 +343,7 @@ final class TranscriptionStore {
             endUploadBackgroundTask()
             loadPendingAudio()
         }
+        if pending.origin == .shared { await CompletionNotifications.prepare() }
         if selection.onDevice {
             return try await transcribeLocally(url, pending: pending)
         }

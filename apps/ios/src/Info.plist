@@ -15,7 +15,7 @@
 	<key>ITSAppUsesNonExemptEncryption</key>
 	<false/>
 	<key>NSMicrophoneUsageDescription</key>
-	<string>Record your voice and transcribe it on your private server.</string>
+	<string>Record your voice and transcribe it with your selected model.</string>
 	<key>NSSupportsLiveActivities</key>
 	<true/>
 	<key>UIBackgroundModes</key>
@@ -28,13 +28,13 @@
 	<array>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>Audio</string>
+			<string>Audio and video</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
 			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
-			<array><string>public.audio</string></array>
+			<array><string>public.audio</string><string>public.movie</string></array>
 		</dict>
 	</array>
 	<key>LSSupportsOpeningDocumentsInPlace</key>

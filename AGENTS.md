@@ -5,7 +5,7 @@ Private, single-user iPhone transcription app. Keep `soli.verse` and its existin
 ## Structure
 
 - `apps/ios/src/Features/Transcription/{UI,Logic}`: recording, import, history, playback, settings.
-- `apps/ios/{Keyboard,Share,Widget,Shared}`: typing and dictation keyboard, audio sharing, Live Activities, controls, shared Keychain state.
+- `apps/ios/{Keyboard,Widget,Shared}`: typing and dictation keyboard, Live Activities, controls, shared Keychain state.
 - `speech_server`: authenticated HTTP API, SQLite jobs, private audio, one bounded local faster-whisper worker.
 - `scripts`: service template, upload verification, model benchmarking.
 
@@ -14,7 +14,7 @@ Private, single-user iPhone transcription app. Keep `soli.verse` and its existin
 - Preserve server streaming AAC uploads, integrity checks, idempotent retries, local pending recordings, and single-insertion guards. Keep the selected engine, model, language, and style with each pending recording.
 - On-device WhisperKit is enabled by default, with Medium selected. Models and tokenizers download only after explicit model selection or a Download action. Server transcription remains optional. No paid provider API or silent server fallback.
 - Optional Apple writing styles are Original, Casual, Polished, and Custom. Original is the default. Hide style controls when Apple Intelligence is unavailable, explain setup, preserve the original text, and fall back safely.
-- The share extension uses the server. When on-device mode is selected, obtain explicit server consent before uploading; import inside Verse for local transcription. Local recordings and history must survive updates and cleanup.
+- Audio sharing opens Verse through native document handling and starts transcription with the selected engine, without a confirmation modal. The source app must offer compatible file sharing or Open In. No server-only share extension or silent server fallback. Local recordings and history must survive updates and cleanup.
 - Keyboard extensions cannot record directly. The app owns capture; active sessions permit keyboard control. Cold power opens the app. Ready sessions default to 15 minutes, selectable 5/15/60. Idle audio is discarded.
 - Keep credentials in root `.env`, Keychain, or GitHub secrets. Never commit them. Current recordings and SQLite data under `db/` are private and must survive cleanup/deployment.
 - The VPS service binds to loopback behind the existing HTTPS tunnel and authenticates with a device token. Do not alter shared infrastructure or access controls.
